@@ -1,6 +1,5 @@
 import type { Bridge, DataSource, Status } from '../lib/types';
 import { StatusTag } from './Ui';
-import { dossierFor, inspeksiTerakhir, jarakWaktu } from '../domain/demoData';
 
 export type ScreenKey =
   | 'dash'
@@ -127,13 +126,6 @@ export function Sidebar({
   // sendiri begitu katalog berisi lebih dari satu jembatan.
   const multipleAssets = bridges.length > 1;
 
-  // Tiga keterangan dari berkas aset yang berlaku sepanjang sesi: nilai kondisi
-  // hasil inspeksi, kapan pemeriksaan terakhir, dan beban rencananya. Ketiganya
-  // adalah acuan yang dipakai membaca angka di halaman mana pun, jadi tempatnya
-  // di bilah samping — bukan hanya di halaman Informasi.
-  const dossier = dossierFor(bridge.id);
-  const inspection = dossier ? inspeksiTerakhir(dossier) : null;
-
   return (
     <nav className="sidebar glass glass--rail" aria-label="Navigasi utama">
       <div className="sidebar-brand">
@@ -193,19 +185,6 @@ export function Sidebar({
           </div>
         )}
 
-        {dossier ? (
-          <dl className="sidebar-reference">
-            <dt>Nilai kondisi</dt>
-            <dd>
-              <strong style={{ fontWeight: 700 }}>{dossier.conditionValue}</strong>
-              <span className="text-muted">/5</span>
-            </dd>
-            <dt>Inspeksi</dt>
-            <dd>{jarakWaktu(inspection?.date ?? bridge.lastInspection)}</dd>
-            <dt>Beban rencana</dt>
-            <dd>{dossier.designLoad.split(' ').slice(0, 2).join(' ')}</dd>
-          </dl>
-        ) : null}
       </div>
 
       <div className="sidebar-nav">

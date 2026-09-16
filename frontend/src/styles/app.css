@@ -330,15 +330,6 @@
  * Acuan aset di bilah samping: keterangan yang berlaku sepanjang sesi, jadi
  * tempatnya menetap di rel, bukan di badan halaman yang berganti-ganti.
  */
-.sidebar-reference {
-  display: grid; grid-template-columns: auto 1fr;
-  gap: 4px var(--space-2); margin: var(--space-2) 0 0;
-  padding: var(--space-2) var(--space-1) 0; font-size: 11px;
-  border-top: 1px solid rgb(255 255 255 / 0.07);
-}
-.sidebar-reference dt { color: var(--mist-400); }
-.sidebar-reference dd { margin: 0; text-align: right; color: var(--mist-100); }
-
 .sidebar-nav { display: flex; flex-direction: column; gap: var(--space-3); }
 .sidebar-nav-items { display: flex; flex-direction: column; gap: 2px; }
 .sidebar-foot {
@@ -526,7 +517,6 @@
   .sidebar-asset { flex: 1 1 200px; }
   .sidebar-asset-card { flex-direction: row; align-items: baseline; gap: var(--space-2); flex-wrap: wrap; }
   /* Rel berubah jadi bilah setinggi satu baris; acuannya tetap ada di dashboard. */
-  .sidebar-reference { display: none; }
   /*
    * Kelompok dibubarkan, bukan disusun ulang: `display: contents` membuat
    * tiap butir jadi anak langsung bilahnya, sehingga keenamnya mengalir dalam

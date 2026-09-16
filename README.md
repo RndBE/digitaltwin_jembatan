@@ -144,9 +144,6 @@ dipecah menjadi empat halaman yang berdiri sendiri — **Informasi**,
 orang yang berbeda pada saat yang berbeda. Isinya juga tidak berhenti di keempat
 halaman itu:
 
-- **bilah samping** — nilai kondisi, jarak waktu ke inspeksi terakhir, dan beban
-  rencana; keterangan yang berlaku sepanjang sesi, jadi tempatnya menetap di rel
-  (disembunyikan saat rel berubah menjadi bilah mendatar di layar sempit)
 - **dashboard** — kartu *Acuan aset*: beban rencana, lalu lintas harian beserta
   bagian kendaraan berat, nilai kondisi, pekerjaan pemeliharaan yang sedang
   berjalan atau terjadwal, dan temuan inspeksi terakhir
