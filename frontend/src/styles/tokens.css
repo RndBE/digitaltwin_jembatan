@@ -1,0 +1,160 @@
+/*
+ * Token sistem desain.
+ *
+ * Mengikuti bahasa visual Digital Twin Bendungan Budong Budong: bidang gelap
+ * berwarna tinta laut, panel kaca tembus pandang di atasnya, satu biru merek
+ * untuk seluruh elemen interaktif, dan palet keadaan yang terpisah dari palet
+ * antarmuka — hijau/kuning/jingga/merah hanya menyatakan status, tidak pernah
+ * dipakai sebagai hiasan.
+ */
+:root {
+  color-scheme: dark;
+
+  /* Tinta — bidang gelap tempat seluruh kaca mengapung. */
+  --ink-950: #030b14;
+  --ink-900: #061420;
+  --ink-800: #0a1c2c;
+  --ink-700: #102a3f;
+  --ink-600: #1b3b53;
+
+  /* Kabut — seluruh teks di atas tinta. */
+  --mist-50: #f2f8ff;
+  --mist-100: #e4eefb;
+  --mist-200: #c5d8ec;
+  --mist-300: #9db4cc;
+  --mist-400: #7590ab;
+
+  /* Biru merek — elemen interaktif dan penanda pilihan. */
+  --brand-300: #7cc4ff;
+  --brand-400: #47a6ff;
+  --brand-500: #1f8bf5;
+  --brand-600: #1268c9;
+
+  /* Keadaan. Empat tingkat, dipakai apa adanya untuk status struktur. */
+  --state-normal: #34d399;
+  --state-waspada: #fbbf24;
+  --state-siaga: #fb923c;
+  --state-bahaya: #f87171;
+  --state-offline: #94a3b8;
+
+  /* Peran semantik, supaya komponen tidak menyebut warna mentah. */
+  --color-text: var(--mist-100);
+  --color-text-dim: var(--mist-300);
+  --color-text-faint: var(--mist-400);
+  --color-accent: var(--brand-400);
+  --color-accent-strong: var(--brand-500);
+  --color-hairline: rgb(255 255 255 / 0.1);
+  --color-divider: rgb(255 255 255 / 0.08);
+
+  --font-sans: 'Plus Jakarta Sans', 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'Inter', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --space-1: 5px;
+  --space-2: 10px;
+  --space-3: 15px;
+  --space-4: 20px;
+  --space-6: 30px;
+  --space-8: 40px;
+  --space-12: 60px;
+
+  --radius-glass: 20px;
+  --radius-chip: 14px;
+  --radius-inset: 16px;
+  --radius-sm: 10px;
+  --radius-pill: 999px;
+
+  /* Gerak. Satu kurva untuk semua transisi agar antarmuka terasa satu benda. */
+  --ease: cubic-bezier(0.2, 0.7, 0.3, 1);
+  --dur-fast: 140ms;
+  --dur: 260ms;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body, #root { min-height: 100%; }
+
+body {
+  background: var(--ink-950);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3, h4 {
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: #fff;
+}
+
+a { color: var(--brand-300); text-decoration: none; }
+a:hover { color: #fff; }
+
+button { font-family: inherit; color: inherit; }
+
+/*
+ * Tailwind bukan yang dipakai di sini, tetapi masalahnya sama: tombol bawaan
+ * peramban memakai kursor panah, sehingga setiap kendali menunjuk ke apa pun
+ * dan terbaca sebagai hiasan. Apa pun yang bertindak saat diklik harus
+ * mengatakannya di bawah penunjuk.
+ */
+button:not(:disabled),
+[role='button']:not([aria-disabled='true']),
+summary,
+label:has(> input[type='checkbox']),
+input[type='checkbox'],
+select {
+  cursor: pointer;
+}
+
+button:disabled,
+[aria-disabled='true'],
+input:disabled,
+select:disabled {
+  cursor: not-allowed;
+}
+
+/*
+ * Fokus papan ketik. Antarmukanya kaca gelap di atas bidang bergambar, tempat
+ * garis fokus bawaan peramban menghilang; cincin terang dipasangkan dengan
+ * halo gelap supaya tetap terlihat di langit terang maupun air hitam.
+ */
+:focus { outline: none; }
+:focus-visible {
+  outline: 2px solid var(--brand-300);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 5px rgb(3 11 20 / 0.55);
+}
+
+::selection { background: rgb(31 139 245 / 0.42); color: #fff; }
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgb(255 255 255 / 0.12);
+  border-radius: var(--radius-pill);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover { background: rgb(255 255 255 / 0.2); background-clip: padding-box; }
+
+@keyframes blink { 0%, 100% { opacity: 1 } 50% { opacity: 0.25 } }
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes backdrop-drift {
+  to { transform: translate3d(-8%, -3%, 0) scale(1.08); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

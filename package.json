@@ -1,0 +1,24 @@
+{
+  "name": "jembatan-digital-twin",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Digital Twin Jembatan — platform pemantauan struktur jembatan berbasis web (3D + telemetri + skenario pembebanan)",
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "dev": "concurrently -n api,web -c cyan,magenta \"npm:dev:api\" \"npm:dev:web\"",
+    "dev:api": "npm --workspace backend run dev",
+    "dev:web": "npm --workspace frontend run dev",
+    "build": "npm --workspace frontend run build",
+    "preview": "npm --workspace frontend run preview",
+    "start": "npm --workspace backend run start"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

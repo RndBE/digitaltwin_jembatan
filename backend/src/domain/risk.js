@@ -1,0 +1,168 @@
+/**
+ * Penilaian kondisi struktur: indeks kesehatan, skor risiko, dan rekomendasi
+ * pemeliharaan.
+ *
+ * Seluruh penilaian bertumpu pada `excessRatio` — sejauh mana sebuah kanal
+ * naik di atas kondisi layan normalnya menuju ambang kritis — bukan pada rasio
+ * mentah terhadap ambang kritis. Lendutan pada kondisi normal sudah berada di
+ * setengah ambang kritisnya, jadi rasio mentah akan melaporkan struktur sehat
+ * sebagai setengah rusak.
+ *
+ * Bobot tiap kanal dinyatakan di `domain/sensors.js`, sehingga setiap angka
+ * yang muncul di antarmuka dapat ditelusuri kembali ke satu kanal.
+ */
+const { SENSORS, SENSOR_BY_ID, STRUCTURAL_IDS, excessRatio } = require('./sensors');
+
+/** Indeks kesehatan 0..100 — 100 berarti seluruh kanal struktural berada di kondisi layan normal. */
+function healthIndex(readings) {
+  const structural = readings.filter((r) => STRUCTURAL_IDS.includes(r.id));
+  if (structural.length === 0) return 100;
+  const ratios = structural.map((r) => excessRatio(SENSOR_BY_ID[r.id], r.value));
+  const worst = Math.max(...ratios);
+  const mean = ratios.reduce((a, b) => a + b, 0) / ratios.length;
+  // Kanal terburuk diberi bobot lebih besar: satu elemen yang mendekati ambang
+  // sudah cukup menurunkan kondisi keseluruhan walau rata-ratanya masih baik.
+  return Math.round(Math.max(0, Math.min(100, (1 - (worst * 0.6 + mean * 0.4)) * 100)));
+}
+
+/**
+ * Skor risiko 0..100.
+ *
+ * Suku pertama adalah rata-rata berbobot seluruh kanal — gambaran menyeluruh.
+ * Suku kedua adalah kanal struktural terburuk, karena satu batang yang hampir
+ * gagal tetap berbahaya walau seluruh kanal lain tenang.
+ */
+function riskScore(readings) {
+  let weighted = 0;
+  let totalWeight = 0;
+  let worst = 0;
+
+  readings.forEach((r) => {
+    const sensor = SENSOR_BY_ID[r.id];
+    if (!sensor) return;
+    const ratio = excessRatio(sensor, r.value);
+    if (sensor.weight) {
+      weighted += ratio * sensor.weight;
+      totalWeight += sensor.weight;
+    }
+    if (STRUCTURAL_IDS.includes(r.id)) worst = Math.max(worst, ratio);
+  });
+
+  const mean = totalWeight > 0 ? weighted / totalWeight : 0;
+  return Math.round(Math.max(0, Math.min(100, (mean * 0.55 + worst * 0.45) * 100)));
+}
+
+function riskLevel(score) {
+  if (score > 75) return 'KRITIS';
+  if (score > 50) return 'TINGGI';
+  if (score > 25) return 'SEDANG';
+  return 'RENDAH';
+}
+
+/** Status terburuk di antara seluruh kanal. */
+function overallStatus(readings) {
+  if (readings.some((r) => r.status === 'KRITIS')) return 'KRITIS';
+  if (readings.some((r) => r.status === 'WASPADA')) return 'WASPADA';
+  return 'AMAN';
+}
+
+/** Rekomendasi pemeliharaan berjenjang berdasarkan skor risiko. */
+function maintenanceRecommendation(score) {
+  if (score < 40) {
+    return {
+      priority: 'RENDAH',
+      recommendation: 'Pemantauan rutin dilanjutkan',
+      timeline: 'Inspeksi terjadwal berikutnya: 30 hari',
+      dueDays: 30,
+      items: [
+        'Lanjutkan jadwal pemantauan rutin',
+        'Tinjau log data mingguan',
+        'Tidak ada tindakan segera yang diperlukan',
+      ],
+    };
+  }
+  if (score < 75) {
+    return {
+      priority: 'SEDANG',
+      recommendation: 'Jadwalkan inspeksi struktur dalam 7 hari',
+      timeline: 'Tindakan diperlukan dalam: 7 hari',
+      dueDays: 7,
+      items: [
+        'Jadwalkan inspeksi lapangan dalam 7 hari',
+        'Tingkatkan frekuensi pemantauan menjadi harian',
+        'Dokumentasikan anomali sensor',
+        'Beri tahu tim pemeliharaan',
+      ],
+    };
+  }
+  return {
+    priority: 'KRITIS',
+    recommendation: 'Pembatasan beban segera & inspeksi darurat',
+    timeline: 'Tindakan diperlukan: SEGERA (dalam 24 jam)',
+    dueDays: 1,
+    items: [
+      'SEGERA: batasi beban kendaraan yang melintas',
+      'Terapkan pengaturan lalu lintas darurat',
+      'Inspeksi struktur darurat oleh tim ahli',
+      'Laporkan ke pihak berwenang',
+      'Alihkan lalu lintas berat bila perlu',
+    ],
+  };
+}
+
+/**
+ * Batas bawah skor yang dipakai untuk memilih rekomendasi.
+ *
+ * Satu kanal yang sudah melewati ambang kritis menuntut tindakan segera,
+ * berapa pun skor gabungannya: rata-rata berbobot dapat tetap sedang ketika
+ * hanya satu kanal yang gagal, dan itu justru keadaan yang tidak boleh
+ * diturunkan derajatnya.
+ */
+function priorityFloor(status) {
+  if (status === 'KRITIS') return 76;
+  if (status === 'WASPADA') return 40;
+  return 0;
+}
+
+/** Rincian kontribusi tiga kanal struktural utama terhadap skor risiko. */
+function riskBreakdown(readings) {
+  return ['vib', 'strain', 'defl']
+    .map((id) => {
+      const reading = readings.find((r) => r.id === id);
+      const sensor = SENSOR_BY_ID[id];
+      if (!reading || !sensor) return null;
+      return {
+        id,
+        name: sensor.name,
+        value: reading.value,
+        unit: sensor.unit,
+        pct: Number((excessRatio(sensor, reading.value) * 100).toFixed(1)),
+        status: reading.status,
+      };
+    })
+    .filter(Boolean);
+}
+
+/** Ringkasan penilaian lengkap untuk satu cuplikan telemetri. */
+function assess(readings) {
+  const score = riskScore(readings);
+  const status = overallStatus(readings);
+  return {
+    health: healthIndex(readings),
+    risk: { score, level: riskLevel(score) },
+    status,
+    maintenance: maintenanceRecommendation(Math.max(score, priorityFloor(status))),
+    breakdown: riskBreakdown(readings),
+    sensorCount: SENSORS.length,
+  };
+}
+
+module.exports = {
+  healthIndex,
+  riskScore,
+  riskLevel,
+  overallStatus,
+  maintenanceRecommendation,
+  riskBreakdown,
+  assess,
+};

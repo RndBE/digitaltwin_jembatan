@@ -1,0 +1,15 @@
+{
+  "title": "Manhattan Bridge — Control Skeleton",
+  "subtitle": "Model kendali bersumber, dipakai sebagai acuan tata kelola geometri",
+  "modelUrl": "/models/manhattan/bridge.lod0.glb",
+  "proxyUrl": "/models/manhattan/bridge.lod2.glb",
+  "metadataUrl": "/models/manhattan/parts.json",
+  "scaleDenominator": 87.1,
+  "scaleLabel": "HO 1:87.1",
+  "background": "#061420",
+  "camera": { "position": [1650, 330, 560], "target": [0, 45, 0], "near": 0.5, "far": 60000, "fov": 40 },
+  "framePadding": 0.78,
+  "credit": "Manhattan Bridge Digital Twin: a source-governed control skeleton. Ethical Tech CoLab, 2026.",
+  "creditUrl": "https://github.com/Ethical-Tech-CoLab/manhattan-bridge-3d",
+  "license": "CC BY 4.0"
+}
