@@ -16,7 +16,14 @@ import { SENSOR_SPOTS } from '../domain/sensors';
 
 export type Spot = [number, number, number];
 
-const key = (bridgeId: string) => `jembatan-dt:penanda:${bridgeId}`;
+/*
+ * Nomor versi ikut di dalam kunci. Titik bawaan pernah diperbaiki agar ujung
+ * penanda benar-benar menempel di elemennya; tanpa penggantian kunci, peramban
+ * yang sudah pernah menyimpan letak geseran akan tetap memakai letak lama dan
+ * perbaikan itu tidak pernah terlihat. Naikkan nomornya setiap kali titik
+ * bawaan digeser lagi.
+ */
+const key = (bridgeId: string) => `jembatan-dt:penanda:v2:${bridgeId}`;
 
 const isSpot = (value: unknown): value is Spot =>
   Array.isArray(value) && value.length === 3 && value.every((n) => typeof n === 'number' && Number.isFinite(n));

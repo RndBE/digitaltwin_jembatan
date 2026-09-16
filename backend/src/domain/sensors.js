@@ -16,7 +16,7 @@ const SENSORS = [
   { id: 'temp', name: 'Suhu', unit: '°C', base: 31, warn: 45, crit: 55, dec: 1, weight: 0.02, node: 'Batang atas, sisi selatan', spot: 'temp' },
   { id: 'wim', name: 'Beban kendaraan', unit: 't', base: 12, warn: 20, crit: 30, dec: 1, weight: 0.06, node: 'WIM pendekat barat', spot: 'wim' },
   { id: 'crack', name: 'Retak', unit: 'mm', base: 0.1, warn: 0.2, crit: 0.35, dec: 2, weight: 0.1, node: 'Sambungan gelagar G-6', spot: 'crack' },
-  { id: 'wind', name: 'Angin', unit: 'km/j', base: 14, warn: 40, crit: 60, dec: 0, weight: 0.02, node: 'Anemometer pilar', spot: 'wind' },
+  { id: 'wind', name: 'Angin', unit: 'km/j', base: 14, warn: 40, crit: 60, dec: 0, weight: 0.02, node: 'Anemometer, tiang oprit timur', spot: 'wind' },
 ];
 
 const SENSOR_BY_ID = Object.fromEntries(SENSORS.map((s) => [s.id, s]));
