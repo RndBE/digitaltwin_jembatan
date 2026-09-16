@@ -73,6 +73,10 @@ function LiveTwinView({
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
   const [picked, setPicked] = useState<string | null>(null);
   const [autoRotate, setAutoRotate] = useState(true);
+  // Mode geser penanda, mati secara bawaan. Halaman ini lebih sering dibaca
+  // daripada diatur, dan letak penanda adalah data pemasangan — memindahkannya
+  // semestinya perbuatan yang disengaja, bukan akibat tarikan yang meleset.
+  const [editSpots, setEditSpots] = useState(false);
   const [scaleMetres, setScaleMetres] = useState(0);
   const [partsOpen, setPartsOpen] = useState(false);
   // Apakah ada penanda yang pernah digeser pada jembatan ini; menentukan
@@ -137,7 +141,7 @@ function LiveTwinView({
       <PageHeader
         kicker="Digital Twin"
         title={bridge.name}
-        lede="Seret untuk memutar, gulir untuk memperbesar, klik penanda sensor untuk membaca nilainya di tempat. Penanda dapat diseret ke titik pasang yang sebenarnya — letaknya menempel pada elemen dan tersimpan di peramban ini. Warna batang mengikuti regangan yang terukur, warna penanda mengikuti status kanalnya."
+        lede="Seret untuk memutar, gulir untuk memperbesar, klik penanda sensor untuk membaca nilainya di tempat. Warna batang mengikuti regangan yang terukur, warna penanda mengikuti status kanalnya. Letak penanda hanya dapat diubah setelah tombol Geser penanda dinyalakan — di luar mode itu penanda sekadar dibaca."
         actions={telemetry ? <StatusTag status={telemetry.assessment.status} /> : undefined}
       />
 
@@ -153,6 +157,14 @@ function LiveTwinView({
             </button>
             <button type="button" className="btn btn-secondary btn-sm" onClick={reset}>
               Setel ulang pandangan
+            </button>
+            <button
+              type="button"
+              className={editSpots ? 'btn btn-primary btn-sm' : 'btn btn-secondary btn-sm'}
+              aria-pressed={editSpots}
+              onClick={() => setEditSpots((value) => !value)}
+            >
+              {editSpots ? 'Selesai menggeser' : 'Geser penanda'}
             </button>
             {spotsMoved ? (
               <button
@@ -175,6 +187,7 @@ function LiveTwinView({
               telemetry={telemetry}
               pickedSensor={picked}
               autoRotate={autoRotate}
+              editSpots={editSpots}
               onPick={setPicked}
               onScale={setScaleMetres}
               onReady={handleReady}
@@ -211,6 +224,17 @@ function LiveTwinView({
                 <span className="stage-chip" style={{ position: 'static' }}>
                   {scenario.cars} mobil · {scenario.trucks} truk ·{' '}
                   {SPEED_LABEL[String(scenario.speed)] ?? '—'}
+                </span>
+              ) : null}
+
+              {/* Mode geser mengubah arti tarikan di atas penanda, jadi keadaannya
+                  disebut di atas gambar — bukan hanya pada tombol di luarnya. */}
+              {editSpots ? (
+                <span
+                  className="stage-chip"
+                  style={{ position: 'static', color: 'var(--brand-300)' }}
+                >
+                  Mode geser · seret penanda ke titik pasangnya
                 </span>
               ) : null}
             </div>

@@ -69,6 +69,15 @@ export interface SceneState {
   paused: boolean;
   autoRotate: boolean;
   pickedSensor: string | null;
+  /**
+   * Penanda boleh digeser.
+   *
+   * Dimatikan secara bawaan. Letak penanda adalah data pemasangan, dan model
+   * ini lebih sering dibaca daripada diatur: tanpa sakelar, satu tarikan yang
+   * meleset saat hendak memutar pandangan sudah memindahkan sensor tanpa
+   * disadari. Saat mati, penanda tetap dapat diklik untuk dibaca.
+   */
+  editSpots: boolean;
 }
 
 export interface SceneCallbacks {
@@ -138,6 +147,7 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
     paused: false,
     autoRotate: true,
     pickedSensor: null,
+    editSpots: false,
   };
 
   // ---------------------------------------------------------------- penyaji
@@ -1122,11 +1132,16 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
     pressed = { x: event.clientX, y: event.clientY };
     element.setPointerCapture(event.pointerId);
 
-    const hit = hitAt(event);
-    if (hit) {
-      draggingSensor = hit.object.userData.sensorId as string;
-      element.style.cursor = 'grabbing';
-      return;
+    // Menekan penanda hanya memulai pemindahan bila mode geser dinyalakan.
+    // Di luar mode itu tekanan diteruskan ke orbit seperti tekanan di tempat
+    // lain, dan penanda tetap terbaca lewat penyaringan klik di pointerup.
+    if (state.editSpots) {
+      const hit = hitAt(event);
+      if (hit) {
+        draggingSensor = hit.object.userData.sensorId as string;
+        element.style.cursor = 'grabbing';
+        return;
+      }
     }
 
     drag = { x: event.clientX, y: event.clientY };
@@ -1143,7 +1158,10 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
       return;
     }
     if (!drag) {
-      element.style.cursor = hitAt(event) ? 'move' : 'grab';
+      // Bentuk kursor menyatakan apa yang akan terjadi: salib empat arah berarti
+      // penanda dapat dipindahkan, telunjuk berarti hanya dapat dibaca.
+      const overMarker = hitAt(event) !== null;
+      element.style.cursor = overMarker ? (state.editSpots ? 'move' : 'pointer') : 'grab';
       return;
     }
     theta -= (event.clientX - drag.x) * 0.006;

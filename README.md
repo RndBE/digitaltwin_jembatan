@@ -177,15 +177,30 @@ pasang, bukan bola berwarna sama untuk semua kanal. Warnanya mengikuti status
 kanal — hijau aman, kuning waspada, merah kritis — dan digambar di atas
 strukturnya, karena ia keterangan tentang model, bukan benda di dalamnya.
 
-Penanda juga **dapat diseret**. Titik pasang barunya dicari dengan menembakkan
-sinar ke struktur, bukan ke bidang khayal di depan kamera: sensor menempel pada
-elemen, dan penanda yang bisa dilepas melayang di udara hanya menghasilkan letak
-yang tidak berarti. Menekan penanda tanpa menggeser tetap berarti membacanya —
+Titik bawaannya diturunkan dari tetapan geometri model, bukan dikira-kira:
+ujung runcing penanda jatuh persis di koordinat `SENSOR_SPOTS`, jadi koordinat
+itu harus berada di permukaan elemen yang disebut keterangan kanalnya. Acuannya
+ditulis sebagai komentar di atas tetapan itu.
+
+Penanda juga **dapat diseret**, tetapi hanya setelah tombol **Geser penanda**
+dinyalakan. Di luar mode itu penanda sekadar dibaca, dan tarikan di atasnya
+memutar pandangan seperti tarikan di tempat lain. Sakelarnya ada karena halaman
+ini lebih sering dibaca daripada diatur: letak penanda adalah data pemasangan,
+dan satu tarikan yang meleset saat hendak memutar pandangan tidak boleh
+memindahkan sensor tanpa disadari.
+
+Saat mode geser menyala, titik pasang baru dicari dengan menembakkan sinar ke
+struktur, bukan ke bidang khayal di depan kamera: sensor menempel pada elemen,
+dan penanda yang bisa dilepas melayang di udara hanya menghasilkan letak yang
+tidak berarti. Menekan penanda tanpa menggeser tetap berarti membacanya —
 geseran di bawah lima piksel dihitung sebagai klik.
 
 Letaknya disimpan di `localStorage` peramban, per jembatan
-(`frontend/src/lib/sensorSpots.ts`), dan tombol **Restore marker positions**
-muncul begitu ada yang pernah digeser. Simpanan itu tidak ikut berpindah ke
+(`frontend/src/lib/sensorSpots.ts`), dan tombol **Kembalikan letak penanda**
+muncul begitu ada yang pernah digeser. Kuncinya bernomor versi: menaikkan nomor
+itu membuang simpanan lama, yang diperlukan setiap kali titik bawaan diperbaiki
+— tanpa itu peramban yang sudah pernah menyimpan geseran tidak akan pernah
+melihat perbaikannya. Simpanan itu tidak ikut berpindah ke
 perangkat lain dan hilang bila data situs dibersihkan; untuk aset sungguhan,
 letak sensor semestinya menjadi bidang pada katalog jembatan di sisi server —
 yang diganti fungsi-fungsi di modul itu, bukan pemanggilnya.

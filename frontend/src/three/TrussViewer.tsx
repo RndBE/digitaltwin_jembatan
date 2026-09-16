@@ -18,6 +18,8 @@ export interface TrussViewerProps {
   telemetry: Telemetry | null;
   pickedSensor: string | null;
   autoRotate: boolean;
+  /** Penanda boleh digeser; bila mati, penanda hanya dapat diklik untuk dibaca. */
+  editSpots: boolean;
   onPick: (sensorId: string | null) => void;
   onScale: (metres: number) => void;
   onReady: (scene: TwinScene | null) => void;
@@ -45,6 +47,7 @@ export function TrussViewer({
   telemetry,
   pickedSensor,
   autoRotate,
+  editSpots,
   onPick,
   onScale,
   onReady,
@@ -153,11 +156,19 @@ export function TrussViewer({
     sceneRef.current?.setState({ autoRotate });
   }, [autoRotate]);
 
+  useEffect(() => {
+    sceneRef.current?.setState({ editSpots });
+  }, [editSpots]);
+
   return (
     <div
       ref={hostRef}
       role="img"
-      aria-label={`Model tiga dimensi ${bridge.name}. Seret untuk memutar, gulir untuk memperbesar, klik penanda sensor untuk melihat nilainya, seret penanda untuk memindahkan letaknya.`}
+      aria-label={
+        `Model tiga dimensi ${bridge.name}. Seret untuk memutar, gulir untuk memperbesar, ` +
+        `klik penanda sensor untuk melihat nilainya.` +
+        (editSpots ? ' Mode geser penanda menyala: seret penanda untuk memindahkan letaknya.' : '')
+      }
       style={{
         width: '100%',
         aspectRatio: '16 / 10',
