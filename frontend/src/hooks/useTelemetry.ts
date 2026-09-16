@@ -90,7 +90,7 @@ export function useTelemetry(bridge: Bridge, apiAvailable: boolean): TelemetryCo
       at: new Date().toISOString(),
       sensorId: null,
       level: 'AMAN',
-      text: `Monitoring system active · ${bridge.sensorCount} sensors online, in sync with the model`,
+      text: `Sistem pemantauan aktif · ${bridge.sensorCount} sensor daring, sinkron dengan model`,
     },
   ]);
   const [controlError, setControlError] = useState<string | null>(null);
@@ -227,7 +227,7 @@ export function useTelemetry(bridge: Bridge, apiAvailable: boolean): TelemetryCo
         // Tiga kegagalan berturut-turut: server dianggap tidak dapat dihubungi,
         // antarmuka berpindah ke mesin lokal daripada membeku.
         if (failures >= 3 && !cancelled) {
-          setControlError('Server unreachable · switching to the local simulation engine');
+          setControlError('Server tidak dapat dihubungi · beralih ke mesin simulasi lokal');
           setSource('lokal');
           return;
         }
@@ -255,8 +255,8 @@ export function useTelemetry(bridge: Bridge, apiAvailable: boolean): TelemetryCo
           level: key === 'idle' ? ('AMAN' as const) : (SCENARIOS[key].expected as 'WASPADA' | 'KRITIS'),
           text:
             key === 'idle'
-              ? 'Scenario stopped · back to live monitoring'
-              : `Scenario "${SCENARIOS[key].name}" started`,
+              ? 'Skenario dihentikan · kembali ke pemantauan langsung'
+              : `Skenario "${SCENARIOS[key].name}" dijalankan`,
         },
         ...prev,
       ].slice(0, MAX_ALERTS),
@@ -277,7 +277,7 @@ export function useTelemetry(bridge: Bridge, apiAvailable: boolean): TelemetryCo
       api.setScenario(bridge.id, key).catch((err: Error) => {
         // Endpoint kendali memerlukan token. Jalankan skenario di mesin lokal
         // supaya pengguna tetap dapat melihat hasilnya, dan katakan alasannya.
-        setControlError(`${err.message} · scenario run on the local engine`);
+        setControlError(`${err.message} · skenario dijalankan di mesin lokal`);
         setSource('lokal');
         applyLocalScenario(key);
       });
@@ -297,7 +297,7 @@ export function useTelemetry(bridge: Bridge, apiAvailable: boolean): TelemetryCo
     }
     const next = !(telemetry?.paused ?? false);
     api.setPaused(bridge.id, next).catch((err: Error) => {
-      setControlError(`${err.message} · control handed to the local engine`);
+      setControlError(`${err.message} · kendali dipindahkan ke mesin lokal`);
       setSource('lokal');
       sim?.setPaused(next);
     });
@@ -314,7 +314,7 @@ export function useTelemetry(bridge: Bridge, apiAvailable: boolean): TelemetryCo
           at: new Date().toISOString(),
           sensorId: null,
           level: 'AMAN' as const,
-          text: 'Repair recorded · residual damage cleared, structure back to service condition',
+          text: 'Perbaikan dicatat · sisa kerusakan dibersihkan, struktur kembali ke kondisi layan',
         },
         ...prev,
       ].slice(0, MAX_ALERTS),

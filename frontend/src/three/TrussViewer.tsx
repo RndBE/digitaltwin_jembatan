@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import type { Bridge, Telemetry } from '../lib/types';
-import { SENSOR_BY_ID, STATUS_LABEL, excessRatio, statusOf } from '../domain/sensors';
+import { SENSOR_BY_ID, excessRatio, statusOf } from '../domain/sensors';
 import { SCENARIOS } from '../domain/scenarios';
 import { buildTwinScene, type TwinScene } from './proceduralBridge';
 import { loadSpots, saveSpot } from '../lib/sensorSpots';
@@ -35,8 +35,8 @@ function labelHtml(sensorId: string, telemetry: Telemetry | null): string {
   const color = status === 'AMAN' ? '#006786' : '#aa0b56';
   return (
     `<b style="font-weight:600">${spec.name}</b> · ${value.toFixed(spec.dec)} ${spec.unit} ` +
-    `<span style="color:${color}">${STATUS_LABEL[status]}</span><br>` +
-    `<span style="opacity:.65">${spec.node} · warn at ${spec.warn.toFixed(spec.dec)} ${spec.unit}</span>`
+    `<span style="color:${color}">${status}</span><br>` +
+    `<span style="opacity:.65">${spec.node} · ambang ${spec.warn.toFixed(spec.dec)} ${spec.unit}</span>`
   );
 }
 
@@ -157,7 +157,7 @@ export function TrussViewer({
     <div
       ref={hostRef}
       role="img"
-      aria-label={`Three-dimensional model of ${bridge.name}. Drag to orbit, scroll to zoom, click a sensor marker to read its value, drag a marker to move it.`}
+      aria-label={`Model tiga dimensi ${bridge.name}. Seret untuk memutar, gulir untuk memperbesar, klik penanda sensor untuk melihat nilainya, seret penanda untuk memindahkan letaknya.`}
       style={{
         width: '100%',
         aspectRatio: '16 / 10',

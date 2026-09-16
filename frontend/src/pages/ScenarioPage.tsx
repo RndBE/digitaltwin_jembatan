@@ -51,9 +51,9 @@ export function ScenarioPage({
   return (
     <div className="screen">
       <PageHeader
-        kicker="Simulation"
-        title="Loading scenarios"
-        lede="Running a scenario changes the load acting on the model: readings move towards the new condition at their own rate, and the affected structural elements are highlighted on the 3D model."
+        kicker="Simulasi"
+        title="Skenario pembebanan"
+        lede="Menjalankan sebuah skenario mengubah beban yang bekerja pada model: nilai sensor bergerak menuju kondisi baru dengan laju yang sesuai, dan elemen struktur yang terdampak disorot pada model 3D."
         actions={telemetry ? <StatusTag status={telemetry.assessment.status} /> : undefined}
       />
 
@@ -85,16 +85,16 @@ export function ScenarioPage({
           <div className="row" style={{ justifyContent: 'space-between' }}>
             <div>
               <span className="card-kicker" style={{ color: 'var(--state-waspada)' }}>
-                Unrepaired residual damage
+                Sisa kerusakan belum diperbaiki
               </span>
               <p style={{ fontSize: 13, marginTop: 4, maxWidth: '72ch' }}>
-                {residualIds.map((id) => SENSOR_BY_ID[id]?.name ?? id).join(', ')} will not return to
-                baseline even after the scenario is stopped. Record a repair once the field work is
-                finished.
+                {residualIds.map((id) => SENSOR_BY_ID[id]?.name ?? id).join(', ')} tidak akan kembali
+                ke nilai dasarnya walau skenario dihentikan. Catat perbaikan setelah pekerjaan
+                lapangan selesai.
               </p>
             </div>
             <button type="button" className="btn btn-primary btn-sm" onClick={onRepair}>
-              Record a repair
+              Catat perbaikan
             </button>
           </div>
         </div>
@@ -110,7 +110,7 @@ export function ScenarioPage({
       >
         <div className="row" style={{ justifyContent: 'space-between' }}>
           <div>
-            <span className="card-kicker">{running ? 'Running now' : 'No scenario'}</span>
+            <span className="card-kicker">{running ? 'Sedang berjalan' : 'Tidak ada skenario'}</span>
             <div className="card-title" style={{ fontSize: 20 }}>
               {scenario.name}
             </div>
@@ -120,16 +120,16 @@ export function ScenarioPage({
               {telemetry?.runtimeSeconds ?? 0} s
             </span>
             <button type="button" className="btn btn-sm" onClick={onTogglePause}>
-              {telemetry?.paused ? 'Resume' : 'Pause'}
+              {telemetry?.paused ? 'Lanjutkan' : 'Jeda'}
             </button>
             <button type="button" className="btn btn-sm" onClick={onStop} disabled={!running}>
-              Stop
+              Hentikan
             </button>
             <button type="button" className="btn btn-sm" onClick={onOpenCompare} disabled={!running}>
-              Compare
+              Bandingkan
             </button>
             <button type="button" className="btn btn-primary btn-sm" onClick={onOpenTwin}>
-              See it on the 3D model
+              Lihat di model 3D
             </button>
           </div>
         </div>
@@ -140,7 +140,7 @@ export function ScenarioPage({
 
       {FAMILY_ORDER.map((family) => (
         <section key={family} style={{ marginBottom: 'var(--space-8)' }}>
-          <SectionTitle note={`${scenariosOf(family).length} scenarios`}>
+          <SectionTitle note={`${scenariosOf(family).length} skenario`}>
             {FAMILY_LABELS[family]}
           </SectionTitle>
           <p className="text-muted" style={{ fontSize: 13, lineHeight: 1.6, maxWidth: '82ch', marginBottom: 'var(--space-3)' }}>
@@ -170,7 +170,7 @@ export function ScenarioPage({
                     <span className="card-title">{item.name}</span>
                     <span className="row" style={{ gap: 6 }}>
                       <span className="text-muted" style={{ fontSize: 11 }}>
-                        expected
+                        diperkirakan
                       </span>
                       <StatusTag status={item.expected} />
                     </span>
@@ -184,13 +184,13 @@ export function ScenarioPage({
                     className="text-muted"
                     style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2) var(--space-4)', fontSize: 12 }}
                   >
-                    <span>Traffic: {item.traffic}</span>
-                    <span>Impact: {item.impact}</span>
-                    <span>Onset: {ONSET_LABEL[item.onset]}</span>
+                    <span>Lalu lintas: {item.traffic}</span>
+                    <span>Dampak: {item.impact}</span>
+                    <span>Laju: {ONSET_LABEL[item.onset]}</span>
                     <span
                       style={{ color: item.reversible ? 'var(--state-normal)' : 'var(--state-bahaya)' }}
                     >
-                      {item.reversible ? 'Recovers on its own once the load is gone' : 'Leaves residual damage · needs a repair'}
+                      {item.reversible ? 'Pulih sendiri saat beban hilang' : 'Meninggalkan sisa · perlu perbaikan'}
                     </span>
                   </div>
 
@@ -198,8 +198,8 @@ export function ScenarioPage({
                     className="text-muted"
                     style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2) var(--space-4)', fontSize: 12 }}
                   >
-                    <span>Channels affected: {affected.join(', ') || '—'}</span>
-                    {item.damaged ? <span>Elements highlighted: {item.damaged.length}</span> : null}
+                    <span>Kanal terpengaruh: {affected.join(', ') || '—'}</span>
+                    {item.damaged ? <span>Elemen disorot: {item.damaged.length}</span> : null}
                   </div>
 
                   <div className="row" style={{ marginTop: 'var(--space-1)' }}>
@@ -208,7 +208,7 @@ export function ScenarioPage({
                       className={isActive ? 'btn btn-sm' : 'btn btn-primary btn-sm'}
                       onClick={() => (isActive ? onStop() : onRun(item.key))}
                     >
-                      {isActive ? 'Stop the scenario' : 'Run this scenario'}
+                      {isActive ? 'Hentikan skenario' : 'Jalankan skenario'}
                     </button>
                   </div>
                 </div>

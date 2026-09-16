@@ -61,41 +61,41 @@ export function maintenanceRecommendation(score: number): Maintenance {
   if (score < 40) {
     return {
       priority: 'RENDAH',
-      recommendation: 'Continue routine monitoring',
-      timeline: 'Next scheduled inspection: 30 days',
+      recommendation: 'Pemantauan rutin dilanjutkan',
+      timeline: 'Inspeksi terjadwal berikutnya: 30 hari',
       dueDays: 30,
       items: [
-        'Keep to the routine monitoring schedule',
-        'Review the weekly data log',
-        'No immediate action required',
+        'Lanjutkan jadwal pemantauan rutin',
+        'Tinjau log data mingguan',
+        'Tidak ada tindakan segera yang diperlukan',
       ],
     };
   }
   if (score < 75) {
     return {
       priority: 'SEDANG',
-      recommendation: 'Schedule a structural inspection within 7 days',
-      timeline: 'Action required within: 7 days',
+      recommendation: 'Jadwalkan inspeksi struktur dalam 7 hari',
+      timeline: 'Tindakan diperlukan dalam: 7 hari',
       dueDays: 7,
       items: [
-        'Schedule a field inspection within 7 days',
-        'Raise the monitoring frequency to daily',
-        'Document the sensor anomalies',
-        'Notify the maintenance team',
+        'Jadwalkan inspeksi lapangan dalam 7 hari',
+        'Tingkatkan frekuensi pemantauan menjadi harian',
+        'Dokumentasikan anomali sensor',
+        'Beri tahu tim pemeliharaan',
       ],
     };
   }
   return {
     priority: 'KRITIS',
-    recommendation: 'Immediate load restriction & emergency inspection',
-    timeline: 'Action required: IMMEDIATELY (within 24 hours)',
+    recommendation: 'Pembatasan beban segera & inspeksi darurat',
+    timeline: 'Tindakan diperlukan: SEGERA (dalam 24 jam)',
     dueDays: 1,
     items: [
-      'IMMEDIATELY: restrict the load of crossing vehicles',
-      'Put emergency traffic management in place',
-      'Emergency structural inspection by a specialist team',
-      'Report to the responsible authority',
-      'Divert heavy traffic if necessary',
+      'SEGERA: batasi beban kendaraan yang melintas',
+      'Terapkan pengaturan lalu lintas darurat',
+      'Inspeksi struktur darurat oleh tim ahli',
+      'Laporkan ke pihak berwenang',
+      'Alihkan lalu lintas berat bila perlu',
     ],
   };
 }

@@ -226,7 +226,7 @@ export function Meter({ pct, color = 'var(--brand-400)', label, hideValue = fals
         aria-valuenow={Math.round(clamped)}
         aria-valuemin={0}
         aria-valuemax={100}
-        aria-label={label ?? 'Utilisation against the critical threshold'}
+        aria-label={label ?? 'Pemanfaatan terhadap ambang kritis'}
         style={{ height: 6, background: 'rgb(255 255 255 / 0.12)', borderRadius: 3, overflow: 'hidden' }}
       >
         <div

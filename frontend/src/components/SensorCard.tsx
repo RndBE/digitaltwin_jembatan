@@ -38,8 +38,8 @@ export function SensorCard({ reading, values, onSelect, selected = false }: Sens
       <Sparkline values={values.slice(-60)} status={reading.status} height={38} />
 
       <div className="text-muted" style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
-        <span>warn at {reading.warn}</span>
-        <span className="tabular">{headroom.toFixed(0)}% margin</span>
+        <span>ambang {reading.warn}</span>
+        <span className="tabular">sisa {headroom.toFixed(0)}%</span>
       </div>
     </>
   );

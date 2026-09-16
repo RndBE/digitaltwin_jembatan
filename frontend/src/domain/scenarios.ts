@@ -24,18 +24,18 @@ import type { Scenario, ScenarioFamily } from '../lib/types';
  */
 
 export const FAMILY_LABELS: Record<ScenarioFamily, string> = {
-  'lalu-lintas': 'Traffic load',
-  lingkungan: 'Environmental load',
-  kerusakan: 'Structural damage',
+  'lalu-lintas': 'Beban lalu lintas',
+  lingkungan: 'Beban lingkungan',
+  kerusakan: 'Kerusakan struktur',
 };
 
 export const FAMILY_NOTES: Record<ScenarioFamily, string> = {
   'lalu-lintas':
-    'Live load from passing vehicles. The structure works in its elastic range: every reading returns to its baseline as soon as the load leaves the span.',
+    'Beban kendaraan yang melintas. Struktur bekerja di rentang elastis: seluruh pembacaan kembali ke nilai dasarnya begitu beban meninggalkan bentang.',
   lingkungan:
-    'Wind and temperature. They do not damage the structure, but they narrow the remaining margin to the thresholds — and recovery follows the weather, not the traffic.',
+    'Angin dan suhu. Tidak merusak struktur, tetapi mempersempit sisa jarak menuju ambang — dan pemulihannya mengikuti cuaca, bukan lalu lintas.',
   kerusakan:
-    'Damage to a structural element. It does not heal on its own: once the scenario is stopped, the affected channels stay above their baseline until a repair is recorded.',
+    'Kerusakan pada elemen struktur. Tidak pulih sendiri: setelah skenario dihentikan, kanal yang terdampak tetap berada di atas nilai dasarnya sampai perbaikan dicatat.',
 };
 
 /** Laju pendekatan menuju kondisi baru, per langkah simulasi. */
@@ -46,19 +46,19 @@ export const ONSET_RATE: Record<Scenario['onset'], number> = {
 };
 
 export const ONSET_LABEL: Record<Scenario['onset'], string> = {
-  cepat: 'Fast · seconds',
-  sedang: 'Moderate · minutes',
-  bertahap: 'Gradual · develops slowly',
+  cepat: 'Cepat · hitungan detik',
+  sedang: 'Sedang · hitungan menit',
+  bertahap: 'Bertahap · berkembang perlahan',
 };
 
 export const SCENARIOS: Record<string, Scenario> = {
   idle: {
     key: 'idle',
     family: 'lalu-lintas',
-    name: 'Live monitoring',
-    desc: 'No scenario is being forced. Readings follow normal service conditions, plus any residual damage that has not been repaired yet.',
+    name: 'Pemantauan langsung',
+    desc: 'Tidak ada skenario yang dipaksakan. Nilai sensor mengikuti kondisi layan normal, ditambah sisa kerusakan yang belum diperbaiki bila ada.',
     traffic: '—',
-    impact: 'None',
+    impact: 'Tidak ada',
     expected: 'AMAN',
     onset: 'cepat',
     reversible: true,
@@ -73,10 +73,10 @@ export const SCENARIOS: Record<string, Scenario> = {
   normal: {
     key: 'normal',
     family: 'lalu-lintas',
-    name: 'Normal traffic flow',
-    desc: 'Mixed cars and light trucks at design speed. This is the reference for everyday structural behaviour, and this is the series recorded as the "before" trace on the Comparison page.',
-    traffic: '6 cars, 2 trucks · 60 km/h',
-    impact: 'None · every channel inside its safe range',
+    name: 'Arus lalu lintas normal',
+    desc: 'Arus campuran mobil dan truk ringan pada kecepatan rencana. Inilah acuan perilaku struktur sehari-hari, dan deret inilah yang direkam sebagai pembanding di halaman Perbandingan.',
+    traffic: '6 mobil, 2 truk · 60 km/j',
+    impact: 'Tidak ada · seluruh kanal di rentang aman',
     expected: 'AMAN',
     onset: 'cepat',
     reversible: true,
@@ -88,10 +88,10 @@ export const SCENARIOS: Record<string, Scenario> = {
   padat: {
     key: 'padat',
     family: 'lalu-lintas',
-    name: 'Rush hour / congestion',
-    desc: 'Both lanes packed with near-stationary vehicles along the whole span. The load turns static: vibration actually drops, but deflection and strain rise and stay up for as long as the jam lasts.',
-    traffic: '16 vehicles · 3 km/h',
-    impact: 'Static deflection, even strain',
+    name: 'Jam sibuk / kemacetan',
+    desc: 'Kedua lajur terisi penuh kendaraan yang hampir berhenti sepanjang bentang. Beban menjadi statis: getaran justru turun, tetapi lendutan dan regangan naik dan bertahan selama kemacetan berlangsung.',
+    traffic: '16 kendaraan · 3 km/j',
+    impact: 'Lendutan statis, regangan merata',
     expected: 'WASPADA',
     onset: 'cepat',
     reversible: true,
@@ -103,10 +103,10 @@ export const SCENARIOS: Record<string, Scenario> = {
   overload: {
     key: 'overload',
     family: 'lalu-lintas',
-    name: 'Overloaded trucks',
-    desc: 'A convoy of trucks loaded beyond the axle limit crosses nose to tail in one lane. Mid-span strain and deflection cross their critical thresholds together.',
-    traffic: '4 heavy trucks · 30 km/h',
-    impact: 'Mid-span strain & deflection',
+    name: 'Truk melebihi batas gandar',
+    desc: 'Iring-iringan truk bermuatan di atas batas gandar melintas beriringan di satu lajur. Regangan dan lendutan tengah bentang melewati ambang kritis bersamaan.',
+    traffic: '4 truk berat · 30 km/j',
+    impact: 'Regangan & lendutan tengah bentang',
     expected: 'KRITIS',
     onset: 'cepat',
     reversible: true,
@@ -121,10 +121,10 @@ export const SCENARIOS: Record<string, Scenario> = {
   angin: {
     key: 'angin',
     family: 'lingkungan',
-    name: 'High wind',
-    desc: 'Lateral wind of 45 km/h with gusts. Traffic keeps running under a speed restriction. Lateral vibration and tilt rise together, while strain barely moves.',
-    traffic: '4 cars · 40 km/h',
-    impact: 'Lateral vibration & tilt',
+    name: 'Angin kencang',
+    desc: 'Angin lateral 45 km/jam dengan hembusan. Lalu lintas tetap berjalan dengan pembatasan kecepatan. Getaran lateral dan kemiringan naik bersama, sementara regangan hampir tidak berubah.',
+    traffic: '4 mobil · 40 km/j',
+    impact: 'Getaran lateral & kemiringan',
     expected: 'WASPADA',
     onset: 'sedang',
     reversible: true,
@@ -136,10 +136,10 @@ export const SCENARIOS: Record<string, Scenario> = {
   panas: {
     key: 'panas',
     family: 'lingkungan',
-    name: 'Extreme midday heat',
-    desc: 'Steel surface temperature reaches 48 °C. Expansion is restrained at the bearings, so thermal strain appears — strain rises without a single extra vehicle on the bridge.',
-    traffic: '3 cars, 1 truck · 60 km/h',
-    impact: 'Thermal strain, expansion joints',
+    name: 'Suhu ekstrem siang hari',
+    desc: 'Suhu permukaan baja mencapai 48 °C. Pemuaian tertahan di tumpuan sehingga muncul regangan termal — regangan naik tanpa ada tambahan beban kendaraan sama sekali.',
+    traffic: '3 mobil, 1 truk · 60 km/j',
+    impact: 'Regangan termal, sambungan siar muai',
     expected: 'WASPADA',
     onset: 'sedang',
     reversible: true,
@@ -154,10 +154,10 @@ export const SCENARIOS: Record<string, Scenario> = {
   retak: {
     key: 'retak',
     family: 'kerusakan',
-    name: 'Fatigue crack in girder',
-    desc: 'A fatigue crack in the bottom chord of panel 6, growing slowly under repeated traffic loading. The crack opening passes the warning threshold and does not close again once the load is gone.',
-    traffic: '6 cars, 2 trucks · 60 km/h',
-    impact: 'Crack opening, local strain',
+    name: 'Retak lelah pada girder',
+    desc: 'Retak lelah pada batang bawah panel ke-6, tumbuh perlahan seiring beban lalu lintas berulang. Bukaan retak melewati ambang waspada dan tidak menutup kembali setelah beban hilang.',
+    traffic: '6 mobil, 2 truk · 60 km/j',
+    impact: 'Bukaan retak, regangan lokal',
     expected: 'WASPADA',
     onset: 'bertahap',
     reversible: false,
@@ -171,10 +171,10 @@ export const SCENARIOS: Record<string, Scenario> = {
   bearing: {
     key: 'bearing',
     family: 'kerusakan',
-    name: 'Bearing failure',
-    desc: 'The east bearing has deformed, so the deck tilts and the load is no longer distributed evenly. Tilt passes its critical threshold and stays there even with traffic stopped.',
-    traffic: '5 cars, 1 truck · 60 km/h',
-    impact: 'Bearing tilt, asymmetric deflection',
+    name: 'Kegagalan bantalan tumpuan',
+    desc: 'Bantalan tumpuan timur terdeformasi sehingga lantai miring dan beban terdistribusi tidak merata. Kemiringan melewati ambang kritis dan bertahan walau lalu lintas dihentikan.',
+    traffic: '5 mobil, 1 truk · 60 km/j',
+    impact: 'Kemiringan tumpuan, lendutan asimetris',
     expected: 'KRITIS',
     onset: 'bertahap',
     reversible: false,
@@ -188,10 +188,10 @@ export const SCENARIOS: Record<string, Scenario> = {
   gerusan: {
     key: 'gerusan',
     family: 'kerusakan',
-    name: 'Post-flood pier scour',
-    desc: 'Flood flow has scoured the bed around the west support and the foundation has settled. Deflection and tilt cross their critical thresholds together, and heavy traffic has already been diverted.',
-    traffic: '3 cars, 1 truck · 30 km/h',
-    impact: 'Support settlement, deflection & tilt',
+    name: 'Gerusan pilar pascabanjir',
+    desc: 'Aliran banjir menggerus dasar di sekitar tumpuan barat sehingga pondasi turun. Lendutan dan kemiringan melewati ambang kritis bersamaan, dan lalu lintas berat sudah dialihkan.',
+    traffic: '3 mobil, 1 truk · 30 km/j',
+    impact: 'Penurunan tumpuan, lendutan & kemiringan',
     expected: 'KRITIS',
     onset: 'bertahap',
     reversible: false,
@@ -226,9 +226,9 @@ export const scenariosOf = (family: ScenarioFamily) =>
 export const REFERENCE_SCENARIOS = ['idle', 'normal'];
 
 export const SPEED_LABEL: Record<string, string> = {
-  '1': '60 km/h',
-  '0.7': '40 km/h',
-  '0.45': '30 km/h',
-  '0.06': '3 km/h',
+  '1': '60 km/j',
+  '0.7': '40 km/j',
+  '0.45': '30 km/j',
+  '0.06': '3 km/j',
   '0': '—',
 };

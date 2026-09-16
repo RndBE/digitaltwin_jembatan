@@ -1,16 +1,13 @@
 import type { AlertEvent } from '../lib/types';
-import { STATUS_LABEL, TAG_CLASS } from '../domain/sensors';
+import { TAG_CLASS } from '../domain/sensors';
 
 /** Jam lokal gaya Indonesia (12:05:33), tanpa membawa pustaka tanggal. */
 export function clockOf(iso: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return '--:--:--';
-  return date.toLocaleTimeString('en-GB', {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false,
-  });
+  return date
+    .toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+    .replace(/\./g, ':');
 }
 
 /**
@@ -20,7 +17,7 @@ export function clockOf(iso: string): string {
  */
 export function EventLog({ events, limit = 7 }: { events: AlertEvent[]; limit?: number }) {
   if (events.length === 0) {
-    return <p className="text-muted" style={{ fontSize: 13 }}>No events recorded yet.</p>;
+    return <p className="text-muted" style={{ fontSize: 13 }}>Belum ada peristiwa tercatat.</p>;
   }
 
   return (
@@ -34,7 +31,7 @@ export function EventLog({ events, limit = 7 }: { events: AlertEvent[]; limit?: 
             {clockOf(event.at)}
           </span>
           <span className={TAG_CLASS[event.level]} style={{ flex: 'none' }}>
-            {STATUS_LABEL[event.level]}
+            {event.level}
           </span>
           <span>{event.text}</span>
         </li>

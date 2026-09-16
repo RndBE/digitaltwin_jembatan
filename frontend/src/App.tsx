@@ -66,13 +66,13 @@ export default function App() {
     if (isReference && !['twin', 'info'].includes(screen)) setScreen('twin');
   }, [isReference, screen]);
 
-  if (!bridge) return <p style={{ padding: 40 }}>The bridge catalogue is empty.</p>;
+  if (!bridge) return <p style={{ padding: 40 }}>Katalog jembatan kosong.</p>;
 
   const status = controller.telemetry?.assessment.status ?? 'AMAN';
   const demo = !apiAvailable;
 
   const page = () => {
-    if (!probed) return <p className="text-muted">Checking whether the API is available…</p>;
+    if (!probed) return <p className="text-muted">Memeriksa ketersediaan API…</p>;
 
     switch (screen) {
       case 'dash':

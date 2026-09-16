@@ -273,8 +273,8 @@ export class LocalSimulation {
           level: status,
           text:
             status === 'AMAN'
-              ? `${s.name} back inside its safe range (${value.toFixed(s.dec)} ${s.unit})`
-              : `${s.name} crossed its ${status === 'KRITIS' ? 'critical' : 'warning'} threshold · ${value.toFixed(s.dec)} ${s.unit} at ${s.node}`,
+              ? `${s.name} kembali ke rentang aman (${value.toFixed(s.dec)} ${s.unit})`
+              : `${s.name} melewati ambang ${status.toLowerCase()} · ${value.toFixed(s.dec)} ${s.unit} di ${s.node}`,
         });
       }
       this.lastStatus[s.id] = status;

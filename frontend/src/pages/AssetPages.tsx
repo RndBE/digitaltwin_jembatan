@@ -36,23 +36,23 @@ function NoDossier({ bridge, what }: { bridge: Bridge; what: string }) {
   return (
     <div className="screen">
       <PageHeader
-        kicker="Asset"
+        kicker="Aset"
         title={bridge.name}
-        lede={`This asset is a reference model and has no ${what}. What it does carry is geometry governance metadata, which can be opened on the Digital twin page.`}
+        lede={`Aset ini adalah model acuan dan tidak memiliki ${what}. Yang tersedia untuknya adalah metadata tata kelola geometri, yang dapat dibuka di halaman Digital Twin.`}
       />
     </div>
   );
 }
 
 const statusTaken: Record<string, string> = {
-  Completed: 'tag tag-normal',
-  'In progress': 'tag tag-waspada',
-  Planned: 'tag tag-neutral',
+  Selesai: 'tag tag-normal',
+  Berjalan: 'tag tag-waspada',
+  Direncanakan: 'tag tag-neutral',
 };
 
 const biayaTerealisasi = (dossier: BridgeDossier) =>
   dossier.maintenance
-    .filter((item) => item.status !== 'Planned')
+    .filter((item) => item.status !== 'Direncanakan')
     .reduce((sum, item) => sum + item.cost, 0);
 
 /* ------------------------------------------------------------------ informasi */
@@ -70,7 +70,7 @@ export interface InfoPageProps extends AssetPageProps {
  */
 export function InfoPage({ bridge, telemetry, onOpen }: InfoPageProps) {
   const dossier = dossierFor(bridge.id);
-  if (!dossier) return <NoDossier bridge={bridge} what="technical record" />;
+  if (!dossier) return <NoDossier bridge={bridge} what="berkas teknis" />;
 
   const inspection = inspeksiTerakhir(dossier);
   const ongoing = pekerjaanBerjalan(dossier);
@@ -79,12 +79,12 @@ export function InfoPage({ bridge, telemetry, onOpen }: InfoPageProps) {
   return (
     <div className="screen">
       <PageHeader
-        kicker="Asset information"
+        kicker="Informasi aset"
         title={bridge.name}
         lede={
           <>
-            {bridge.type} over the {dossier.river}. {dossier.roadClass}, owned by {dossier.owner}.
-            This record is sample data, for demonstration purposes.
+            {bridge.type} di atas {dossier.river}. {dossier.roadClass}, milik {dossier.owner}.
+            Berkas ini adalah data contoh untuk keperluan peraga.
           </>
         }
         actions={telemetry ? <StatusTag status={telemetry.assessment.status} /> : undefined}
@@ -98,18 +98,18 @@ export function InfoPage({ bridge, telemetry, onOpen }: InfoPageProps) {
         }}
       >
         <Stat
-          label="Span length"
+          label="Panjang bentang"
           value={bridge.spanMeters}
           unit="m"
-          note={`${bridge.lanes} lanes · ${bridge.widthMeters} m wide`}
+          note={`${bridge.lanes} lajur · lebar ${bridge.widthMeters} m`}
         />
         <Stat
-          label="Year built"
+          label="Tahun dibangun"
           value={bridge.builtYear}
-          note={`${new Date().getFullYear() - bridge.builtYear} years old`}
+          note={`usia ${new Date().getFullYear() - bridge.builtYear} tahun`}
         />
         <Stat
-          label="Condition rating"
+          label="Nilai kondisi"
           value={dossier.conditionValue}
           unit="/5"
           note={CONDITION_LABELS[dossier.conditionValue]}
@@ -118,11 +118,11 @@ export function InfoPage({ bridge, telemetry, onOpen }: InfoPageProps) {
           }
         />
         <Stat
-          label="Daily traffic"
-          value={dossier.trafficPerDay.toLocaleString('en-US')}
-          note={`${Math.round(dossier.heavyShare * 100)} % heavy vehicles`}
+          label="Lalu lintas harian"
+          value={dossier.trafficPerDay.toLocaleString('id-ID')}
+          note={`${Math.round(dossier.heavyShare * 100)} % kendaraan berat`}
         />
-        <Stat label="Sensors installed" value={dossier.sensors.length} note={`${bridge.sensorCount} channels online`} />
+        <Stat label="Sensor terpasang" value={dossier.sensors.length} note={`${bridge.sensorCount} kanal daring`} />
       </section>
 
       <section
@@ -136,7 +136,7 @@ export function InfoPage({ bridge, telemetry, onOpen }: InfoPageProps) {
         }}
       >
         <div className="glass card" style={{ padding: 'var(--space-4)' }}>
-          <span className="card-kicker">Technical data</span>
+          <span className="card-kicker">Data teknis</span>
           <dl
             style={{
               display: 'grid',
@@ -146,25 +146,25 @@ export function InfoPage({ bridge, telemetry, onOpen }: InfoPageProps) {
               margin: 0,
             }}
           >
-            <dt className="text-muted">Coordinates</dt>
+            <dt className="text-muted">Koordinat</dt>
             <dd className="tabular" style={{ textAlign: 'right' }}>
               {dossier.coordinates}
             </dd>
-            <dt className="text-muted">Obstacle crossed</dt>
+            <dt className="text-muted">Rintangan</dt>
             <dd style={{ textAlign: 'right' }}>{dossier.river}</dd>
-            <dt className="text-muted">Road class</dt>
+            <dt className="text-muted">Kelas jalan</dt>
             <dd style={{ textAlign: 'right' }}>{dossier.roadClass}</dd>
-            <dt className="text-muted">Design load</dt>
+            <dt className="text-muted">Beban rencana</dt>
             <dd style={{ textAlign: 'right' }}>{dossier.designLoad}</dd>
-            <dt className="text-muted">Structure type</dt>
+            <dt className="text-muted">Tipe struktur</dt>
             <dd style={{ textAlign: 'right' }}>{bridge.type}</dd>
-            <dt className="text-muted">Last inspection</dt>
+            <dt className="text-muted">Inspeksi terakhir</dt>
             <dd style={{ textAlign: 'right' }}>{tanggal(bridge.lastInspection)}</dd>
           </dl>
         </div>
 
         <div className="glass card" style={{ padding: 'var(--space-4)' }}>
-          <span className="card-kicker">People responsible</span>
+          <span className="card-kicker">Penanggung jawab</span>
           <div className="stack" style={{ gap: 'var(--space-2)' }}>
             {dossier.contacts.map((contact) => (
               <div key={contact.role} style={{ fontSize: 13 }}>
@@ -187,7 +187,7 @@ export function InfoPage({ bridge, telemetry, onOpen }: InfoPageProps) {
         * dulu, dan dari situ ia menuju catatan yang dicarinya.
         */}
       <section>
-        <SectionTitle note="related records">Field records</SectionTitle>
+        <SectionTitle note="berkas terkait">Catatan lapangan</SectionTitle>
         <div
           style={{
             display: 'grid',
@@ -201,12 +201,12 @@ export function InfoPage({ bridge, telemetry, onOpen }: InfoPageProps) {
             style={{ padding: 'var(--space-4)', textAlign: 'left' }}
             onClick={() => onOpen('inspection')}
           >
-            <span className="card-kicker">Inspections</span>
+            <span className="card-kicker">Inspeksi</span>
             <div className="card-title" style={{ fontSize: 15 }}>
-              {dossier.inspections.length} records
+              {dossier.inspections.length} catatan
             </div>
             <div className="text-muted" style={{ fontSize: 12 }}>
-              {inspection ? `last one ${jarakWaktu(inspection.date)}` : 'no records yet'}
+              {inspection ? `terakhir ${jarakWaktu(inspection.date)}` : 'belum ada catatan'}
             </div>
           </button>
 
@@ -216,16 +216,16 @@ export function InfoPage({ bridge, telemetry, onOpen }: InfoPageProps) {
             style={{ padding: 'var(--space-4)', textAlign: 'left' }}
             onClick={() => onOpen('repair')}
           >
-            <span className="card-kicker">Maintenance</span>
+            <span className="card-kicker">Perbaikan</span>
             <div className="card-title" style={{ fontSize: 15 }}>
-              {dossier.maintenance.length} jobs
+              {dossier.maintenance.length} pekerjaan
             </div>
             <div className="text-muted" style={{ fontSize: 12 }}>
               {ongoing
-                ? `${ongoing.work} · in progress`
+                ? `${ongoing.work} · berjalan`
                 : planned
-                  ? `next one ${jarakWaktu(planned.date)}`
-                  : 'no open work'}
+                  ? `berikutnya ${jarakWaktu(planned.date)}`
+                  : 'tidak ada pekerjaan terbuka'}
             </div>
           </button>
 
@@ -235,12 +235,12 @@ export function InfoPage({ bridge, telemetry, onOpen }: InfoPageProps) {
             style={{ padding: 'var(--space-4)', textAlign: 'left' }}
             onClick={() => onOpen('sensors')}
           >
-            <span className="card-kicker">Sensors</span>
+            <span className="card-kicker">Sensor</span>
             <div className="card-title" style={{ fontSize: 15 }}>
-              {dossier.sensors.length} units
+              {dossier.sensors.length} unit
             </div>
             <div className="text-muted" style={{ fontSize: 12 }}>
-              lowest battery{' '}
+              baterai terendah{' '}
               {Math.min(...dossier.sensors.map((unit) => unit.battery))} %
             </div>
           </button>
@@ -255,7 +255,7 @@ export function InfoPage({ bridge, telemetry, onOpen }: InfoPageProps) {
 /** Inspeksi: apa yang pernah ditemukan orang di lapangan, bukan yang terbaca sensor. */
 export function InspectionPage({ bridge }: AssetPageProps) {
   const dossier = dossierFor(bridge.id);
-  if (!dossier) return <NoDossier bridge={bridge} what="inspection history" />;
+  if (!dossier) return <NoDossier bridge={bridge} what="riwayat inspeksi" />;
 
   const records = [...dossier.inspections].sort((a, b) => b.date.localeCompare(a.date));
   const latest = records[0];
@@ -263,9 +263,9 @@ export function InspectionPage({ bridge }: AssetPageProps) {
   return (
     <div className="screen">
       <PageHeader
-        kicker="Inspection history"
+        kicker="Riwayat inspeksi"
         title={bridge.name}
-        lede="Field inspections, what they found, and the condition rating the inspector gave. A rating of 0 means no damage, 5 means out of service — the same scale is used throughout the application."
+        lede="Pemeriksaan lapangan, temuannya, dan nilai kondisi yang diberikan pemeriksa. Nilai 0 berarti tanpa kerusakan, 5 berarti tidak berfungsi — skala yang sama dipakai di seluruh aplikasi."
       />
 
       <section
@@ -275,16 +275,16 @@ export function InspectionPage({ bridge }: AssetPageProps) {
           marginBottom: 'var(--space-6)',
         }}
       >
-        <Stat label="Records" value={records.length} note="last four years" />
+        <Stat label="Catatan" value={records.length} note="empat tahun terakhir" />
         <Stat
-          label="Latest condition rating"
+          label="Nilai kondisi terakhir"
           value={latest.conditionValue}
           unit="/5"
           note={CONDITION_LABELS[latest.conditionValue]}
           tone={latest.conditionValue >= 3 ? 'critical' : latest.conditionValue === 2 ? 'warn' : 'accent'}
         />
-        <Stat label="Inspected" value={tanggalPendek(latest.date)} note={jarakWaktu(latest.date)} />
-        <Stat label="Latest type" value={latest.kind} note={latest.inspector} />
+        <Stat label="Diperiksa" value={tanggalPendek(latest.date)} note={jarakWaktu(latest.date)} />
+        <Stat label="Jenis terakhir" value={latest.kind} note={latest.inspector} />
       </section>
 
       <div className="glass card" style={{ padding: 0, overflow: 'hidden' }}>
@@ -292,11 +292,11 @@ export function InspectionPage({ bridge }: AssetPageProps) {
           <table className="table">
             <thead>
               <tr>
-                <th>Date</th>
-                <th>Type</th>
-                <th>Inspector</th>
-                <th className="num">Rating</th>
-                <th>Findings</th>
+                <th>Tanggal</th>
+                <th>Jenis</th>
+                <th>Pemeriksa</th>
+                <th className="num">Nilai</th>
+                <th>Temuan</th>
               </tr>
             </thead>
             <tbody>
@@ -328,7 +328,7 @@ export function InspectionPage({ bridge }: AssetPageProps) {
 /** Perbaikan: pekerjaan yang sudah, sedang, dan akan dikerjakan di lapangan. */
 export function RepairPage({ bridge }: AssetPageProps) {
   const dossier = dossierFor(bridge.id);
-  if (!dossier) return <NoDossier bridge={bridge} what="maintenance records" />;
+  if (!dossier) return <NoDossier bridge={bridge} what="catatan pekerjaan pemeliharaan" />;
 
   const records = [...dossier.maintenance].sort((a, b) => b.date.localeCompare(a.date));
   const ongoing = pekerjaanBerjalan(dossier);
@@ -338,9 +338,9 @@ export function RepairPage({ bridge }: AssetPageProps) {
   return (
     <div className="screen">
       <PageHeader
-        kicker="Repairs & maintenance"
+        kicker="Perbaikan & pemeliharaan"
         title={bridge.name}
-        lede="Work that is finished, work in progress, and work already scheduled. The cost total covers realised work only — planned work has not necessarily been spent yet."
+        lede="Pekerjaan yang sudah selesai, yang sedang berjalan, dan yang sudah dijadwalkan. Biaya yang dijumlahkan hanya pekerjaan terealisasi — yang direncanakan belum tentu terserap."
       />
 
       <section
@@ -350,18 +350,18 @@ export function RepairPage({ bridge }: AssetPageProps) {
           marginBottom: 'var(--space-6)',
         }}
       >
-        <Stat label="Realised cost" value={rupiah(total)} note="last two years" />
-        <Stat label="Jobs recorded" value={records.length} note={`${records.filter((r) => r.status === 'Completed').length} completed`} />
+        <Stat label="Biaya terealisasi" value={rupiah(total)} note="dua tahun terakhir" />
+        <Stat label="Pekerjaan tercatat" value={records.length} note={`${records.filter((r) => r.status === 'Selesai').length} selesai`} />
         <Stat
-          label="In progress"
+          label="Sedang berjalan"
           value={ongoing ? 1 : 0}
-          note={ongoing ? ongoing.work : 'none'}
+          note={ongoing ? ongoing.work : 'tidak ada'}
           tone={ongoing ? 'warn' : 'default'}
         />
         <Stat
-          label="Next scheduled"
+          label="Terjadwal berikutnya"
           value={planned ? tanggalPendek(planned.date) : '—'}
-          note={planned ? `${planned.work} · ${jarakWaktu(planned.date)}` : 'none yet'}
+          note={planned ? `${planned.work} · ${jarakWaktu(planned.date)}` : 'belum ada'}
         />
       </section>
 
@@ -370,10 +370,10 @@ export function RepairPage({ bridge }: AssetPageProps) {
           <table className="table">
             <thead>
               <tr>
-                <th>Date</th>
-                <th>Work</th>
-                <th>Element</th>
-                <th className="num">Cost</th>
+                <th>Tanggal</th>
+                <th>Pekerjaan</th>
+                <th>Elemen</th>
+                <th className="num">Biaya</th>
                 <th>Status</th>
               </tr>
             </thead>
@@ -404,7 +404,7 @@ export function RepairPage({ bridge }: AssetPageProps) {
 /** Sensor: alat yang terpasang, umurnya, dan sisa dayanya. */
 export function SensorPage({ bridge }: AssetPageProps) {
   const dossier = dossierFor(bridge.id);
-  if (!dossier) return <NoDossier bridge={bridge} what="sensor inventory" />;
+  if (!dossier) return <NoDossier bridge={bridge} what="inventaris sensor" />;
 
   const units = dossier.sensors;
   const lowest = units.reduce((worst, unit) => (unit.battery < worst.battery ? unit : worst), units[0]);
@@ -413,9 +413,9 @@ export function SensorPage({ bridge }: AssetPageProps) {
   return (
     <div className="screen">
       <PageHeader
-        kicker="Sensor inventory"
+        kicker="Inventaris sensor"
         title={bridge.name}
-        lede="The instruments actually mounted on the structure, with their location, installation date, remaining battery, and signal quality. A channel behaving oddly is not necessarily the structure — it can just as easily be an instrument running out of power."
+        lede="Alat yang benar-benar terpasang di struktur, beserta letak, umur pemasangan, sisa baterai, dan kualitas sinyalnya. Kanal yang bergerak aneh belum tentu strukturnya — bisa juga alatnya yang mulai habis daya."
       />
 
       <section
@@ -425,19 +425,19 @@ export function SensorPage({ bridge }: AssetPageProps) {
           marginBottom: 'var(--space-6)',
         }}
       >
-        <Stat label="Units installed" value={units.length} note={`${bridge.sensorCount} channels online`} />
+        <Stat label="Unit terpasang" value={units.length} note={`${bridge.sensorCount} kanal daring`} />
         <Stat
-          label="Lowest battery"
+          label="Baterai terendah"
           value={lowest.battery}
           unit="%"
           note={`${lowest.id} · ${lowest.channel}`}
           tone={lowest.battery < 70 ? 'warn' : 'default'}
         />
-        <Stat label="Weakest signal" value={weakest.signal} unit="%" note={`${weakest.id} · ${weakest.channel}`} />
+        <Stat label="Sinyal terlemah" value={weakest.signal} unit="%" note={`${weakest.id} · ${weakest.channel}`} />
         <Stat
-          label="Most recent install"
+          label="Pemasangan terakhir"
           value={tanggalPendek(units.reduce((latest, unit) => (unit.installed > latest.installed ? unit : latest), units[0]).installed)}
-          note="newest unit"
+          note="unit terbaru"
         />
       </section>
 
@@ -453,7 +453,7 @@ export function SensorPage({ bridge }: AssetPageProps) {
             <div className="row" style={{ justifyContent: 'space-between' }}>
               <span className="card-kicker">{unit.id}</span>
               <span className="text-muted" style={{ fontSize: 11 }}>
-                since {tanggalPendek(unit.installed)}
+                sejak {tanggalPendek(unit.installed)}
               </span>
             </div>
             <div className="card-title" style={{ fontSize: 15 }}>
@@ -468,10 +468,10 @@ export function SensorPage({ bridge }: AssetPageProps) {
             <div className="stack" style={{ gap: 6, marginTop: 6 }}>
               <Meter
                 pct={unit.battery}
-                label="Battery"
+                label="Baterai"
                 color={unit.battery < 70 ? 'var(--state-waspada)' : 'var(--brand-400)'}
               />
-              <Meter pct={unit.signal} label="Signal quality" />
+              <Meter pct={unit.signal} label="Kualitas sinyal" />
             </div>
           </div>
         ))}

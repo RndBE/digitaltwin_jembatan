@@ -21,38 +21,38 @@ interface NavItem {
 /**
  * Navigasi dikelompokkan menurut sifat halamannya, bukan menurut asal datanya.
  *
- *   Overview      — dua layar yang menampilkan keadaan sekarang apa adanya.
- *   Analysis      — layar yang mengolah keadaan itu: deret waktu, pembanding,
- *                   dan skenario yang mengubahnya dengan sengaja.
- *   Asset record  — berkas yang tidak berubah tiap menit: identitas, catatan
- *                   pemeriksaan, pekerjaan, dan alat terpasang.
+ *   Pemantauan  — dua layar yang menampilkan keadaan sekarang apa adanya.
+ *   Kajian      — layar yang mengolah keadaan itu: deret waktu, pembanding, dan
+ *                 skenario yang mengubahnya dengan sengaja.
+ *   Berkas aset — berkas yang tidak berubah tiap menit: identitas, catatan
+ *                 pemeriksaan, pekerjaan, dan alat terpasang.
  *
  * Digital Twin sebelumnya berada di kelompok aset, dan itu salah tempat: model
  * 3D adalah layar pemantauan langsung, bukan lembar arsip.
  */
 export const NAV_GROUPS: Array<{ title: string; items: NavItem[] }> = [
   {
-    title: 'Overview',
+    title: 'Pemantauan',
     items: [
       { key: 'dash', label: 'Dashboard' },
-      { key: 'twin', label: 'Digital twin' },
+      { key: 'twin', label: 'Digital Twin' },
     ],
   },
   {
-    title: 'Analysis',
+    title: 'Kajian',
     items: [
-      { key: 'analysis', label: 'Time series' },
-      { key: 'compare', label: 'Comparison' },
-      { key: 'scenario', label: 'Scenarios' },
+      { key: 'analysis', label: 'Deret waktu' },
+      { key: 'compare', label: 'Perbandingan' },
+      { key: 'scenario', label: 'Skenario' },
     ],
   },
   {
-    title: 'Asset record',
+    title: 'Berkas aset',
     items: [
-      { key: 'info', label: 'Information' },
-      { key: 'inspection', label: 'Inspections' },
-      { key: 'repair', label: 'Maintenance' },
-      { key: 'sensors', label: 'Sensors' },
+      { key: 'info', label: 'Informasi' },
+      { key: 'inspection', label: 'Inspeksi' },
+      { key: 'repair', label: 'Pemeliharaan' },
+      { key: 'sensors', label: 'Sensor' },
     ],
   },
 ];
@@ -132,7 +132,7 @@ export function Sidebar({
   const inspection = dossier ? inspeksiTerakhir(dossier) : null;
 
   return (
-    <nav className="sidebar glass glass--rail" aria-label="Main navigation">
+    <nav className="sidebar glass glass--rail" aria-label="Navigasi utama">
       <div className="sidebar-brand">
         <BrandMark />
         <div style={{ lineHeight: 1.2, minWidth: 0 }}>
@@ -156,7 +156,7 @@ export function Sidebar({
               color: 'var(--mist-300)',
             }}
           >
-            Structural Monitoring
+            Pemantauan Struktur
           </div>
         </div>
       </div>
@@ -164,7 +164,7 @@ export function Sidebar({
       <div className="sidebar-asset">
         {multipleAssets ? (
           <div className="field">
-            <label htmlFor="pilih-jembatan">Monitored asset</label>
+            <label htmlFor="pilih-jembatan">Aset yang dipantau</label>
             <select
               id="pilih-jembatan"
               className="input"
@@ -180,7 +180,7 @@ export function Sidebar({
           </div>
         ) : (
           <div className="glass glass--inset sidebar-asset-card">
-            <span className="stat-label">Monitored asset</span>
+            <span className="stat-label">Aset yang dipantau</span>
             <span style={{ fontSize: 14, fontWeight: 700, color: '#fff', lineHeight: 1.25 }}>
               {bridge.name}
             </span>
@@ -192,14 +192,14 @@ export function Sidebar({
 
         {dossier ? (
           <dl className="sidebar-reference">
-            <dt>Condition rating</dt>
+            <dt>Nilai kondisi</dt>
             <dd>
               <strong style={{ fontWeight: 700 }}>{dossier.conditionValue}</strong>
               <span className="text-muted">/5</span>
             </dd>
-            <dt>Last inspection</dt>
+            <dt>Inspeksi</dt>
             <dd>{jarakWaktu(inspection?.date ?? bridge.lastInspection)}</dd>
-            <dt>Design load</dt>
+            <dt>Beban rencana</dt>
             <dd>{dossier.designLoad.split(' ').slice(0, 2).join(' ')}</dd>
           </dl>
         ) : null}
@@ -237,14 +237,14 @@ export function Sidebar({
               onClick={() => onScreen('scenario')}
             >
               <span className="tag-dot" aria-hidden="true" />
-              Repair pending
+              Perlu perbaikan
             </button>
           ) : null}
         </div>
 
         <div className="text-muted" style={{ fontSize: 11 }}>
-          {demo ? 'Demo mode · sample data' : 'Field data'} ·{' '}
-          {source === 'api' ? 'API server' : 'local engine'}
+          {demo ? 'Mode demo · data dummy' : 'Data lapangan'} ·{' '}
+          {source === 'api' ? 'API server' : 'mesin lokal'}
         </div>
       </div>
     </nav>

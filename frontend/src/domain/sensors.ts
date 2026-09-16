@@ -7,14 +7,14 @@ import type { Reading, SensorSpec, Status } from '../lib/types';
  * mesin simulasi berjalan di peramban.
  */
 export const SENSORS: SensorSpec[] = [
-  { id: 'vib', name: 'Vibration', unit: 'm/s²', base: 0.12, warn: 0.25, crit: 0.4, dec: 3, weight: 0.22, node: 'Mid-span, top chord' },
-  { id: 'strain', name: 'Strain', unit: 'µε', base: 85, warn: 140, crit: 190, dec: 0, weight: 0.24, node: 'Bottom chord, mid-span' },
-  { id: 'defl', name: 'Deflection', unit: 'mm', base: 8, warn: 12, crit: 16, dec: 1, weight: 0.22, node: 'Mid-span, deck' },
-  { id: 'tilt', name: 'Tilt', unit: '°', base: 0.04, warn: 0.08, crit: 0.12, dec: 3, weight: 0.12, node: 'East bearing' },
-  { id: 'temp', name: 'Temperature', unit: '°C', base: 31, warn: 45, crit: 55, dec: 1, weight: 0.02, node: 'Top chord, south side' },
-  { id: 'wim', name: 'Vehicle load', unit: 't', base: 12, warn: 20, crit: 30, dec: 1, weight: 0.06, node: 'WIM, west approach' },
-  { id: 'crack', name: 'Crack', unit: 'mm', base: 0.1, warn: 0.2, crit: 0.35, dec: 2, weight: 0.1, node: 'Girder G-6 joint' },
-  { id: 'wind', name: 'Wind', unit: 'km/h', base: 14, warn: 40, crit: 60, dec: 0, weight: 0.02, node: 'Pier anemometer' },
+  { id: 'vib', name: 'Getaran', unit: 'm/s²', base: 0.12, warn: 0.25, crit: 0.4, dec: 3, weight: 0.22, node: 'Tengah bentang, rangka atas' },
+  { id: 'strain', name: 'Regangan', unit: 'µε', base: 85, warn: 140, crit: 190, dec: 0, weight: 0.24, node: 'Batang bawah tengah' },
+  { id: 'defl', name: 'Lendutan', unit: 'mm', base: 8, warn: 12, crit: 16, dec: 1, weight: 0.22, node: 'Tengah bentang, lantai' },
+  { id: 'tilt', name: 'Kemiringan', unit: '°', base: 0.04, warn: 0.08, crit: 0.12, dec: 3, weight: 0.12, node: 'Tumpuan timur' },
+  { id: 'temp', name: 'Suhu', unit: '°C', base: 31, warn: 45, crit: 55, dec: 1, weight: 0.02, node: 'Batang atas, sisi selatan' },
+  { id: 'wim', name: 'Beban kendaraan', unit: 't', base: 12, warn: 20, crit: 30, dec: 1, weight: 0.06, node: 'WIM pendekat barat' },
+  { id: 'crack', name: 'Retak', unit: 'mm', base: 0.1, warn: 0.2, crit: 0.35, dec: 2, weight: 0.1, node: 'Sambungan gelagar G-6' },
+  { id: 'wind', name: 'Angin', unit: 'km/j', base: 14, warn: 40, crit: 60, dec: 0, weight: 0.02, node: 'Anemometer pilar' },
 ];
 
 export const SENSOR_BY_ID: Record<string, SensorSpec> = Object.fromEntries(
@@ -72,26 +72,6 @@ export const STATUS_COLOR: Record<Status, string> = {
   AMAN: 'var(--state-normal)',
   WASPADA: 'var(--state-waspada)',
   KRITIS: 'var(--state-bahaya)',
-};
-
-/*
- * Nilai status tetap dalam bahasa Indonesia karena ia nilai domain yang dipakai
- * mesin simulasi, penilaian risiko, dan API — bukan teks tampilan. Yang dibaca
- * pengguna diterjemahkan lewat peta di bawah ini, jadi bahasa antarmuka dapat
- * berganti tanpa menyentuh satu pun cabang logika.
- */
-export const STATUS_LABEL: Record<Status, string> = {
-  AMAN: 'SAFE',
-  WASPADA: 'WARNING',
-  KRITIS: 'CRITICAL',
-};
-
-/** Tingkat risiko dan prioritas pemeliharaan memakai skala yang sama. */
-export const LEVEL_LABEL: Record<string, string> = {
-  RENDAH: 'LOW',
-  SEDANG: 'MEDIUM',
-  TINGGI: 'HIGH',
-  KRITIS: 'CRITICAL',
 };
 
 export const worstStatus = (readings: Reading[]): Status =>

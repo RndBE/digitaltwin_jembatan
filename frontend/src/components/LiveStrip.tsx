@@ -10,8 +10,8 @@ import { clockOf } from './EventLog';
  */
 /** Jarak antar cuplikan, ditulis dalam satuan yang enak dibaca. */
 function intervalLabel(ms: number): string {
-  if (ms >= 60_000) return `${Math.round(ms / 60_000)} min`;
-  if (ms >= 1_000) return `${(ms / 1000).toFixed(ms % 1000 === 0 ? 0 : 1)} s`;
+  if (ms >= 60_000) return `${Math.round(ms / 60_000)} menit`;
+  if (ms >= 1_000) return `${(ms / 1000).toFixed(ms % 1000 === 0 ? 0 : 1)} detik`;
   return `${ms} ms`;
 }
 
@@ -62,23 +62,27 @@ export function LiveStrip({
           }}
         />
         <strong style={{ fontWeight: 700 }}>
-          {paused ? 'Data stream paused' : quiet ? 'Routine monitoring' : 'Live monitoring'}
+          {paused
+            ? 'Aliran data dijeda'
+            : quiet
+              ? 'Pemantauan rutin'
+              : 'Pemantauan langsung'}
         </strong>
       </span>
 
-      {item('Updated', telemetry ? clockOf(telemetry.at) : '—')}
-      {item('Sampled', intervalLabel(intervalMs))}
+      {item('Pembaruan', telemetry ? clockOf(telemetry.at) : '—')}
+      {item('Cuplikan', intervalLabel(intervalMs))}
       {/*
         * Laju cuplikan dan jendela rerata adalah dua hal berbeda, jadi
         * keduanya ditulis terpisah: yang pertama menyatakan seberapa sering
         * angkanya diperbarui, yang kedua menyatakan angka itu mewakili apa.
         */}
-      {item('Averaged', '1 min')}
-      {item('Packets', telemetry?.packets ?? 0)}
-      {item('Sensors', `${sensorCount} online`)}
+      {item('Rerata', '1 menit')}
+      {item('Paket', telemetry?.packets ?? 0)}
+      {item('Sensor', `${sensorCount} daring`)}
 
       <span className="text-muted" style={{ marginLeft: 'auto' }}>
-        {source === 'api' ? 'Source: digital twin API' : 'Source: in-browser simulation engine'}
+        {source === 'api' ? 'Sumber: API digital twin' : 'Sumber: mesin simulasi di peramban'}
       </span>
     </div>
   );

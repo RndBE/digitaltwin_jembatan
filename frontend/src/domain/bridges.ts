@@ -14,9 +14,9 @@ import type { Bridge } from '../lib/types';
 export const BRIDGES: Bridge[] = [
   {
     id: 'jbt-progo',
-    name: 'Kali Progo Bridge',
-    location: 'Yogyakarta–Purworejo route, DIY',
-    type: 'Warren-type steel truss',
+    name: 'Jembatan Kali Progo',
+    location: 'Ruas Yogyakarta–Purworejo, DIY',
+    type: 'Rangka baja tipe Warren',
     spanMeters: 120,
     widthMeters: 9,
     lanes: 2,

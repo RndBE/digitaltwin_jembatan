@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react';
 import type { Status } from '../lib/types';
-import { STATUS_LABEL } from '../domain/sensors';
 
 /**
  * Pemetaan status struktur ke palet keadaan.
@@ -20,7 +19,7 @@ export function StatusTag({ status, children }: { status: Status; children?: Rea
   return (
     <span className={STATUS_TAG[status]}>
       <span className="tag-dot" aria-hidden="true" />
-      {children ?? STATUS_LABEL[status]}
+      {children ?? status}
     </span>
   );
 }

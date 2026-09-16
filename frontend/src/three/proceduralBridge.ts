@@ -25,17 +25,17 @@ export interface PartGroup {
 
 /** Kelompok bagian struktur, dipakai pohon bagian di panel samping. */
 export const PART_GROUPS: PartGroup[] = [
-  { key: 'atas', name: 'Top chord', test: /^tc/ },
-  { key: 'bawah', name: 'Bottom chord', test: /^bc/ },
-  { key: 'diagonal', name: 'Diagonals', test: /^d\d/ },
-  { key: 'vertikal', name: 'Verticals', test: /^v-?\d/ },
-  { key: 'bracing', name: 'Bracing & floor beams', test: /^(tb|lb|fb)/ },
-  { key: 'tumpuan', name: 'Bearings', test: /^bear/ },
-  { key: 'sensor', name: 'Sensor markers', test: /^sensor/ },
+  { key: 'atas', name: 'Rangka atas', test: /^tc/ },
+  { key: 'bawah', name: 'Rangka bawah', test: /^bc/ },
+  { key: 'diagonal', name: 'Diagonal', test: /^d\d/ },
+  { key: 'vertikal', name: 'Vertikal', test: /^v-?\d/ },
+  { key: 'bracing', name: 'Bracing & gelagar', test: /^(tb|lb|fb)/ },
+  { key: 'tumpuan', name: 'Tumpuan', test: /^bear/ },
+  { key: 'sensor', name: 'Titik sensor', test: /^sensor/ },
 ];
 
 /** Kelompok bawaan untuk elemen yang tidak cocok pola mana pun (lantai jalan, pagar, tiang lampu). */
-export const FALLBACK_GROUP = { key: 'lantai', name: 'Deck & furniture' };
+export const FALLBACK_GROUP = { key: 'lantai', name: 'Lantai jalan' };
 
 /*
  * Satu pandangan baku: isometri.

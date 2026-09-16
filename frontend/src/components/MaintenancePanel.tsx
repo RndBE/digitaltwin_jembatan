@@ -1,6 +1,5 @@
 import type { Assessment } from '../lib/types';
 import { PRIORITY_CLASS } from '../domain/risk';
-import { LEVEL_LABEL } from '../domain/sensors';
 import { Meter } from './Charts';
 
 /**
@@ -16,9 +15,7 @@ export function MaintenancePanel({ assessment }: { assessment: Assessment }) {
   return (
     <div className="stack" style={{ gap: 'var(--space-3)' }}>
       <div className="row" style={{ justifyContent: 'space-between' }}>
-        <span className={PRIORITY_CLASS[maintenance.priority]}>
-          {LEVEL_LABEL[maintenance.priority]} PRIORITY
-        </span>
+        <span className={PRIORITY_CLASS[maintenance.priority]}>PRIORITAS {maintenance.priority}</span>
         <span className="text-muted" style={{ fontSize: 12 }}>
           {maintenance.timeline}
         </span>
@@ -42,7 +39,7 @@ export function MaintenancePanel({ assessment }: { assessment: Assessment }) {
       <div className="hr" style={{ margin: 'var(--space-2) 0' }} />
 
       <div className="stack" style={{ gap: 'var(--space-2)' }}>
-        <span className="card-kicker">What drives the risk score</span>
+        <span className="card-kicker">Pendorong skor risiko</span>
         {breakdown.map((entry) => (
           <Meter
             key={entry.id}

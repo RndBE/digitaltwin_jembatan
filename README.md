@@ -101,15 +101,19 @@ sekarang.
 
 ## Bahasa antarmuka
 
-Seluruh teks yang dilihat pengguna berbahasa **Inggris** — nama menu, judul,
-label, tombol, status, teks skenario, dan data contoh berkas aset. Dokumentasi
-dan komentar kode tetap berbahasa Indonesia.
+Seluruh teks yang dilihat pengguna berbahasa **Indonesia** — nama menu, judul,
+label, tombol, status, teks skenario, dan data contoh berkas aset. Begitu pula
+dokumentasi dan komentar kode.
 
-Nilai status di dalam kode tetap `AMAN` / `WASPADA` / `KRITIS`, karena ia nilai
-domain yang dipakai mesin simulasi, penilaian risiko, dan API — bukan teks
-tampilan. Yang dibaca pengguna diterjemahkan lewat `STATUS_LABEL` dan
-`LEVEL_LABEL` di `frontend/src/domain/sensors.ts`, jadi bahasa antarmuka dapat
-berganti tanpa menyentuh satu pun cabang logika.
+Tiga sebutan sengaja dibiarkan berbahasa Inggris karena sudah menjadi nama, bukan
+keterangan: **Bridge Digital Twin** (nama produk pada judul halaman dan bilah
+samping), **Dashboard**, dan **Digital Twin**. Menerjemahkannya justru
+menyulitkan — "kembaran digital" tidak dipakai orang di lapangan.
+
+Nilai status di dalam kode adalah `AMAN` / `WASPADA` / `KRITIS`, dan ia memang
+nilai domain yang dipakai mesin simulasi, penilaian risiko, dan API. Karena
+bahasa tampilan sekarang sama dengan bahasa nilai domainnya, nilai itu
+ditampilkan apa adanya tanpa lapisan penerjemah.
 
 ## Halaman
 
@@ -119,15 +123,15 @@ layar pemantauan langsung, bukan lembar arsip.
 
 | Kelompok | Halaman | Isi |
 |---|---|---|
-| Overview | **Dashboard** | Halaman muka. Indeks kesehatan, skor risiko, rekomendasi pemeliharaan, log peristiwa, seluruh kanal sensor |
-| Overview | **Digital twin** | Model 3D yang bereaksi terhadap telemetri: batang memerah seiring regangan, lantai miring saat tumpuan rusak, kendaraan melintas sesuai skenario |
-| Analysis | **Time series** | Deret waktu tiap kanal terhadap ambang waspada dan kritis, dengan garis dasar sebagai pembanding |
-| Analysis | **Comparison** | Dua grafik berdampingan: rekaman kondisi normal dan kondisi sekarang, pada rentang sumbu yang sama |
-| Analysis | **Scenarios** | Delapan skenario dalam tiga keluarga, masing-masing menyebut dampak, laju, dan apakah kondisinya pulih sendiri |
-| Asset record | **Information** | Identitas aset: ukuran, data teknis, beban rencana, nilai kondisi, penanggung jawab |
-| Asset record | **Inspections** | Riwayat pemeriksaan lapangan beserta temuan dan nilai kondisi tiap kali |
-| Asset record | **Maintenance** | Pekerjaan pemeliharaan: selesai, berjalan, terjadwal, beserta biayanya |
-| Asset record | **Sensors** | Inventaris alat terpasang: model, letak, umur pemasangan, baterai, sinyal |
+| Pemantauan | **Dashboard** | Halaman muka. Indeks kesehatan, skor risiko, rekomendasi pemeliharaan, log peristiwa, seluruh kanal sensor |
+| Pemantauan | **Digital Twin** | Model 3D yang bereaksi terhadap telemetri: batang memerah seiring regangan, lantai miring saat tumpuan rusak, kendaraan melintas sesuai skenario |
+| Kajian | **Deret waktu** | Deret waktu tiap kanal terhadap ambang waspada dan kritis, dengan garis dasar sebagai pembanding |
+| Kajian | **Perbandingan** | Dua grafik berdampingan: rekaman kondisi normal dan kondisi sekarang, pada rentang sumbu yang sama |
+| Kajian | **Skenario** | Delapan skenario dalam tiga keluarga, masing-masing menyebut dampak, laju, dan apakah kondisinya pulih sendiri |
+| Berkas aset | **Informasi** | Identitas aset: ukuran, data teknis, beban rencana, nilai kondisi, penanggung jawab |
+| Berkas aset | **Inspeksi** | Riwayat pemeriksaan lapangan beserta temuan dan nilai kondisi tiap kali |
+| Berkas aset | **Pemeliharaan** | Pekerjaan pemeliharaan: selesai, berjalan, terjadwal, beserta biayanya |
+| Berkas aset | **Sensor** | Inventaris alat terpasang: model, letak, umur pemasangan, baterai, sinyal |
 
 ### Berkas aset sebagai acuan
 
@@ -135,8 +139,8 @@ Telemetri hanya tahu keadaan sekarang. Yang membuat sebuah angka dapat
 ditafsirkan justru datang dari berkas aset: 84 µε itu banyak atau sedikit
 tergantung beban rencananya, dan lendutan yang naik berarti lain bila inspeksi
 tiga bulan lalu sudah mencatat retak pada gelagar yang sama. Karena itu isinya
-dipecah menjadi empat halaman yang berdiri sendiri — **Information**,
-**Inspections**, **Maintenance**, dan **Sensors** — karena tiap bagiannya dipakai
+dipecah menjadi empat halaman yang berdiri sendiri — **Informasi**,
+**Inspeksi**, **Pemeliharaan**, dan **Sensor** — karena tiap bagiannya dipakai
 orang yang berbeda pada saat yang berbeda. Isinya juga tidak berhenti di keempat
 halaman itu:
 
@@ -286,7 +290,7 @@ Status yang benar-benar dihasilkan mesin simulasi, diukur setelah 600 langkah:
 
 ## Perbandingan dua kondisi
 
-Halaman **Comparison** menjajarkan dua grafik dari struktur yang sama: rekaman
+Halaman **Perbandingan** menjajarkan dua grafik dari struktur yang sama: rekaman
 saat jembatan berada pada kondisi normal, dan kondisi sekarang.
 
 Rekaman sebelah kiri berhenti terisi begitu sebuah skenario dijalankan, jadi

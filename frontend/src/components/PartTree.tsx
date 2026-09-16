@@ -142,7 +142,7 @@ export function ConfidenceLegend({ doc }: { doc: PartsDocument }) {
   return (
     <div className="stack" style={{ gap: 'var(--space-3)' }}>
       <div className="stack" style={{ gap: 6 }}>
-        <span className="card-kicker">Confidence grade</span>
+        <span className="card-kicker">Tingkat kepercayaan</span>
         {(Object.keys(CONFIDENCE_LABELS) as Confidence[]).map((grade) => (
           <div
             key={grade}
@@ -165,7 +165,7 @@ export function ConfidenceLegend({ doc }: { doc: PartsDocument }) {
       </div>
 
       <div className="stack" style={{ gap: 6 }}>
-        <span className="card-kicker">Geometry provenance</span>
+        <span className="card-kicker">Asal-usul geometri</span>
         {(Object.keys(PROVENANCE_LABELS) as Array<keyof typeof PROVENANCE_LABELS>).map((kind) => (
           <div
             key={kind}

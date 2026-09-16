@@ -1,6 +1,5 @@
 import type { RiskLevel, Status } from '../lib/types';
 import { STATUS_TONE } from './Ui';
-import { LEVEL_LABEL, STATUS_LABEL } from '../domain/sensors';
 
 /**
  * Cincin indeks kesehatan.
@@ -21,7 +20,7 @@ export function HealthRing({ health, status }: { health: number; status: Status 
         height="150"
         viewBox="0 0 150 150"
         role="img"
-        aria-label={`Structural health index ${health} of 100, status ${STATUS_LABEL[status]}`}
+        aria-label={`Indeks kesehatan struktur ${health} dari 100, status ${status}`}
       >
         <circle cx="75" cy="75" r="64" fill="none" stroke="rgb(255 255 255 / 0.12)" strokeWidth="11" />
         <circle
@@ -55,7 +54,7 @@ export function HealthRing({ health, status }: { health: number; status: Status 
           {health}
         </div>
         <div className="text-muted" style={{ fontSize: 11, marginTop: 4 }}>
-          Health index
+          Indeks kesehatan
         </div>
       </div>
     </div>
@@ -74,7 +73,7 @@ export function RiskMeter({ score, level }: { score: number; level: RiskLevel })
   return (
     <div className="stack" style={{ gap: 6 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-        <span style={{ fontSize: 13 }}>Risk score</span>
+        <span style={{ fontSize: 13 }}>Skor risiko</span>
         <span className="tabular" style={{ fontFamily: 'var(--font-sans)', fontWeight: 600, fontSize: 20 }}>
           {score}
           <span className="text-muted" style={{ fontSize: 12, fontWeight: 400 }}>
@@ -87,16 +86,16 @@ export function RiskMeter({ score, level }: { score: number; level: RiskLevel })
         aria-valuenow={score}
         aria-valuemin={0}
         aria-valuemax={100}
-        aria-label={`Risk score ${score} of 100, level ${LEVEL_LABEL[level]}`}
+        aria-label={`Skor risiko ${score} dari 100, tingkat ${level}`}
         style={{ height: 8, background: 'rgb(255 255 255 / 0.12)', borderRadius: 4, overflow: 'hidden' }}
       >
         <div style={{ width: `${score}%`, height: '100%', background: color, transition: 'width 0.4s ease' }} />
       </div>
       <div className="text-muted" style={{ fontSize: 11, display: 'flex', justifyContent: 'space-between' }}>
-        <span>Low</span>
-        <span>Medium</span>
-        <span>High</span>
-        <span>Critical</span>
+        <span>Rendah</span>
+        <span>Sedang</span>
+        <span>Tinggi</span>
+        <span>Kritis</span>
       </div>
     </div>
   );

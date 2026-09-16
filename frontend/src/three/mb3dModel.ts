@@ -63,19 +63,20 @@ export interface ModelConfig {
   license: string;
 }
 
+/** Keterangan tingkat kepercayaan, dalam bahasa Indonesia. */
 export const CONFIDENCE_LABELS: Record<Confidence, string> = {
-  A: 'A · official dimensions or archive drawings',
-  B: 'B · consistent photography plus control geometry',
-  C: 'C · mesh alignment or photogrammetry',
-  D: 'D · inferred, decorative, or provisional',
+  A: 'A · dimensi resmi atau gambar arsip',
+  B: 'B · foto yang konsisten ditambah geometri kendali',
+  C: 'C · hasil penyelarasan mesh atau fotogrametri',
+  D: 'D · disimpulkan, dekoratif, atau sementara',
 };
 
 /** Keterangan asal-usul geometri. Solid untuk yang diketahui, putus-putus untuk yang dinalar. */
 export const PROVENANCE_LABELS: Record<GeometryProvenance, string> = {
-  MEASURED: 'measured · instrument readings on the real structure',
-  DOCUMENTED: 'documented · position or dimension stated in a source',
-  INFERRED: 'inferred · existence documented, position reasoned',
-  ASSUMED: 'assumed · placed on engineering judgement, no source',
+  MEASURED: 'terukur · pembacaan instrumen pada struktur nyata',
+  DOCUMENTED: 'terdokumentasi · posisi atau dimensinya dinyatakan dalam sumber',
+  INFERRED: 'disimpulkan · keberadaannya terdokumentasi, posisinya dinalar',
+  ASSUMED: 'diasumsikan · ditempatkan dengan pertimbangan teknis, tanpa sumber',
 };
 
 export const PROVENANCE_COLOR: Record<GeometryProvenance, string> = {
@@ -85,14 +86,15 @@ export const PROVENANCE_COLOR: Record<GeometryProvenance, string> = {
   ASSUMED: '#c4453c',
 };
 
+/** Nama sistem struktur dalam bahasa Indonesia. */
 export const SYSTEM_LABELS: Record<string, string> = {
-  reference: 'Reference geometry',
-  towers: 'Towers',
-  anchorages: 'Anchorages',
-  cables: 'Main cables',
-  suspenders: 'Suspender cables',
-  deck_system: 'Deck system',
-  approaches: 'Approaches',
+  reference: 'Geometri acuan',
+  towers: 'Menara',
+  anchorages: 'Blok angkur',
+  cables: 'Kabel utama',
+  suspenders: 'Kabel penggantung',
+  deck_system: 'Sistem lantai',
+  approaches: 'Jalan pendekat',
 };
 
 export const systemLabel = (key: string) => SYSTEM_LABELS[key] ?? key.replace(/_/g, ' ');
@@ -113,35 +115,35 @@ export interface GlbViewPreset {
 
 export const GLB_VIEW_PRESETS: Record<GlbViewMode, GlbViewPreset> = {
   iso: {
-    label: 'Isometric',
+    label: 'Isometri',
     description: 'Free perspective. The only mode with foreshortening, so lengths must not be measured off the screen.',
     orthographic: false,
     direction: [0.86, 0.32, 0.4],
     up: [0, 1, 0],
   },
   elevasi: {
-    label: 'Elevation',
+    label: 'Elevasi',
     description: 'Looking at the side of the bridge. Cable sag, tower height, and the approach profile read true.',
     orthographic: true,
     direction: [0, 0, 1],
     up: [0, 1, 0],
   },
   rencana: {
-    label: 'Plan',
+    label: 'Rencana',
     description: 'Looking straight down. Deck width and the anchorage footprint read true.',
     orthographic: true,
     direction: [0, 1, 0],
     up: [0, 0, -1],
   },
   potongan: {
-    label: 'Section',
+    label: 'Potongan',
     description: 'Looking along the bridge axis. The transverse arrangement of deck and truss.',
     orthographic: true,
     direction: [1, 0, 0],
     up: [0, 1, 0],
   },
   bawah: {
-    label: 'Underside',
+    label: 'Bawah',
     description: 'Looking straight up from underneath — the view someone standing below actually gets.',
     orthographic: true,
     direction: [0, -1, 0],

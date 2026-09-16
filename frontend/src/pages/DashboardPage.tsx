@@ -6,7 +6,6 @@ import { EventLog } from '../components/EventLog';
 import { SensorCard } from '../components/SensorCard';
 import { LiveStrip } from '../components/LiveStrip';
 import { PageHeader, SectionTitle, Stat, StatusTag } from '../components/Ui';
-import { LEVEL_LABEL, STATUS_LABEL } from '../domain/sensors';
 import {
   CONDITION_LABELS,
   dossierFor,
@@ -49,7 +48,7 @@ export function DashboardPage({
   onOpenAsset,
 }: DashboardPageProps) {
   if (!telemetry) {
-    return <p className="text-muted">Starting the telemetry stream…</p>;
+    return <p className="text-muted">Menyiapkan aliran telemetri…</p>;
   }
 
   const { assessment } = telemetry;
@@ -85,7 +84,7 @@ export function DashboardPage({
           <div className="row">
             <StatusTag status="KRITIS" />
             <strong style={{ fontFamily: 'var(--font-sans)' }}>
-              {warnCount} channels past threshold · {assessment.maintenance.recommendation}
+              {warnCount} kanal melewati ambang · {assessment.maintenance.recommendation}
             </strong>
           </div>
         </div>
@@ -103,32 +102,33 @@ export function DashboardPage({
         >
           <div className="row" style={{ justifyContent: 'space-between' }}>
             <span style={{ fontSize: 13 }}>
-              <strong style={{ fontWeight: 700 }}>Unrepaired residual damage</strong> ·{' '}
-              {residualIds.length} channels will not return to baseline without field work.
+              <strong style={{ fontWeight: 700 }}>Sisa kerusakan belum diperbaiki</strong> ·{' '}
+              {residualIds.length} kanal tidak akan kembali ke nilai dasarnya tanpa pekerjaan
+              lapangan.
             </span>
             <button type="button" className="btn btn-sm" onClick={onOpenScenario}>
-              Open the scenarios page
+              Buka halaman skenario
             </button>
           </div>
         </div>
       ) : null}
 
       <PageHeader
-        kicker="Condition dashboard"
+        kicker="Dashboard kondisi"
         title={bridge.name}
         lede={
           <>
-            {bridge.location} · {bridge.type} · {bridge.spanMeters} m span · {bridge.lanes} lanes ·
-            built {bridge.builtYear}
+            {bridge.location} · {bridge.type} · bentang {bridge.spanMeters} m · {bridge.lanes} lajur ·
+            dibangun {bridge.builtYear}
           </>
         }
         actions={
           <>
             <button type="button" className="btn btn-primary btn-sm" onClick={onOpenTwin}>
-              Open the 3D model
+              Buka model 3D
             </button>
             <button type="button" className="btn btn-secondary btn-sm" onClick={onOpenScenario}>
-              Run a scenario
+              Jalankan skenario
             </button>
           </>
         }
@@ -142,24 +142,24 @@ export function DashboardPage({
         }}
       >
         <Stat
-          label="Health index"
+          label="Indeks kesehatan"
           value={assessment.health}
-          note={STATUS_LABEL[assessment.status]}
+          note={assessment.status}
           tone={assessment.health < 45 ? 'critical' : assessment.health < 75 ? 'warn' : 'accent'}
         />
         <Stat
-          label="Risk score"
+          label="Skor risiko"
           value={assessment.risk.score}
           unit="/100"
-          note={LEVEL_LABEL[assessment.risk.level]}
+          note={assessment.risk.level}
           tone={assessment.risk.score > 50 ? 'critical' : assessment.risk.score > 25 ? 'warn' : 'default'}
         />
-        <Stat label="Channels out of range" value={warnCount} unit={`/${telemetry.readings.length}`} note="warning & critical thresholds" />
-        <Stat label="Active scenario" value={telemetry.scenario === 'idle' ? '—' : telemetry.runtimeSeconds} unit={telemetry.scenario === 'idle' ? '' : 's'} note={telemetry.scenarioName} />
+        <Stat label="Kanal di luar rentang" value={warnCount} unit={`/${telemetry.readings.length}`} note="ambang waspada & kritis" />
+        <Stat label="Skenario aktif" value={telemetry.scenario === 'idle' ? '—' : telemetry.runtimeSeconds} unit={telemetry.scenario === 'idle' ? '' : 's'} note={telemetry.scenarioName} />
         <Stat
-          label="Condition rating"
+          label="Nilai kondisi"
           value={dossier ? `${dossier.conditionValue}/5` : '—'}
-          note={dossier ? `inspected ${jarakWaktu(bridge.lastInspection)}` : 'reference model'}
+          note={dossier ? `inspeksi ${jarakWaktu(bridge.lastInspection)}` : 'model acuan'}
         />
       </section>
 
@@ -173,7 +173,7 @@ export function DashboardPage({
         }}
       >
         <div className="glass card" style={{ padding: 'var(--space-4)' }}>
-          <span className="card-kicker">Structural condition</span>
+          <span className="card-kicker">Kondisi struktur</span>
 
           <div
             style={{
@@ -203,15 +203,15 @@ export function DashboardPage({
               margin: 0,
             }}
           >
-            <dt className="text-muted">Scenario</dt>
+            <dt className="text-muted">Skenario</dt>
             <dd style={{ textAlign: 'right' }}>{telemetry.scenarioName}</dd>
-            <dt className="text-muted">Traffic</dt>
+            <dt className="text-muted">Lalu lintas</dt>
             <dd className="tabular" style={{ textAlign: 'right' }}>
               {telemetry.scenario === 'idle'
                 ? '—'
-                : `${telemetry.traffic.cars} cars, ${telemetry.traffic.trucks} trucks`}
+                : `${telemetry.traffic.cars} mobil, ${telemetry.traffic.trucks} truk`}
             </dd>
-            <dt className="text-muted">Sensors online</dt>
+            <dt className="text-muted">Sensor daring</dt>
             <dd className="tabular" style={{ textAlign: 'right' }}>
               {bridge.sensorCount}
             </dd>
@@ -219,7 +219,7 @@ export function DashboardPage({
         </div>
 
         <div className="glass card" style={{ padding: 'var(--space-4)' }}>
-          <span className="card-kicker">Maintenance recommendation</span>
+          <span className="card-kicker">Rekomendasi pemeliharaan</span>
           <MaintenancePanel assessment={assessment} />
         </div>
 
@@ -235,9 +235,9 @@ export function DashboardPage({
         {dossier ? (
           <div className="glass card" style={{ padding: 'var(--space-4)' }}>
             <div className="row" style={{ justifyContent: 'space-between' }}>
-              <span className="card-kicker">Asset reference</span>
+              <span className="card-kicker">Acuan aset</span>
               <button type="button" className="btn btn-sm" onClick={onOpenAsset}>
-                Open the record
+                Buka berkas
               </button>
             </div>
 
@@ -250,23 +250,23 @@ export function DashboardPage({
                 margin: 0,
               }}
             >
-              <dt className="text-muted">Design load</dt>
+              <dt className="text-muted">Beban rencana</dt>
               <dd style={{ textAlign: 'right' }}>{dossier.designLoad}</dd>
-              <dt className="text-muted">Daily traffic</dt>
+              <dt className="text-muted">Lalu lintas harian</dt>
               <dd className="tabular" style={{ textAlign: 'right' }}>
-                {dossier.trafficPerDay.toLocaleString('en-US')} veh · {Math.round(dossier.heavyShare * 100)} % heavy
+                {dossier.trafficPerDay.toLocaleString('id-ID')} kend · {Math.round(dossier.heavyShare * 100)} % berat
               </dd>
-              <dt className="text-muted">Condition rating</dt>
+              <dt className="text-muted">Nilai kondisi</dt>
               <dd style={{ textAlign: 'right' }}>
                 {dossier.conditionValue}/5 · {CONDITION_LABELS[dossier.conditionValue]}
               </dd>
-              <dt className="text-muted">Maintenance</dt>
+              <dt className="text-muted">Pemeliharaan</dt>
               <dd style={{ textAlign: 'right' }}>
                 {ongoing
-                  ? `${ongoing.work} · in progress`
+                  ? `${ongoing.work} · berjalan`
                   : planned
                     ? `${planned.work} · ${jarakWaktu(planned.date)}`
-                    : 'no open work'}
+                    : 'tidak ada pekerjaan terbuka'}
               </dd>
             </dl>
 
@@ -275,7 +275,7 @@ export function DashboardPage({
                 <div className="hairline" style={{ marginTop: 'auto' }} />
                 <div className="text-muted" style={{ fontSize: 11.5, lineHeight: 1.5 }}>
                   <strong style={{ fontWeight: 600, color: 'var(--mist-100)' }}>
-                    Inspection finding {tanggalPendek(inspection.date)}
+                    Temuan inspeksi {tanggalPendek(inspection.date)}
                   </strong>{' '}
                   · {inspection.findings}
                 </div>
@@ -285,16 +285,16 @@ export function DashboardPage({
         ) : null}
 
         <div className="glass card" style={{ padding: 'var(--space-4)' }}>
-          <span className="card-kicker">Event log</span>
+          <span className="card-kicker">Log peristiwa</span>
           <EventLog events={alerts} limit={9} />
         </div>
       </section>
 
       <section>
         <SectionTitle
-          note={`${telemetry.readings.length} channels · each value a 1-minute mean · ${series.vib?.values.length ?? 0} history points`}
+          note={`${telemetry.readings.length} kanal · tiap nilai rerata 1 menit · ${series.vib?.values.length ?? 0} titik riwayat`}
         >
-          Sensor channels
+          Kanal sensor
         </SectionTitle>
         <div
           style={{

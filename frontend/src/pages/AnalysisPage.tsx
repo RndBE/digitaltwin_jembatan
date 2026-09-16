@@ -44,14 +44,14 @@ export function AnalysisPage({ bridge, telemetry, series }: AnalysisPageProps) {
   const dossier = dossierFor(bridge.id);
   const inspection = dossier ? inspeksiTerakhir(dossier) : null;
 
-  if (!telemetry) return <p className="text-muted">Preparing the data…</p>;
+  if (!telemetry) return <p className="text-muted">Menyiapkan data…</p>;
 
   return (
     <div className="screen">
       <PageHeader
-        kicker="Analysis"
-        title="Time-series analysis"
-        lede="Every channel is drawn against its two thresholds: the yellow line is the warning limit, the red line the critical limit. The grey dashed line is the baseline — the same channel under normal service conditions, as a reference. Each point on a chart is a one-minute mean, not an instantaneous sample."
+        kicker="Kajian"
+        title="Analisa deret waktu"
+        lede="Setiap kanal ditampilkan terhadap dua ambangnya: garis kuning adalah batas waspada, garis merah batas kritis. Garis putus-putus abu adalah garis dasar — perilaku kanal yang sama pada kondisi layan normal, sebagai pembanding. Tiap titik pada bagan adalah rerata satu menit, bukan cuplikan sesaat."
         actions={
           <label className="row" style={{ gap: 6, fontSize: 13 }}>
             <input
@@ -59,7 +59,7 @@ export function AnalysisPage({ bridge, telemetry, series }: AnalysisPageProps) {
               checked={showBaseline}
               onChange={(event) => setShowBaseline(event.target.checked)}
             />
-            Show the baseline
+            Tampilkan garis dasar
           </label>
         }
       />
@@ -76,14 +76,14 @@ export function AnalysisPage({ bridge, telemetry, series }: AnalysisPageProps) {
           }}
         >
           <div className="row" style={{ gap: 'var(--space-2)', flexWrap: 'wrap' }}>
-            <span className="card-kicker">Asset record reference</span>
+            <span className="card-kicker">Acuan berkas aset</span>
             <span className="text-muted">
-              design load {dossier.designLoad} · condition rating {dossier.conditionValue}/5 ·
-              inspected {tanggalPendek(inspection.date)} ({jarakWaktu(inspection.date)})
+              beban rencana {dossier.designLoad} · nilai kondisi {dossier.conditionValue}/5 ·
+              inspeksi {tanggalPendek(inspection.date)} ({jarakWaktu(inspection.date)})
             </span>
           </div>
           <p className="text-muted" style={{ maxWidth: '96ch' }}>
-            <strong style={{ fontWeight: 600, color: 'var(--mist-100)' }}>Latest finding</strong> ·{' '}
+            <strong style={{ fontWeight: 600, color: 'var(--mist-100)' }}>Temuan terakhir</strong> ·{' '}
             {inspection.findings}
           </p>
         </div>
@@ -137,7 +137,7 @@ export function AnalysisPage({ bridge, telemetry, series }: AnalysisPageProps) {
                           color: unit.battery < 70 ? 'var(--state-waspada)' : 'var(--mist-300)',
                         }}
                       >
-                        battery {unit.battery} %
+                        baterai {unit.battery} %
                       </span>
                     </div>
                   ) : null}
@@ -169,10 +169,10 @@ export function AnalysisPage({ bridge, telemetry, series }: AnalysisPageProps) {
                 style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginTop: 6 }}
               >
                 <span>min {stats.min.toFixed(spec.dec)}</span>
-                <span>mean {stats.avg.toFixed(spec.dec)}</span>
-                <span>max {stats.max.toFixed(spec.dec)}</span>
+                <span>rata-rata {stats.avg.toFixed(spec.dec)}</span>
+                <span>maks {stats.max.toFixed(spec.dec)}</span>
                 <span>
-                  thresholds {spec.warn} / {spec.crit} {spec.unit}
+                  ambang {spec.warn} / {spec.crit} {spec.unit}
                 </span>
               </div>
             </div>
@@ -181,10 +181,11 @@ export function AnalysisPage({ bridge, telemetry, series }: AnalysisPageProps) {
       </div>
 
       <p className="text-muted" style={{ fontSize: 12, marginTop: 'var(--space-6)', maxWidth: '70ch' }}>
-        The history window keeps the last {series[SENSORS[0].id]?.values.length ?? 0} values per channel,
-        each one a one-minute mean. The values come from the simulation engine, not from field
-        measurements; the thresholds are the ones in the sensor catalogue
-        ({SENSOR_BY_ID.strain.warn} µε warning, {SENSOR_BY_ID.strain.crit} µε critical for strain).
+        Jendela riwayat menyimpan {series[SENSORS[0].id]?.values.length ?? 0} nilai terakhir per kanal,
+        masing-masing rerata satu menit.
+        Nilai dibangkitkan mesin simulasi, bukan pengukuran lapangan; ambang yang dipakai adalah ambang
+        pada katalog sensor ({SENSOR_BY_ID.strain.warn} µε waspada, {SENSOR_BY_ID.strain.crit} µε kritis
+        untuk regangan).
       </p>
     </div>
   );

@@ -135,9 +135,9 @@ function LiveTwinView({
       />
 
       <PageHeader
-        kicker="Digital twin"
+        kicker="Digital Twin"
         title={bridge.name}
-        lede="Drag to orbit, scroll to zoom, click a sensor marker to read its value in place. Markers can be dragged onto their real mounting point — they snap to the element and the position is saved in this browser. Member colour follows measured strain; marker colour follows the channel status."
+        lede="Seret untuk memutar, gulir untuk memperbesar, klik penanda sensor untuk membaca nilainya di tempat. Penanda dapat diseret ke titik pasang yang sebenarnya — letaknya menempel pada elemen dan tersimpan di peramban ini. Warna batang mengikuti regangan yang terukur, warna penanda mengikuti status kanalnya."
         actions={telemetry ? <StatusTag status={telemetry.assessment.status} /> : undefined}
       />
 
@@ -149,10 +149,10 @@ function LiveTwinView({
               className="btn btn-secondary btn-sm"
               onClick={() => setAutoRotate((value) => !value)}
             >
-              {autoRotate ? 'Stop rotation' : 'Auto-rotate'}
+              {autoRotate ? 'Hentikan putaran' : 'Putar otomatis'}
             </button>
             <button type="button" className="btn btn-secondary btn-sm" onClick={reset}>
-              Reset the view
+              Setel ulang pandangan
             </button>
             {spotsMoved ? (
               <button
@@ -164,7 +164,7 @@ function LiveTwinView({
                   setSpotsMoved(false);
                 }}
               >
-                Restore marker positions
+                Kembalikan letak penanda
               </button>
             ) : null}
           </div>
@@ -209,7 +209,7 @@ function LiveTwinView({
 
               {running ? (
                 <span className="stage-chip" style={{ position: 'static' }}>
-                  {scenario.cars} cars · {scenario.trucks} trucks ·{' '}
+                  {scenario.cars} mobil · {scenario.trucks} truk ·{' '}
                   {SPEED_LABEL[String(scenario.speed)] ?? '—'}
                 </span>
               ) : null}
@@ -222,9 +222,9 @@ function LiveTwinView({
                 aria-expanded={partsOpen}
                 onClick={() => setPartsOpen((open) => !open)}
               >
-                Structure parts
+                Bagian struktur
                 {hiddenCount > 0 ? (
-                  <span className="text-muted">{hiddenCount} hidden</span>
+                  <span className="text-muted">{hiddenCount} disembunyikan</span>
                 ) : null}
                 <svg className="stage-caret" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
                   <path
@@ -254,7 +254,7 @@ function LiveTwinView({
                     }}
                   />
                   <p className="text-muted" style={{ fontSize: 11, lineHeight: 1.5, marginTop: 8 }}>
-                    The checkbox hides a group; the name highlights it.
+                    Kotak centang menyembunyikan kelompok; namanya menyorot.
                   </p>
                 </div>
               ) : null}
@@ -300,13 +300,13 @@ function LiveTwinView({
                 style={{ justifyContent: 'space-between', gap: 'var(--space-3)', flexWrap: 'wrap' }}
               >
                 <span style={{ fontSize: 13, lineHeight: 1.55, maxWidth: '72ch' }}>
-                  <strong style={{ fontWeight: 700 }}>Residual damage</strong> · {damagedCount} elements
-                  stay highlighted in red even though the scenario has been stopped. Structural damage
-                  does not heal on its own the way a traffic load does: the marking clears once the
-                  repair has been carried out and recorded.
+                  <strong style={{ fontWeight: 700 }}>Sisa kerusakan</strong> · {damagedCount} elemen
+                  tetap disorot merah walaupun skenarionya sudah dihentikan. Kerusakan struktur tidak
+                  pulih sendiri seperti beban lalu lintas: tandanya hilang setelah perbaikan
+                  dikerjakan dan dicatat.
                 </span>
                 <button type="button" className="btn btn-sm" onClick={onRepair}>
-                  Record a repair
+                  Catat perbaikan
                 </button>
               </div>
             </div>
@@ -317,12 +317,12 @@ function LiveTwinView({
             style={{ gap: 'var(--space-6)', marginTop: 'var(--space-3)', fontSize: 12, color: 'var(--mist-300)' }}
           >
             <span>
-              Expected impact: <strong style={{ fontWeight: 600 }}>{scenario.impact}</strong>
+              Dampak yang diharapkan: <strong style={{ fontWeight: 600 }}>{scenario.impact}</strong>
             </span>
-            {damagedCount > 0 ? <span>{damagedCount} elements highlighted in red</span> : null}
+            {damagedCount > 0 ? <span>{damagedCount} elemen disorot merah</span> : null}
             {pickedReading ? (
               <button type="button" className="btn btn-ghost btn-sm" onClick={() => setPicked(null)}>
-                clear sensor selection
+                bersihkan pilihan sensor
               </button>
             ) : null}
           </div>
@@ -330,7 +330,7 @@ function LiveTwinView({
 
         <aside className="stack" style={{ gap: 'var(--space-3)' }}>
           <div className="glass card" style={{ padding: 'var(--space-4)' }}>
-            <span className="card-kicker">Simulation control</span>
+            <span className="card-kicker">Kendali simulasi</span>
             <div className="stack" style={{ gap: 'var(--space-2)' }}>
               {/*
                 * Daftar dikelompokkan menurut keluarga skenario, bukan disusun
@@ -342,9 +342,9 @@ function LiveTwinView({
                 className="input"
                 value={telemetry?.scenario ?? 'idle'}
                 onChange={(event) => onScenario(event.target.value)}
-                aria-label="Choose a loading scenario"
+                aria-label="Pilih skenario pembebanan"
               >
-                <option value="idle">Live monitoring</option>
+                <option value="idle">Pemantauan langsung</option>
                 {FAMILY_ORDER.map((family) => (
                   <optgroup key={family} label={FAMILY_LABELS[family]}>
                     {scenariosOf(family).map((item) => (
@@ -357,10 +357,10 @@ function LiveTwinView({
               </select>
               <div className="row">
                 <button type="button" className="btn btn-secondary btn-sm" onClick={onTogglePause}>
-                  {telemetry?.paused ? 'Resume' : 'Pause'}
+                  {telemetry?.paused ? 'Lanjutkan' : 'Jeda'}
                 </button>
                 <button type="button" className="btn btn-secondary btn-sm" onClick={onStop} disabled={!running}>
-                  Stop the scenario
+                  Hentikan skenario
                 </button>
               </div>
               {running ? (
@@ -372,7 +372,7 @@ function LiveTwinView({
           </div>
 
           <div className="glass card" style={{ padding: 'var(--space-4)' }}>
-            <span className="card-kicker">Structural channels</span>
+            <span className="card-kicker">Kanal struktural</span>
             <div className="stack" style={{ gap: 'var(--space-2)' }}>
               {keyReadings.map((reading) => (
                 <SensorCard
@@ -455,9 +455,9 @@ function ReferenceModelView({ bridge }: { bridge: Bridge }) {
   return (
     <div className="screen">
       <PageHeader
-        kicker="Sourced control model"
+        kicker="Model kendali bersumber"
         title={bridge.name}
-        lede={`${bridge.location} · ${bridge.type} · ${bridge.spanMeters} m main span. Every part carries the confidence grade of its geometry and the dimensional controls it was built from.`}
+        lede={`${bridge.location} · ${bridge.type} · bentang utama ${bridge.spanMeters} m. Setiap bagian membawa tingkat kepercayaan geometrinya dan kontrol dimensi yang dipakainya.`}
       />
 
       <section className="split" style={PANEL_GRID}>
@@ -486,7 +486,7 @@ function ReferenceModelView({ bridge }: { bridge: Bridge }) {
                 checked={confidenceOverlay}
                 onChange={(event) => setConfidenceOverlay(event.target.checked)}
               />
-              Colour by confidence
+              Warnai menurut kepercayaan
             </label>
             <label className="row" style={{ gap: 6, fontSize: 13 }}>
               <input
@@ -494,7 +494,7 @@ function ReferenceModelView({ bridge }: { bridge: Bridge }) {
                 checked={provenanceOutlines}
                 onChange={(event) => setProvenanceOutlines(event.target.checked)}
               />
-              Provenance outlines
+              Garis asal-usul
             </label>
           </div>
 
@@ -519,7 +519,7 @@ function ReferenceModelView({ bridge }: { bridge: Bridge }) {
                 onError={setError}
               />
               <div className="stage-chip" style={{ top: 'var(--space-3)', left: 'var(--space-3)' }}>
-                {doc.parts.length} addressable parts · {GLB_VIEW_PRESETS[viewMode].label}
+                {doc.parts.length} bagian beradres · {GLB_VIEW_PRESETS[viewMode].label}
               </div>
               {selectedMetadata ? (
                 <div className="stage-chip" style={{ bottom: 'var(--space-3)', right: 'var(--space-3)' }}>
@@ -528,16 +528,16 @@ function ReferenceModelView({ bridge }: { bridge: Bridge }) {
               ) : null}
             </Stage>
           ) : (
-            !error && <p className="text-muted">Loading the control model…</p>
+            !error && <p className="text-muted">Memuat model kendali…</p>
           )}
 
           <p className="text-muted" style={{ fontSize: 11, marginTop: 'var(--space-3)', lineHeight: 1.6, maxWidth: '78ch' }}>
             {bridge.model.credit}{' '}
             <a href="https://github.com/Ethical-Tech-CoLab/manhattan-bridge-3d" target="_blank" rel="noreferrer">
-              Model source
+              Sumber model
             </a>
-            . The dimensions in this model belong to that project; they are not measurements of the
-            asset this application monitors.
+            . Angka dimensi pada model ini milik proyek tersebut, bukan hasil pengukuran aset yang
+            dipantau aplikasi ini.
           </p>
         </div>
 
@@ -545,7 +545,7 @@ function ReferenceModelView({ bridge }: { bridge: Bridge }) {
           {doc ? (
             <>
               <div className="glass card" style={{ padding: 'var(--space-4)' }}>
-                <span className="card-kicker">Structural systems</span>
+                <span className="card-kicker">Sistem struktur</span>
                 <GlbSystemTree
                   doc={doc}
                   hidden={hiddenSystems}
@@ -576,24 +576,24 @@ function ReferenceModelView({ bridge }: { bridge: Bridge }) {
                     handle?.reset();
                   }}
                 >
-                  Reset
+                  Setel ulang
                 </button>
               </div>
 
               <div className="glass card" style={{ padding: 'var(--space-4)' }}>
-                <span className="card-kicker">Selected part</span>
+                <span className="card-kicker">Bagian terpilih</span>
                 {selectedMetadata ? (
                   <PartMetadataPanel part={selectedMetadata} doc={doc} />
                 ) : (
                   <p className="text-muted" style={{ fontSize: 13, lineHeight: 1.5 }}>
-                    Click a part on the model to see its confidence grade, geometry provenance, and
-                    the dimensional controls it was built from.
+                    Klik satu bagian pada model untuk melihat tingkat kepercayaan, asal-usul geometri,
+                    dan kontrol dimensi yang dipakainya.
                   </p>
                 )}
               </div>
 
               <div className="glass card" style={{ padding: 'var(--space-4)' }}>
-                <span className="card-kicker">Legend</span>
+                <span className="card-kicker">Keterangan</span>
                 <ConfidenceLegend doc={doc} />
               </div>
             </>

@@ -73,20 +73,21 @@ export function ComparePage({
   return (
     <div className="screen">
       <PageHeader
-        kicker="Comparison"
-        title="Normal condition against current condition"
+        kicker="Perbandingan"
+        title="Kondisi normal dibanding kondisi sekarang"
         lede={
           referenceFrozen ? (
             <>
-              The left chart is the recording of the bridge in its normal condition, frozen when the{' '}
+              Grafik kiri adalah rekaman jembatan pada kondisi normal, dibekukan saat skenario{' '}
               <strong style={{ fontWeight: 700, color: 'var(--mist-100)' }}>{scenario.name}</strong>{' '}
-              scenario was started. The right chart is the current condition. Both use the same axis
-              range, so the height of the traces can be compared directly.
+              dijalankan. Grafik kanan adalah kondisi sekarang. Keduanya memakai rentang sumbu yang
+              sama, jadi tinggi garis dapat dibandingkan langsung.
             </>
           ) : (
             <>
-              The bridge is currently in its normal condition, so both charts show the same thing.
-              Run a scenario to freeze the left-hand recording and watch what changes.
+              Jembatan sedang berada pada kondisi normal, sehingga kedua grafik menunjukkan keadaan
+              yang sama. Jalankan sebuah skenario untuk membekukan rekaman sebelah kiri dan melihat
+              perubahannya.
             </>
           )
         }
@@ -95,7 +96,7 @@ export function ComparePage({
             <StatusTag status={telemetry.assessment.status} />
           ) : (
             <button type="button" className="btn btn-primary btn-sm" onClick={onOpenScenario}>
-              Choose a scenario
+              Pilih skenario
             </button>
           )
         }
@@ -109,47 +110,47 @@ export function ComparePage({
         }}
       >
         <div className="stat">
-          <span className="stat-label">Reference condition</span>
+          <span className="stat-label">Kondisi pembanding</span>
           <span className="stat-value" style={{ fontSize: 18 }}>
             Normal
           </span>
           <span className="stat-note">
-            {referenceFrozen ? 'recording frozen' : 'recording now'}
+            {referenceFrozen ? 'rekaman dibekukan' : 'sedang direkam'}
           </span>
         </div>
         <div className="stat">
-          <span className="stat-label">Current condition</span>
+          <span className="stat-label">Kondisi sekarang</span>
           <span className="stat-value" style={{ fontSize: 18 }}>
             {scenario.name}
           </span>
           <span className="stat-note">{scenario.impact}</span>
         </div>
         <div className="stat">
-          <span className="stat-label">Channels shifted</span>
+          <span className="stat-label">Kanal bergeser</span>
           <span className="stat-value">
             {moved.length}
             <span className="stat-unit">/{rows.length}</span>
           </span>
-          <span className="stat-note">more than 10 % apart</span>
+          <span className="stat-note">selisih lebih dari 10 %</span>
         </div>
         <div className="stat">
-          <span className="stat-label">Self-recovering</span>
+          <span className="stat-label">Pulih sendiri</span>
           <span
             className="stat-value"
             style={{ fontSize: 18, color: scenario.reversible ? 'var(--state-normal)' : 'var(--state-bahaya)' }}
           >
-            {scenario.reversible ? 'Yes' : 'No'}
+            {scenario.reversible ? 'Ya' : 'Tidak'}
           </span>
           <span className="stat-note">
             {scenario.reversible
-              ? 'returns to baseline once the load is gone'
-              : 'needs a recorded repair'}
+              ? 'kembali ke dasar saat beban hilang'
+              : 'perlu perbaikan tercatat'}
           </span>
         </div>
       </section>
 
       <SectionTitle note={`${focusSpec.unit} · ${focusSpec.node}`}>
-        One channel in detail
+        Telaah satu kanal
       </SectionTitle>
 
       <div className="row" style={{ marginBottom: 'var(--space-3)' }}>
@@ -178,8 +179,8 @@ export function ComparePage({
         }}
       >
         <ComparePanel
-          title="Normal condition"
-          note={referenceFrozen ? 'recorded before the scenario' : 'recording now'}
+          title="Kondisi normal"
+          note={referenceFrozen ? 'rekaman sebelum skenario' : 'sedang berjalan'}
           spec={focusSpec}
           values={focusNormal}
           domain={focusDomain}
@@ -187,7 +188,7 @@ export function ComparePage({
           mean={tailMean(focusNormal)}
         />
         <ComparePanel
-          title="Current condition"
+          title="Kondisi sekarang"
           note={scenario.name}
           spec={focusSpec}
           values={focusNow}
@@ -197,7 +198,7 @@ export function ComparePage({
         />
       </section>
 
-      <SectionTitle note={`${rows.length} channels`}>All channels</SectionTitle>
+      <SectionTitle note={`${rows.length} kanal`}>Seluruh kanal</SectionTitle>
 
       <div
         style={{
@@ -239,7 +240,7 @@ export function ComparePage({
                 status="AMAN"
               />
               <MiniPane
-                label="now"
+                label="sekarang"
                 value={row.nowMean}
                 spec={row.spec}
                 values={row.now}
@@ -252,12 +253,12 @@ export function ComparePage({
       </div>
 
       <div className="glass glass--chip card" style={{ padding: 'var(--space-4)' }}>
-        <span className="card-kicker">How to read this</span>
+        <span className="card-kicker">Cara membaca</span>
         <p className="card-body" style={{ maxWidth: '78ch' }}>
-          Both charts of a channel use the same axis range, and the warning (yellow) and critical
-          (red) threshold lines sit at the same height in each. The percentage difference is taken
-          from the mean of the last third of the data, not from a single instantaneous value, so one
-          spike cannot move the number.
+          Kedua grafik tiap kanal memakai rentang sumbu yang sama, dan garis ambang waspada (kuning)
+          serta kritis (merah) berada pada ketinggian yang sama di keduanya. Selisih persen dihitung
+          dari rata-rata sepertiga data terakhir, bukan dari satu nilai sesaat, supaya satu lonjakan
+          tidak menggeser angkanya.
         </p>
       </div>
     </div>
