@@ -51,7 +51,10 @@ export const NAV_GROUPS: Array<{ title: string; items: NavItem[] }> = [
     items: [
       { key: 'info', label: 'Informasi' },
       { key: 'inspection', label: 'Inspeksi' },
-      { key: 'repair', label: 'Pemeliharaan' },
+      // Butir Pemeliharaan disembunyikan dari navigasi untuk sementara.
+      // Halamannya tetap ada dan tetap dapat dibuka lewat kartu "Perbaikan"
+      // di halaman Informasi; hapus komentar ini untuk memunculkannya lagi.
+      // { key: 'repair', label: 'Pemeliharaan' },
       { key: 'sensors', label: 'Sensor' },
     ],
   },
