@@ -1,5 +1,6 @@
 import type { Telemetry } from '../lib/types';
 import {
+  DEFAULT_SCENARIO,
   FAMILY_LABELS,
   FAMILY_NOTES,
   FAMILY_ORDER,
@@ -43,7 +44,7 @@ export function ScenarioPage({
   onOpenCompare,
   controlError,
 }: ScenarioPageProps) {
-  const active = telemetry?.scenario ?? 'idle';
+  const active = telemetry?.scenario ?? DEFAULT_SCENARIO;
   const running = active !== 'idle';
   const scenario = SCENARIOS[active];
   const residualIds = Object.keys(residual);

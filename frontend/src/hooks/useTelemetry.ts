@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { AlertEvent, Bridge, DataSource, Telemetry } from '../lib/types';
 import { LocalSimulation, HISTORY_LENGTH } from '../domain/simulationEngine';
 import { SENSORS } from '../domain/sensors';
-import { REFERENCE_SCENARIOS, SCENARIOS } from '../domain/scenarios';
+import { DEFAULT_SCENARIO, REFERENCE_SCENARIOS, SCENARIOS } from '../domain/scenarios';
 import { api } from '../lib/api';
 
 /**
@@ -326,7 +326,7 @@ export function useTelemetry(bridge: Bridge, apiAvailable: boolean): TelemetryCo
   const series = useMemo(() => ({ ...seriesRef.current }), [seriesTick]);
   const reference = useMemo(() => ({ ...referenceRef.current }), [seriesTick]);
 
-  const scenario = telemetry?.scenario ?? 'idle';
+  const scenario = telemetry?.scenario ?? DEFAULT_SCENARIO;
 
   return {
     telemetry,

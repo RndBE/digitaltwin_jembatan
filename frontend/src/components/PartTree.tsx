@@ -120,7 +120,7 @@ export function GlbSystemTree({
               style={{
                 background: doc.confidence_colors[weakest],
                 color: '#fff',
-                fontSize: 10,
+                fontSize: 11,
                 padding: '2px 7px',
               }}
               title={CONFIDENCE_LABELS[weakest]}

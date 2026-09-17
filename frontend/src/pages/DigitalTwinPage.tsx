@@ -2,12 +2,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Bridge, DataSource, Telemetry } from '../lib/types';
 import type { Series } from '../hooks/useTelemetry';
 import {
+  DEFAULT_SCENARIO,
   FAMILY_LABELS,
   FAMILY_ORDER,
   SCENARIOS,
   SPEED_LABEL,
   scenariosOf,
 } from '../domain/scenarios';
+import { Select } from '../components/Select';
 import { TrussViewer } from '../three/TrussViewer';
 import { GlbViewer, type GlbViewerHandle } from '../three/GlbViewer';
 import type { TwinScene } from '../three/proceduralBridge';
@@ -72,7 +74,18 @@ function LiveTwinView({
   const [hidden, setHidden] = useState<string[]>([]);
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
   const [picked, setPicked] = useState<string | null>(null);
-  const [autoRotate, setAutoRotate] = useState(true);
+  /*
+   * Putaran kamera mengikuti preferensi gerak yang dinyatakan sistem.
+   *
+   * Aturan `prefers-reduced-motion` di CSS hanya menjangkau animasi CSS;
+   * putaran ini digambar tiap bingkai oleh WebGL dan lolos begitu saja —
+   * padahal justru gerak sebidang penuh yang tidak berhenti seperti inilah
+   * yang paling mungkin membuat pusing. Tombolnya tetap ada: yang berubah
+   * hanya keadaan awalnya, dan pengguna tetap boleh menyalakannya.
+   */
+  const [autoRotate, setAutoRotate] = useState(
+    () => !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches,
+  );
   // Mode geser penanda, mati secara bawaan. Halaman ini lebih sering dibaca
   // daripada diatur, dan letak penanda adalah data pemasangan — memindahkannya
   // semestinya perbuatan yang disengaja, bukan akibat tarikan yang meleset.
@@ -362,23 +375,22 @@ function LiveTwinView({
                 * jenis pembebanannya dulu — lalu lintas, lingkungan, atau
                 * kerusakan — baru anak tangganya.
                 */}
-              <select
-                className="input"
-                value={telemetry?.scenario ?? 'idle'}
-                onChange={(event) => onScenario(event.target.value)}
+              <Select
+                value={telemetry?.scenario ?? DEFAULT_SCENARIO}
+                onChange={onScenario}
                 aria-label="Pilih skenario pembebanan"
-              >
-                <option value="idle">Pemantauan langsung</option>
-                {FAMILY_ORDER.map((family) => (
-                  <optgroup key={family} label={FAMILY_LABELS[family]}>
-                    {scenariosOf(family).map((item) => (
-                      <option key={item.key} value={item.key}>
-                        {item.name}
-                      </option>
-                    ))}
-                  </optgroup>
-                ))}
-              </select>
+                groups={[
+                  { options: [{ value: 'idle', label: 'Pemantauan langsung' }] },
+                  ...FAMILY_ORDER.map((family) => ({
+                    label: FAMILY_LABELS[family],
+                    options: scenariosOf(family).map((item) => ({
+                      value: item.key,
+                      label: item.name,
+                      hint: item.expected,
+                    })),
+                  })),
+                ]}
+              />
               <div className="row">
                 <button type="button" className="btn btn-secondary btn-sm" onClick={onTogglePause}>
                   {telemetry?.paused ? 'Lanjutkan' : 'Jeda'}

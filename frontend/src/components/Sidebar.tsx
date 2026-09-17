@@ -1,4 +1,5 @@
 import type { Bridge, DataSource, Status } from '../lib/types';
+import { Select } from './Select';
 import { StatusTag } from './Ui';
 
 export type ScreenKey =
@@ -29,6 +30,26 @@ interface NavItem {
  * Digital Twin sebelumnya berada di kelompok aset, dan itu salah tempat: model
  * 3D adalah layar pemantauan langsung, bukan lembar arsip.
  */
+/**
+ * Nama tiap layar untuk judul tab peramban.
+ *
+ * Terpisah dari `NAV_GROUPS` karena harus lengkap: Pemeliharaan sedang
+ * disembunyikan dari navigasi tetapi halamannya tetap dapat dibuka, dan tab
+ * tanpa nama pada riwayat peramban sama tidak berartinya dengan tab yang
+ * seluruhnya bernama sama.
+ */
+export const SCREEN_TITLES: Record<ScreenKey, string> = {
+  dash: 'Dashboard',
+  twin: 'Digital Twin',
+  analysis: 'Deret waktu',
+  compare: 'Perbandingan',
+  scenario: 'Skenario',
+  info: 'Informasi',
+  inspection: 'Inspeksi',
+  repair: 'Pemeliharaan',
+  sensors: 'Sensor',
+};
+
 export const NAV_GROUPS: Array<{ title: string; items: NavItem[] }> = [
   {
     title: 'Pemantauan',
@@ -144,7 +165,7 @@ export function Sidebar({
           </div>
           <div
             style={{
-              fontSize: 10,
+              fontSize: 11,
               fontWeight: 600,
               letterSpacing: '0.06em',
               textTransform: 'uppercase',
@@ -159,19 +180,16 @@ export function Sidebar({
       <div className="sidebar-asset">
         {multipleAssets ? (
           <div className="field">
-            <label htmlFor="pilih-jembatan">Aset yang dipantau</label>
-            <select
+            <label htmlFor="pilih-jembatan" id="label-pilih-jembatan">
+              Aset yang dipantau
+            </label>
+            <Select
               id="pilih-jembatan"
-              className="input"
+              aria-labelledby="label-pilih-jembatan"
               value={bridge.id}
-              onChange={(event) => onBridge(event.target.value)}
-            >
-              {bridges.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name}
-                </option>
-              ))}
-            </select>
+              onChange={onBridge}
+              groups={[{ options: bridges.map((item) => ({ value: item.id, label: item.name })) }]}
+            />
           </div>
         ) : (
           <div className="glass glass--inset sidebar-asset-card">

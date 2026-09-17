@@ -226,7 +226,7 @@ export function DashboardPage({
         {/*
           * Acuan dari berkas aset.
           *
-          * Angka telemetri tidak dapat ditafsirkan sendirian: 84 µε itu banyak
+          * Angka telemetri tidak dapat ditafsirkan sendirian: 84 µm/m itu banyak
           * atau sedikit tergantung beban rencananya, dan lendutan yang naik
           * berarti lain bila inspeksi tiga bulan lalu sudah mencatat retak di
           * gelagar yang sama. Kartu ini menaruh acuan itu berdampingan dengan

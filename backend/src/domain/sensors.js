@@ -10,7 +10,7 @@
  */
 const SENSORS = [
   { id: 'vib', name: 'Getaran', unit: 'm/s²', base: 0.12, warn: 0.25, crit: 0.4, dec: 3, weight: 0.22, node: 'Tengah bentang, rangka atas', spot: 'vib' },
-  { id: 'strain', name: 'Regangan', unit: 'µε', base: 85, warn: 140, crit: 190, dec: 0, weight: 0.24, node: 'Batang bawah tengah', spot: 'strain' },
+  { id: 'strain', name: 'Regangan', unit: 'µm/m', base: 85, warn: 140, crit: 190, dec: 0, weight: 0.24, node: 'Batang bawah tengah', spot: 'strain' },
   { id: 'defl', name: 'Lendutan', unit: 'mm', base: 8, warn: 12, crit: 16, dec: 1, weight: 0.22, node: 'Tengah bentang, lantai', spot: 'defl' },
   { id: 'tilt', name: 'Kemiringan', unit: '°', base: 0.04, warn: 0.08, crit: 0.12, dec: 3, weight: 0.12, node: 'Tumpuan timur', spot: 'tilt' },
   { id: 'temp', name: 'Suhu', unit: '°C', base: 31, warn: 45, crit: 55, dec: 1, weight: 0.02, node: 'Batang atas, sisi selatan', spot: 'temp' },

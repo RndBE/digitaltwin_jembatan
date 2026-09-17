@@ -303,8 +303,8 @@ function ComparePanel({
       <ThresholdChart sensor={spec} values={values} status={status} domain={domain} height={150} />
 
       <div className="text-muted tabular" style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
-        <span>warning at {spec.warn}</span>
-        <span>critical at {spec.crit}</span>
+        <span>ambang waspada {spec.warn}</span>
+        <span>ambang kritis {spec.crit}</span>
       </div>
     </div>
   );

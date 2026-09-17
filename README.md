@@ -136,7 +136,7 @@ layar pemantauan langsung, bukan lembar arsip.
 ### Berkas aset sebagai acuan
 
 Telemetri hanya tahu keadaan sekarang. Yang membuat sebuah angka dapat
-ditafsirkan justru datang dari berkas aset: 84 µε itu banyak atau sedikit
+ditafsirkan justru datang dari berkas aset: 84 µm/m itu banyak atau sedikit
 tergantung beban rencananya, dan lendutan yang naik berarti lain bila inspeksi
 tiga bulan lalu sudah mencatat retak pada gelagar yang sama. Karena itu isinya
 dipecah menjadi empat halaman yang berdiri sendiri — **Informasi**,

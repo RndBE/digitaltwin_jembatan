@@ -195,8 +195,20 @@ export const SCENARIOS: Record<string, Scenario> = {
     expected: 'KRITIS',
     onset: 'bertahap',
     reversible: false,
-    mult: { defl: 2.2, tilt: 3.1, strain: 1.8, crack: 1.6 },
-    residual: { defl: 1.75, tilt: 2.3, strain: 1.25 },
+    /*
+     * Regangan ditahan di bawah ambang waspada (85 × 1,3 ≈ 111 µm/m), lebih
+     * rendah daripada kegagalan bantalan yang lalu lintasnya justru lebih
+     * berat. Regangan batang bawah terutama dibentuk beban hidup, dan pada
+     * skenario ini lalu lintas berat sudah dialihkan — yang tersisa hanya
+     * pembagian ulang gaya akibat tumpuan yang turun. Menaikkannya sampai
+     * waspada membuat panel sensor bertentangan dengan ceritanya sendiri:
+     * vonis KRITIS di sini datang dari lendutan dan kemiringan, bukan regangan.
+     *
+     * Sisanya 1,15: penurunan tumpuan tidak naik kembali setelah lalu lintas
+     * dihentikan, jadi sebagian besar kenaikan itu menetap sampai diperbaiki.
+     */
+    mult: { defl: 2.2, tilt: 3.1, strain: 1.3, crack: 1.6 },
+    residual: { defl: 1.75, tilt: 2.3, strain: 1.15 },
     cars: 3,
     trucks: 1,
     speed: 0.45,
@@ -221,6 +233,17 @@ export const FAMILY_ORDER: ScenarioFamily[] = ['lalu-lintas', 'lingkungan', 'ker
 
 export const scenariosOf = (family: ScenarioFamily) =>
   SCENARIO_ORDER.map((key) => SCENARIOS[key]).filter((item) => item.family === family);
+
+/**
+ * Skenario yang berjalan saat aplikasi dibuka.
+ *
+ * Bukan `idle`: bentang yang kosong tidak mengatakan apa-apa tentang jembatan
+ * yang dipantau, dan angka yang pertama dibaca pengunjung sebaiknya angka
+ * kondisi layan sehari-hari — jembatan yang sedang bekerja menahan lalu lintas
+ * rencananya. `normal` juga termasuk `REFERENCE_SCENARIOS`, jadi rekaman acuan
+ * halaman Perbandingan tetap terisi sejak detik pertama.
+ */
+export const DEFAULT_SCENARIO = 'normal';
 
 /** Skenario yang dipakai sebagai acuan "kondisi normal" di halaman Perbandingan. */
 export const REFERENCE_SCENARIOS = ['idle', 'normal'];

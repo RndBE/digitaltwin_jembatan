@@ -62,7 +62,7 @@ export interface SceneState {
   speed: number;
   /** Status tiap kanal, dipakai mewarnai penanda sensor di model. */
   sensorStatus: Record<string, MarkerStatus>;
-  /** Kecepatan angin 0..1 terhadap ambang kritis; menegakkan kantong angin. */
+  /** Kecepatan angin 0..1 terhadap ambang kritis; mempercepat putaran anemometer. */
   windRatio: number;
   /** Muka air banjir 0..1; menaikkan, mengeruhkan, dan mengasarkan sungai. */
   floodRatio: number;
@@ -554,7 +554,17 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
     scene.add(bankBody);
   });
 
-  const waterGeometry = new THREE.PlaneGeometry(130, 64, 80, 40);
+  /*
+   * Kerapatan petak air ditentukan gelombang terpendek yang digambar, bukan
+   * selera. Gelombang banjir melintang punya panjang gelombang 2π/1,6 ≈ 3,9
+   * satuan; dengan 80 petak arah aliran jaraknya 0,8 satuan, jadi satu
+   * gelombang disusun hampir lima titik. Di bawah dua titik per gelombang
+   * bentuknya tidak terwakili sama sekali — yang tampil bukan riak yang
+   * berjalan, melainkan kedip yang berpindah acak tiap bingkai.
+   */
+  const WATER_SEG_X = 96;
+  const WATER_SEG_Z = 80;
+  const waterGeometry = new THREE.PlaneGeometry(130, 64, WATER_SEG_X, WATER_SEG_Z);
   waterGeometry.rotateX(-Math.PI / 2);
   const waterMaterial = new THREE.MeshStandardMaterial({
     color: 0x2e6d97,
@@ -567,7 +577,29 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
   water.receiveShadow = true;
   scene.add(water);
   const waterPos = water.geometry.attributes.position;
+  const waterNormal = water.geometry.attributes.normal;
   const waterBase = Float32Array.from(waterPos.array as Float32Array);
+
+  /*
+   * Petak air tersusun sebagai kisi teratur: satu nilai x untuk tiap kolom,
+   * satu nilai z untuk tiap baris. Sinus hanya bergantung pada salah satunya,
+   * jadi cukup dihitung 97 + 81 kali per bingkai, bukan 7.857 kali — sisanya
+   * tinggal penjumlahan. Itu yang membuat petak air bisa dirapatkan tanpa
+   * menambah beban hitung.
+   */
+  const WATER_COLS = WATER_SEG_X + 1;
+  const WATER_ROWS = WATER_SEG_Z + 1;
+  const waterColX = new Float32Array(WATER_COLS);
+  const waterRowZ = new Float32Array(WATER_ROWS);
+  for (let c = 0; c < WATER_COLS; c++) waterColX[c] = waterBase[c * 3];
+  for (let r = 0; r < WATER_ROWS; r++) waterRowZ[r] = waterBase[r * WATER_COLS * 3 + 2];
+  const waveSinX = new Float32Array(WATER_COLS);
+  const waveCosX = new Float32Array(WATER_COLS);
+  const waveSinZ = new Float32Array(WATER_ROWS);
+  const waveCosZ = new Float32Array(WATER_ROWS);
+  const floodSinZ = new Float32Array(WATER_ROWS);
+  const floodCosZ = new Float32Array(WATER_ROWS);
+
   /*
    * Air tenang gelap karena memantulkan langit senja; air banjir justru lebih
    * terang karena keruh — lumpurnya menghamburkan cahaya alih-alih
@@ -578,58 +610,83 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
   const FLOOD_WATER = new THREE.Color(0x8d6f42);
   const WATER_LEVEL = -2.7;
 
-  // ------------------------------------------------------------ kantong angin
+  // ------------------------------------------------------------- tiang angin
   /*
-   * Kantong angin, seperti di bandara.
+   * Tiang anemometer di oprit timur.
    *
-   * Anemometer memberi angka, tetapi angka baru berarti setelah dibandingkan
-   * dengan ambang. Kantong angin memberi hal lain: bentuk. Menggantung lemas
-   * berarti tenang, terangkat mendatar berarti kencang, dan itu terbaca dari
-   * seberang tanpa membaca satu angka pun — persis alasan benda ini masih
-   * dipasang di bandara yang sudah punya anemometer digital.
+   * Di puncaknya berdiri anemometer mangkuk, dan penanda kanal angin menancap
+   * tepat di porosnya. Itu memang harus begitu: katalog sensor menyebut simpul
+   * kanal ini "Anemometer, tiang oprit timur", dan penanda sensor yang menunjuk
+   * benda yang tidak mengukur apa pun adalah janji yang tidak ditepati model
+   * terhadap datanya sendiri.
+   *
+   * Keadaan angin di adegan ini sepenuhnya dibawa laju putar mangkuknya. Tidak
+   * ada lagi kantong angin yang memberi bacaan bentuk dari kejauhan, jadi
+   * putaran itu dibuat berbeda jauh antara tenang dan kencang — lihat
+   * `rotorAngle` pada gelung gambar.
    */
-  const windsock = new THREE.Group();
-  windsock.position.set(L / 2 + 3.4, -0.02, 2.5);
-  scene.add(windsock);
+  const windMast = new THREE.Group();
+  windMast.position.set(L / 2 + 3.4, -0.02, 2.5);
+  scene.add(windMast);
 
-  const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.05, 2.6, 10), railMaterial);
-  mast.position.y = 1.3;
+  const MAST_HEIGHT = 2.9;
+  const mast = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.035, 0.05, MAST_HEIGHT, 10),
+    railMaterial,
+  );
+  mast.position.y = MAST_HEIGHT / 2;
   mast.castShadow = true;
-  windsock.add(mast);
+  windMast.add(mast);
 
-  const sockPivot = new THREE.Group();
-  sockPivot.position.y = 2.5;
-  windsock.add(sockPivot);
+  const rotor = new THREE.Group();
+  rotor.position.y = MAST_HEIGHT;
+  windMast.add(rotor);
 
-  const hoop = new THREE.Mesh(new THREE.TorusGeometry(0.175, 0.016, 6, 18), railMaterial);
-  hoop.rotation.y = Math.PI / 2;
-  sockPivot.add(hoop);
+  const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.055, 0.1, 10), railMaterial);
+  hub.castShadow = true;
+  rotor.add(hub);
 
-  const SOCK_BANDS = 5;
-  const sockOrange = new THREE.MeshStandardMaterial({
-    color: 0xef6c1f,
-    roughness: 0.85,
+  const cupMaterial = new THREE.MeshStandardMaterial({
+    color: 0xd8dee6,
+    roughness: 0.55,
+    metalness: 0.15,
+    // Mangkuk itu cangkang: sisi dalamnya ikut terlihat, dan justru rongga
+    // itulah yang membuat bendanya terbaca sebagai anemometer, bukan bola.
     side: THREE.DoubleSide,
   });
-  const sockWhite = new THREE.MeshStandardMaterial({
-    color: 0xe8e4dc,
-    roughness: 0.85,
-    side: THREE.DoubleSide,
-  });
-  for (let i = 0; i < SOCK_BANDS; i++) {
-    // Mengerucut ke ujung: itu yang membuat kantong terisi dan berdiri saat
-    // angin lewat, dan yang membuat siluetnya terbaca sebagai kantong angin.
-    const rNear = 0.17 - i * 0.018;
-    const rFar = 0.17 - (i + 1) * 0.018;
-    const band = new THREE.Mesh(
-      new THREE.CylinderGeometry(rFar, rNear, 0.2, 12, 1, true),
-      i % 2 ? sockWhite : sockOrange,
+
+  const CUP_ARMS = 3;
+  const CUP_REACH = 0.3;
+  for (let i = 0; i < CUP_ARMS; i++) {
+    const spoke = new THREE.Group();
+    spoke.rotation.y = (i * Math.PI * 2) / CUP_ARMS;
+    rotor.add(spoke);
+
+    const arm = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.012, 0.012, CUP_REACH, 6),
+      railMaterial,
     );
-    // Sumbu tabung tegak; diputar seperempat agar berbaring sepanjang sumbu x.
-    band.rotation.z = -Math.PI / 2;
-    band.position.x = 0.1 + i * 0.2;
-    band.castShadow = true;
-    sockPivot.add(band);
+    // Sumbu tabung tegak; direbahkan seperempat putaran agar berbaring
+    // sepanjang sumbu x, lalu digeser setengah panjangnya supaya pangkalnya
+    // bertemu poros.
+    arm.rotation.z = -Math.PI / 2;
+    arm.position.x = CUP_REACH / 2;
+    arm.castShadow = true;
+    spoke.add(arm);
+
+    const cup = new THREE.Mesh(
+      new THREE.SphereGeometry(0.075, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2),
+      cupMaterial,
+    );
+    // Setengah bola menghadap +y; diputar −90° pada sumbu x sehingga
+    // punggungnya ke −z dan rongganya ke +z. Ketiga mangkuk dibangun di dalam
+    // kerangka lengannya masing-masing, jadi ketiganya menghadap arah putar
+    // yang sama — itu yang membuat angin mendorongnya berputar, bukan
+    // mengunci satu sama lain.
+    cup.rotation.x = -Math.PI / 2;
+    cup.position.x = CUP_REACH;
+    cup.castShadow = true;
+    spoke.add(cup);
   }
 
   // ------------------------------------------------------------ titik sensor
@@ -1224,7 +1281,11 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
   let frame = 0;
   /** Nilai teranimasi, dikejar perlahan menuju sasarannya di `state`. */
   let windLift = 0;
+  /** Sudut mangkuk anemometer, ditumpuk per bingkai supaya tidak melompat. */
+  let rotorAngle = 0;
   let floodLevel = 0;
+  /** Fase gelombang sungai, ditumpuk per bingkai supaya tidak melompat. */
+  let wavePhase = 0;
   let lastFrameAt = performance.now() / 1000;
   let lastVehicleCount = -1;
   let lastScaleAt = -9;
@@ -1317,12 +1378,29 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
     const dt = Math.min(0.25, Math.max(0, now - lastFrameAt));
     lastFrameAt = now;
 
-    // Kantong angin. Sudut angkatnya mengikuti anemometer, tidak seketika:
-    // kain basah tidak melompat dari menggantung ke mendatar.
+    // Angin dikejar perlahan, tidak seketika: mangkuk anemometer punya
+    // kelembaman, dan putaran yang melompat dari pelan ke cepat dalam satu
+    // bingkai terbaca sebagai kesalahan gambar, bukan sebagai hembusan.
     windLift += (state.windRatio - windLift) * Math.min(1, dt * 2.4);
-    const gust = Math.sin(now * 5.2) * 0.05 + Math.sin(now * 11.7) * 0.02;
-    sockPivot.rotation.z = -(1 - windLift) * 1.15 + gust * windLift;
-    sockPivot.rotation.y = Math.sin(now * 1.6) * 0.3 * windLift;
+
+    /*
+     * Mangkuk anemometer. Sudutnya ditumpuk per bingkai, bukan dihitung dari
+     * `now` dikali laju — alasan yang sama seperti gelombang sungai: mengalikan
+     * laju pada waktu mutlak membuat seluruh riwayat sudut ikut melompat setiap
+     * kali anginnya berubah.
+     *
+     * Ada putaran dasar walau angin sedang tenang. `windRatio` bernilai nol
+     * pada 14 km/jam — itu keadaan layan normal, bukan udara diam, dan
+     * anemometer yang membeku di situ akan terbaca sebagai alat yang rusak.
+     *
+     * Hembusan ikut masuk ke laju putar, dan hanya terasa ketika anginnya
+     * memang sedang kencang. Sejak kantong angin dilepas, benda inilah
+     * satu-satunya yang menyatakan keadaan angin di adegan — dan putaran yang
+     * rata sempurna terbaca sebagai motor listrik, bukan sebagai cuaca.
+     */
+    const gust = Math.sin(now * 5.2) * 0.9 + Math.sin(now * 11.7) * 0.35;
+    rotorAngle += dt * (1.1 + windLift * (9 + gust));
+    rotor.rotation.y = rotorAngle;
 
     // Sungai. Banjir naik dan surut perlahan — inilah satu-satunya bagian
     // adegan yang menyatakan keadaan lingkungan yang tidak diukur sensor.
@@ -1334,18 +1412,64 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
 
     const waveGain = 1 + floodLevel * 3.6;
     const waveSpeed = 1 + floodLevel * 1.5;
-    for (let i = 0; i < waterPos.count; i++) {
-      const wx = waterBase[i * 3];
-      const wz = waterBase[i * 3 + 2];
-      (waterPos.array as Float32Array)[i * 3 + 1] =
-        Math.sin(wx * 0.6 + now * 1.1 * waveSpeed) * 0.05 * waveGain +
-        Math.sin(wz * 0.9 + now * 1.7 * waveSpeed) * 0.035 * waveGain +
-        // Suku ketiga hanya hidup saat banjir: gelombang pendek yang berjalan
-        // melintang sungai, yang membuat airnya terbaca mengalir deras.
-        floodLevel * Math.sin(wz * 2.4 - now * 4.1) * 0.07;
+    /*
+     * Fase gelombang ditumpuk per bingkai, tidak dihitung sebagai `now` kali
+     * laju. Perkalian membuat seluruh riwayat fase ikut berubah begitu lajunya
+     * berubah: saat banjir naik, laju bergeser tiap bingkai dan gelombang
+     * melompat sejauh `now` × selisih laju — beberapa radian sekaligus setelah
+     * halaman terbuka satu menit. Itulah sentakan yang terlihat justru pada
+     * saat air seharusnya mengalir paling mulus. Fase yang ditumpuk selalu
+     * menyambung: yang berubah hanya seberapa cepat ia bertambah.
+     */
+    wavePhase += dt * waveSpeed;
+
+    const ampLong = 0.05 * waveGain;
+    const ampCross = 0.035 * waveGain;
+    // Suku ketiga hanya hidup saat banjir: gelombang pendek yang berjalan
+    // melintang sungai, yang membuat airnya terbaca mengalir deras.
+    const ampFlood = floodLevel * 0.07;
+
+    for (let c = 0; c < WATER_COLS; c++) {
+      const a = waterColX[c] * 0.6 + wavePhase * 1.1;
+      waveSinX[c] = Math.sin(a);
+      waveCosX[c] = Math.cos(a);
+    }
+    for (let r = 0; r < WATER_ROWS; r++) {
+      const b = waterRowZ[r] * 0.9 + wavePhase * 1.7;
+      waveSinZ[r] = Math.sin(b);
+      waveCosZ[r] = Math.cos(b);
+      const f = waterRowZ[r] * 1.6 - wavePhase * 4.1;
+      floodSinZ[r] = Math.sin(f);
+      floodCosZ[r] = Math.cos(f);
+    }
+
+    /*
+     * Normal dihitung dari turunan gelombangnya, bukan dari `computeVertexNormals`.
+     * Perataan normal antarsegitiga menghasilkan permukaan yang bersudut pada
+     * puncak riak, dan sudut itu berkedip tiap bingkai karena puncaknya bergeser
+     * melewati batas segitiga — kilau airnya berkerlip walau bentuknya mulus.
+     * Turunan memberi normal yang tepat di tiap titik, dan ongkosnya justru
+     * lebih murah daripada memutari seluruh segitiga tiap bingkai.
+     */
+    const waterArray = waterPos.array as Float32Array;
+    const normalArray = waterNormal.array as Float32Array;
+    let i = 0;
+    for (let r = 0; r < WATER_ROWS; r++) {
+      const sinZ = waveSinZ[r];
+      const floodSin = floodSinZ[r];
+      const slopeZ = -(ampCross * 0.9 * waveCosZ[r] + ampFlood * 1.6 * floodCosZ[r]);
+      const heightZ = ampCross * sinZ + ampFlood * floodSin;
+      for (let c = 0; c < WATER_COLS; c++, i++) {
+        waterArray[i * 3 + 1] = ampLong * waveSinX[c] + heightZ;
+        const slopeX = -(ampLong * 0.6 * waveCosX[c]);
+        const inv = 1 / Math.sqrt(slopeX * slopeX + slopeZ * slopeZ + 1);
+        normalArray[i * 3] = slopeX * inv;
+        normalArray[i * 3 + 1] = inv;
+        normalArray[i * 3 + 2] = slopeZ * inv;
+      }
     }
     waterPos.needsUpdate = true;
-    water.geometry.computeVertexNormals();
+    waterNormal.needsUpdate = true;
 
     if (!drag && state.autoRotate) theta += 0.0012;
     camera.position.set(

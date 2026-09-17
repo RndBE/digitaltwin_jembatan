@@ -184,7 +184,7 @@ export function AnalysisPage({ bridge, telemetry, series }: AnalysisPageProps) {
         Jendela riwayat menyimpan {series[SENSORS[0].id]?.values.length ?? 0} nilai terakhir per kanal,
         masing-masing rerata satu menit.
         Nilai dibangkitkan mesin simulasi, bukan pengukuran lapangan; ambang yang dipakai adalah ambang
-        pada katalog sensor ({SENSOR_BY_ID.strain.warn} µε waspada, {SENSOR_BY_ID.strain.crit} µε kritis
+        pada katalog sensor ({SENSOR_BY_ID.strain.warn} µm/m waspada, {SENSOR_BY_ID.strain.crit} µm/m kritis
         untuk regangan).
       </p>
     </div>

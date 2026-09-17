@@ -19,7 +19,7 @@
  * tingkat yang bertahan, bukan satu puncak.
  */
 const { SENSORS, SENSOR_BY_ID, statusOf } = require('./sensors');
-const { SCENARIOS, ONSET_RATE } = require('./scenarios');
+const { SCENARIOS, ONSET_RATE, DEFAULT_SCENARIO } = require('./scenarios');
 
 const HISTORY = 180;
 
@@ -47,7 +47,7 @@ class BridgeSimulation {
   constructor(bridge) {
     this.bridge = bridge;
     this.t = 0;
-    this.scenario = 'idle';
+    this.scenario = DEFAULT_SCENARIO;
     this.paused = false;
     this.packets = 0;
     this.startedAt = 0;

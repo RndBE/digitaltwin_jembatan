@@ -166,4 +166,10 @@ const FAMILY_ORDER = ['lalu-lintas', 'lingkungan', 'kerusakan'];
 
 const SPEED_LABEL = { 1: '60 km/j', 0.7: '40 km/j', 0.45: '30 km/j', 0.06: '3 km/j', 0: '—' };
 
-module.exports = { SCENARIOS, SCENARIO_ORDER, FAMILY_ORDER, ONSET_RATE, SPEED_LABEL };
+/**
+ * Skenario yang berjalan saat server dihidupkan. Sama dengan bawaan antarmuka:
+ * bentang yang kosong tidak mengatakan apa-apa tentang jembatan yang dipantau.
+ */
+const DEFAULT_SCENARIO = 'normal';
+
+module.exports = { SCENARIOS, SCENARIO_ORDER, FAMILY_ORDER, ONSET_RATE, SPEED_LABEL, DEFAULT_SCENARIO };

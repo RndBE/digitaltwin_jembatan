@@ -3,7 +3,7 @@ import type { Bridge } from './lib/types';
 import { api, ping } from './lib/api';
 import { BRIDGES as LOCAL_BRIDGES, DEFAULT_BRIDGE_ID } from './domain/bridges';
 import { useTelemetry } from './hooks/useTelemetry';
-import { Sidebar, type ScreenKey } from './components/Sidebar';
+import { Sidebar, SCREEN_TITLES, type ScreenKey } from './components/Sidebar';
 import { Backdrop } from './components/Ui';
 import { DashboardPage } from './pages/DashboardPage';
 import { DigitalTwinPage } from './pages/DigitalTwinPage';
@@ -70,6 +70,12 @@ export default function App() {
 
   const status = controller.telemetry?.assessment.status ?? 'AMAN';
   const demo = !apiAvailable;
+
+  // Judul tab menyebut layar dan asetnya. Nama layar diletakkan di depan karena
+  // itu bagian yang membedakan, dan tab yang sempit memotong dari belakang.
+  useEffect(() => {
+    document.title = `${SCREEN_TITLES[screen]} · ${bridge.name} — Bridge Digital Twin`;
+  }, [screen, bridge.name]);
 
   const page = () => {
     if (!probed) return <p className="text-muted">Memeriksa ketersediaan API…</p>;
@@ -157,6 +163,15 @@ export default function App() {
 
   return (
     <div className="app-shell">
+      {/*
+        * Tautan lompat: butir pertama yang dijangkau Tab, tidak terlihat sampai
+        * ia dapat fokus. Tanpa ini pengguna papan ketik menelusuri delapan
+        * butir navigasi yang sama setiap kali berpindah halaman — navigasinya
+        * berada di depan isi pada setiap layar, jadi ongkosnya berulang.
+        */}
+      <a className="lompat-isi" href="#isi">
+        Lompat ke isi
+      </a>
       <Backdrop />
 
       <div className="app-container">
@@ -172,7 +187,9 @@ export default function App() {
           repairNeeded={Object.keys(controller.residual).length > 0}
         />
 
-        <main key={screen} className="app-main">
+        {/* `tabIndex={-1}` supaya fokus benar-benar berpindah ke sini saat
+            tautan lompat diikuti, bukan sekadar halamannya yang tergulir. */}
+        <main key={screen} id="isi" tabIndex={-1} className="app-main">
           {page()}
         </main>
       </div>

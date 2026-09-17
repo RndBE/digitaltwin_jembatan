@@ -8,7 +8,7 @@ import type { Reading, SensorSpec, Status } from '../lib/types';
  */
 export const SENSORS: SensorSpec[] = [
   { id: 'vib', name: 'Getaran', unit: 'm/s²', base: 0.12, warn: 0.25, crit: 0.4, dec: 3, weight: 0.22, node: 'Tengah bentang, rangka atas' },
-  { id: 'strain', name: 'Regangan', unit: 'µε', base: 85, warn: 140, crit: 190, dec: 0, weight: 0.24, node: 'Batang bawah tengah' },
+  { id: 'strain', name: 'Regangan', unit: 'µm/m', base: 85, warn: 140, crit: 190, dec: 0, weight: 0.24, node: 'Batang bawah tengah' },
   { id: 'defl', name: 'Lendutan', unit: 'mm', base: 8, warn: 12, crit: 16, dec: 1, weight: 0.22, node: 'Tengah bentang, lantai' },
   { id: 'tilt', name: 'Kemiringan', unit: '°', base: 0.04, warn: 0.08, crit: 0.12, dec: 3, weight: 0.12, node: 'Tumpuan timur' },
   { id: 'temp', name: 'Suhu', unit: '°C', base: 31, warn: 45, crit: 55, dec: 1, weight: 0.02, node: 'Batang atas, sisi selatan' },
@@ -37,7 +37,7 @@ export const STRUCTURAL_IDS = ['vib', 'strain', 'defl', 'tilt', 'crack'];
  *   lantai     permukaan aspal y 0,12 · kerb y 0,22 di z ±1,8 · lajur z ±0,85
  *   tumpuan    sisi atas y −0,15 di x ±6, z ±2,2
  *   oprit      permukaan y 0,12, menerus dari x ±5,94 sejauh 17 satuan
- *   tiang angin  puncak y 2,58 di x 9,4, z 2,5
+ *   tiang angin  tinggi 2,9 di x 9,4, z 2,5 · poros anemometer di puncaknya
  *
  * Penanda dijauhkan dari sumbu lajur supaya tidak terus-menerus ditimpa
  * kendaraan yang lewat.
@@ -50,7 +50,7 @@ export const SENSOR_SPOTS: Record<string, [number, number, number]> = {
   crack: [1.2, 0.05, 2.28], // buhul ke-6, pada pelat sambungan
   tilt: [6, -0.15, 2.2], // sisi atas bantalan tumpuan timur
   wim: [-7.2, 0.12, -1.45], // perkerasan oprit barat, tepi lajur arah masuk
-  wind: [9.4, 2.62, 2.5], // puncak tiang kantong angin
+  wind: [9.4, 2.98, 2.5], // poros anemometer mangkuk, puncak tiang oprit timur
 };
 
 export const statusOf = (sensor: SensorSpec, value: number): Status =>

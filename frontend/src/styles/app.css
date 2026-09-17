@@ -195,6 +195,87 @@
 .input:hover { box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.18), inset 0 0 0 1px rgb(255 255 255 / 0.12); }
 .input option { background: var(--ink-800); color: var(--mist-100); }
 
+/* Daftar pilihan ----------------------------------------------------- *
+ |
+ |  Tombol pemicunya sengaja memakai bentuk `.input` yang sama persis, supaya
+ |  daftar yang digambar sendiri tidak terbaca sebagai kendali jenis lain
+ |  daripada kotak isian di sebelahnya. Yang berubah hanya daftarnya: panel
+ |  kaca yang sama dengan kartu di belakangnya, bukan kotak putih sistem.
+ * -------------------------------------------------------------------- */
+
+.select { position: relative; }
+
+.select-trigger {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-2);
+  width: 100%; text-align: left;
+  font-family: inherit; font-size: 13px; color: #fff;
+  padding: 10px 13px;
+  border: 0; border-radius: var(--radius-inset);
+  background: hsl(210 40% 12% / 0.28);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.14), inset 0 0 0 1px rgb(255 255 255 / 0.06);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: box-shadow var(--dur-fast) var(--ease);
+}
+.select-trigger:hover:not(:disabled) {
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.18), inset 0 0 0 1px rgb(255 255 255 / 0.12);
+}
+.select-trigger:disabled { color: var(--mist-400); }
+.select-value { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.select-chevron {
+  flex: none; color: var(--mist-300);
+  transition: transform var(--dur-fast) var(--ease);
+}
+.select-chevron[data-open='true'] { transform: rotate(180deg); }
+
+/*
+ * Kartu yang sedang memuat daftar terbuka diangkat di atas kartu sesudahnya.
+ *
+ * Tiap `.glass` memasang `isolation: isolate` — itu yang menahan kilau
+ * `::before` (z-index −1) agar tidak tenggelam ke belakang halaman. Harganya:
+ * kartu menjadi konteks penumpukan sendiri, dan `z-index` apa pun di dalamnya
+ * hanya berlaku di dalam kartu itu. Kartu tetangga yang datang belakangan di
+ * DOM tetap digambar di atas seluruh isinya, jadi daftar yang terbuka
+ * tenggelam di belakang kartu di bawahnya. Yang harus diangkat kartunya,
+ * bukan daftarnya.
+ */
+.glass:has(.select-popup) { z-index: 50; }
+
+/* Daftar pilihan lebih pekat daripada kartu kaca biasa. Kartu duduk di atas
+   latar yang tenang; daftar ini mengambang di atas apa saja — termasuk kilau
+   matahari di air pada panggung 3D — dan harus tetap terbaca di atasnya. */
+.select-popup {
+  --glass-alpha: 0.9;
+  position: absolute; z-index: 40;
+  top: calc(100% + 6px); left: 0; right: 0;
+  max-height: 320px; overflow-y: auto;
+  padding: 6px;
+  border-radius: var(--radius-inset);
+}
+
+.select-group {
+  padding: 10px 10px 5px;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--mist-400);
+}
+/* Kelompok kedua dan seterusnya diberi garis rambut, bukan jarak besar: daftar
+   skenario sudah panjang, dan jarak kosong membuatnya perlu digulir lebih jauh. */
+.select-popup [role='group'] + [role='group'] { border-top: 1px solid rgb(255 255 255 / 0.07); }
+
+.select-option {
+  display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3);
+  padding: 8px 10px; border-radius: 10px;
+  font-size: 13px; color: var(--mist-100); cursor: pointer;
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+.select-option[data-active='true'] { background: rgb(255 255 255 / 0.08); color: #fff; }
+.select-option[aria-selected='true'] {
+  color: #fff; font-weight: 600;
+  background: rgb(31 139 245 / 0.26);
+  box-shadow: inset 0 0 0 1px rgb(124 196 255 / 0.28);
+}
+.select-hint { flex: none; font-size: 11px; font-weight: 400; color: var(--mist-400); }
+
 .field { display: flex; flex-direction: column; gap: 6px; }
 .field > label {
   font-size: 11px; font-weight: 500; color: var(--mist-300);
@@ -230,7 +311,7 @@
   padding: var(--space-4);
 }
 .card-kicker {
-  font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
+  font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
   color: var(--brand-300); font-weight: 700;
 }
 .card-title { font-size: 16px; font-weight: 800; letter-spacing: -0.02em; color: #fff; }
@@ -280,6 +361,29 @@
  * ------------------------------------------------------------------ */
 
 .app-shell { min-height: 100vh; padding: var(--space-3); }
+
+/*
+ * Tautan lompat. Bukan disembunyikan dengan `display: none` — yang begitu ikut
+ * hilang dari urutan Tab, jadi tautannya tidak pernah dapat dicapai oleh
+ * satu-satunya orang yang membutuhkannya. Ia digeser ke luar layar dan turun
+ * kembali begitu mendapat fokus.
+ */
+.lompat-isi {
+  position: fixed; top: 0; left: var(--space-3); z-index: 100;
+  transform: translateY(-140%);
+  padding: 10px 16px;
+  border-radius: 0 0 var(--radius-inset) var(--radius-inset);
+  background: var(--brand-500); color: #fff;
+  font-size: 13px; font-weight: 600;
+  transition: transform var(--dur-fast) var(--ease);
+}
+/* `:focus`, bukan hanya `:focus-visible`. Tautan ini tidak punya guna lain
+   selain saat ia dapat fokus, dan fokus yang diberikan oleh skrip pembaca
+   layar tidak selalu dihitung peramban sebagai fokus papan ketik. */
+.lompat-isi:focus { transform: translateY(0); }
+/* Sasarannya hanya dapat fokus lewat skrip; cincin fokusnya tidak perlu
+   digambar, karena yang dilihat pengguna adalah halaman barunya. */
+.app-main:focus { outline: none; }
 
 /*
  * Tanpa batas lebar: pada monitor lebar, memotong wadah di tengah menyisakan
@@ -338,7 +442,7 @@
 }
 
 .nav-section {
-  font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
+  font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
   color: var(--mist-400); font-weight: 700;
   padding: 0 4px; margin-bottom: 4px;
 }
@@ -375,7 +479,7 @@
 
 .stat { display: flex; flex-direction: column; gap: 3px; }
 .stat-label {
-  font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase;
+  font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
   color: var(--mist-400); font-weight: 700;
 }
 .stat-value {
@@ -462,7 +566,7 @@
 .table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
 .table th {
   text-align: left; padding: 10px 12px;
-  font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
+  font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
   color: var(--mist-400); font-weight: 700; white-space: nowrap;
   border-bottom: 1px solid rgb(255 255 255 / 0.1);
 }
@@ -527,7 +631,15 @@
   .nav-item { width: auto; }
   .sidebar-foot { margin-top: 0; padding-top: 0; flex-direction: row; align-items: center; gap: var(--space-3); }
   .nav-section { display: none; }
-  .app-main { padding: var(--space-4) var(--space-2) var(--space-6); }
+  /*
+   * `max-width` wajib, bukan hiasan. Begitu wadahnya berdiri tegak, lebar isi
+   * berpindah ke sumbu silang — dan `min-width: 0` tidak berlaku di sana.
+   * Tabel riwayat inspeksi yang selebar 574 px lalu menarik seluruh kolom ikut
+   * melebar, sehingga yang tergeser mendatar bukan tabelnya melainkan seisi
+   * halaman. Dengan lebar dikunci, luberan kembali ke pembungkus tabel yang
+   * memang sudah bergulir sendiri.
+   */
+  .app-main { padding: var(--space-4) var(--space-2) var(--space-6); max-width: 100%; }
 }
 
 @media (max-width: 640px) {

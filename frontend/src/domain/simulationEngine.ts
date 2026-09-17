@@ -1,6 +1,6 @@
 import type { Bridge, Reading, Telemetry } from '../lib/types';
 import { SENSORS, SENSOR_BY_ID, statusOf } from './sensors';
-import { ONSET_RATE, SCENARIOS } from './scenarios';
+import { DEFAULT_SCENARIO, ONSET_RATE, SCENARIOS } from './scenarios';
 import { assess } from './risk';
 
 /**
@@ -64,7 +64,7 @@ export class LocalSimulation {
   private degradation = 0;
   private environmental: number;
 
-  scenario = 'idle';
+  scenario = DEFAULT_SCENARIO;
   paused = false;
   packets = 0;
 
