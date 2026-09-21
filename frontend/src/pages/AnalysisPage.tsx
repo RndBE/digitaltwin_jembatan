@@ -1,9 +1,11 @@
-import { useState } from 'react';
-import type { Bridge, Telemetry } from '../lib/types';
+import { useEffect, useState } from 'react';
+import type { Bridge, DataSource, Telemetry } from '../lib/types';
 import type { Series } from '../hooks/useTelemetry';
 import { SENSORS, SENSOR_BY_ID } from '../domain/sensors';
 import { ThresholdChart } from '../components/Charts';
 import { PageHeader, StatusTag } from '../components/Ui';
+import { RANGES, muatRiwayat, ringkas, type HistoryResult } from '../domain/history';
+import { stempelBerkas, unduhCsv, waktuBerkas, type BarisCsv } from '../lib/export';
 import {
   dossierFor,
   inspeksiTerakhir,
@@ -25,44 +27,225 @@ export interface AnalysisPageProps {
   bridge: Bridge;
   telemetry: Telemetry | null;
   series: Record<string, Series>;
+  /** Sumber data yang sedang dipakai; menentukan dari mana riwayat diambil. */
+  source: DataSource;
+}
+
+/** Tanggal pendek beserta jam, untuk menyebut ujung rentang. */
+function saat(ms: number, denganJam: boolean): string {
+  const d = new Date(ms);
+  const tanggal = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+  if (!denganJam) return tanggal;
+  return `${tanggal} ${d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }).replace('.', ':')}`;
 }
 
 /**
  * Analisa: deret waktu tiap kanal terhadap ambangnya.
  *
- * Sumbu tegak tiap bagan selalu memuat ambang kritis, sehingga tinggi garis
- * dapat dibandingkan antar kanal tanpa harus membaca angkanya satu per satu.
+ * Dua cara membaca kanal yang sama, dan keduanya diperlukan:
  *
- * Tiap kanal juga menyebut alat yang mengukurnya — nomor unit, model, dan sisa
- * baterainya diambil dari inventaris sensor pada berkas aset. Sebuah garis yang
- * bergerak aneh bisa berarti strukturnya berubah, bisa juga berarti alatnya yang
- * mulai habis daya, dan pembaca tidak dapat memisahkan keduanya kalau
- * keterangan alatnya disimpan di halaman lain.
+ *   **Langsung** — penyangga pemantauan, beberapa menit terakhir, tiap titik
+ *   rerata satu menit. Menjawab "sedang bagaimana".
+ *
+ *   **Rentang** — riwayat tersimpan, sampai sembilan puluh hari ke belakang,
+ *   diringkas per keranjang. Menjawab "sepanjang bulan ini bagaimana" — dan
+ *   itulah pertanyaan yang dipakai menyusun anggaran, bukan yang pertama.
+ *
+ * Pada tampilan rentang yang digambar **nilai tertinggi tiap keranjang**,
+ * bukan reratanya. Satu truk berlebih yang lewat pukul dua pagi mengangkat
+ * regangan selama tiga puluh detik; pada keranjang enam jam reratanya nyaris
+ * tidak bergerak, sementara kejadian itu justru satu-satunya yang penting di
+ * sepanjang hari itu. Rerata dan nilai terendahnya tetap disebut di bawah
+ * bagan, jadi tidak ada yang hilang — yang berubah hanya angka mana yang
+ * mendapat garis.
  */
-export function AnalysisPage({ bridge, telemetry, series }: AnalysisPageProps) {
+export function AnalysisPage({ bridge, telemetry, series, source }: AnalysisPageProps) {
   const [showBaseline, setShowBaseline] = useState(true);
+  const [rangeKey, setRangeKey] = useState<string>('live');
+  const [riwayat, setRiwayat] = useState<HistoryResult | null>(null);
+  const [memuat, setMemuat] = useState(false);
+
   const dossier = dossierFor(bridge.id);
   const inspection = dossier ? inspeksiTerakhir(dossier) : null;
+  const opsi = RANGES.find((r) => r.key === rangeKey) ?? null;
+
+  /*
+   * Riwayat dimuat sekali tiap pilihan rentang, bukan tiap cuplikan telemetri.
+   *
+   * Cuplikan datang tiap 200 ms saat ada yang bergerak; memuat ulang tiga
+   * puluh hari data pada laju itu akan membakar jaringan untuk menggeser
+   * grafik satu piksel. Ujung kanannya dipaku pada saat pilihan dibuat, dan
+   * tombol Muat ulang yang memajukannya.
+   */
+  const [tarikKe, setTarikKe] = useState(0);
+  useEffect(() => {
+    if (!opsi) {
+      setRiwayat(null);
+      return;
+    }
+    let dibatalkan = false;
+    const to = Date.now();
+    setMemuat(true);
+    muatRiwayat({
+      bridgeId: bridge.id,
+      from: to - opsi.spanMs,
+      to,
+      bucketMs: opsi.bucketMs,
+      source,
+    })
+      .then((hasil) => {
+        if (!dibatalkan) setRiwayat(hasil);
+      })
+      .finally(() => {
+        if (!dibatalkan) setMemuat(false);
+      });
+    return () => {
+      dibatalkan = true;
+    };
+  }, [opsi, bridge.id, source, tarikKe]);
 
   if (!telemetry) return <p className="text-muted">Menyiapkan data…</p>;
+
+  /** Unduhan mengikuti apa yang sedang tampil, bukan seluruh yang tersimpan. */
+  const unduh = () => {
+    const baris: BarisCsv[] = [];
+    if (opsi && riwayat) {
+      const kepala: BarisCsv = ['Waktu'];
+      riwayat.series.forEach((s) => {
+        kepala.push(`${s.name} min (${s.unit})`, `${s.name} rata-rata (${s.unit})`, `${s.name} maks (${s.unit})`);
+      });
+      baris.push(kepala);
+      const waktu = riwayat.series[0]?.points.map((p) => p.t) ?? [];
+      waktu.forEach((t, i) => {
+        const row: BarisCsv = [waktuBerkas(t)];
+        riwayat.series.forEach((s) => {
+          const p = s.points[i];
+          row.push(p?.min ?? null, p?.avg ?? null, p?.max ?? null);
+        });
+        baris.push(row);
+      });
+    } else {
+      const kepala: BarisCsv = ['Waktu'];
+      SENSORS.forEach((spec) => kepala.push(`${spec.name} (${spec.unit})`));
+      baris.push(kepala);
+      const acuan = series[SENSORS[0].id];
+      (acuan?.times ?? []).forEach((t, i) => {
+        const row: BarisCsv = [waktuBerkas(t)];
+        SENSORS.forEach((spec) => row.push(series[spec.id]?.values[i] ?? null));
+        baris.push(row);
+      });
+    }
+    unduhCsv(`riwayat-${bridge.id}-${opsi ? opsi.key : 'langsung'}-${stempelBerkas()}`, baris);
+  };
 
   return (
     <div className="screen">
       <PageHeader
         kicker="Kajian"
         title="Analisa deret waktu"
-        lede="Setiap kanal ditampilkan terhadap dua ambangnya: garis kuning adalah batas waspada, garis merah batas kritis. Garis putus-putus abu adalah garis dasar — perilaku kanal yang sama pada kondisi layan normal, sebagai pembanding. Tiap titik pada bagan adalah rerata satu menit, bukan cuplikan sesaat."
+        lede="Setiap kanal ditampilkan terhadap dua ambangnya: garis kuning adalah batas waspada, garis merah batas kritis. Pilih rentang di bawah — pemantauan langsung membaca penyangga beberapa menit terakhir, rentang yang lebih panjang membaca riwayat tersimpan."
         actions={
-          <label className="row" style={{ gap: 6, fontSize: 13 }}>
-            <input
-              type="checkbox"
-              checked={showBaseline}
-              onChange={(event) => setShowBaseline(event.target.checked)}
-            />
-            Tampilkan garis dasar
-          </label>
+          <>
+            <label className="row" style={{ gap: 6, fontSize: 13 }}>
+              <input
+                type="checkbox"
+                checked={showBaseline}
+                disabled={Boolean(opsi)}
+                onChange={(event) => setShowBaseline(event.target.checked)}
+              />
+              Tampilkan garis dasar
+            </label>
+            <button type="button" className="btn btn-sm" onClick={unduh}>
+              Unduh CSV
+            </button>
+          </>
         }
       />
+
+      {/*
+        * Pemilih rentang.
+        *
+        * "Langsung" berdiri terpisah dari yang lain karena ia bukan rentang
+        * yang lebih pendek, melainkan sumber yang berbeda: penyangga di
+        * peramban, bukan simpanan di server.
+        */}
+      <div
+        className="glass glass--chip card"
+        style={{
+          padding: 'var(--space-2) var(--space-3)',
+          marginBottom: 'var(--space-4)',
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 'var(--space-3)',
+          flexWrap: 'wrap',
+        }}
+      >
+        <span className="card-kicker">Rentang</span>
+        <div className="seg" role="group" aria-label="Rentang waktu">
+          <button
+            type="button"
+            className="seg-opt"
+            aria-pressed={!opsi}
+            onClick={() => setRangeKey('live')}
+          >
+            Langsung
+          </button>
+          {RANGES.map((r) => (
+            <button
+              key={r.key}
+              type="button"
+              className="seg-opt"
+              aria-pressed={rangeKey === r.key}
+              onClick={() => setRangeKey(r.key)}
+            >
+              {r.label}
+            </button>
+          ))}
+        </div>
+
+        <span className="text-muted" style={{ fontSize: 11.5 }}>
+          {opsi ? (
+            riwayat ? (
+              <>
+                {saat(riwayat.from, opsi.spanMs <= 86_400_000)} –{' '}
+                {saat(riwayat.to, opsi.spanMs <= 86_400_000)} · {opsi.note} ·{' '}
+                {riwayat.series[0]?.points.length ?? 0} titik
+              </>
+            ) : (
+              'memuat…'
+            )
+          ) : (
+            <>
+              {series[SENSORS[0].id]?.values.length ?? 0} nilai terakhir · rerata 1 menit tiap titik
+            </>
+          )}
+        </span>
+
+        {opsi ? (
+          <span
+            className={riwayat?.source === 'api' ? 'tag tag-normal' : 'tag tag-neutral'}
+            title={
+              riwayat?.source === 'api'
+                ? 'Dibaca dari cuplikan yang tersimpan di server'
+                : 'Server tidak menyimpan rentang ini; angkanya dibangkitkan model peraga di peramban'
+            }
+          >
+            {riwayat?.source === 'api' ? 'tersimpan di server' : 'model peraga'}
+          </span>
+        ) : null}
+
+        {opsi ? (
+          <button
+            type="button"
+            className="btn btn-sm"
+            style={{ marginLeft: 'auto' }}
+            onClick={() => setTarikKe((n) => n + 1)}
+            disabled={memuat}
+          >
+            {memuat ? 'Memuat…' : 'Muat ulang'}
+          </button>
+        ) : null}
+      </div>
 
       {dossier && inspection ? (
         <div
@@ -98,17 +281,20 @@ export function AnalysisPage({ bridge, telemetry, series }: AnalysisPageProps) {
       >
         {SENSORS.map((spec) => {
           const reading = telemetry.readings.find((r) => r.id === spec.id);
+          if (!reading) return null;
+
+          const deret = riwayat?.series.find((s) => s.sensorId === spec.id);
           const entry = series[spec.id];
-          if (!reading || !entry) return null;
-          const stats = summarise(entry.values);
+          if (opsi ? !deret : !entry) return null;
+
+          // Pada tampilan rentang garisnya nilai tertinggi tiap keranjang;
+          // pada pemantauan langsung tiap titik memang sudah satu nilai.
+          const nilai = deret ? deret.points.map((p) => p.max) : entry.values;
+          const stats = deret ? ringkas(deret) : { ...summarise(entry.values), lewatWaspada: 0, lewatKritis: 0 };
           const unit = sensorUnitFor(bridge.id, spec.name);
 
           return (
-            <div
-              key={spec.id}
-              className="glass card"
-              style={{ padding: 'var(--space-4)' }}
-            >
+            <div key={spec.id} className="glass card" style={{ padding: 'var(--space-4)' }}>
               <div
                 style={{
                   display: 'flex',
@@ -158,15 +344,20 @@ export function AnalysisPage({ bridge, telemetry, series }: AnalysisPageProps) {
 
               <ThresholdChart
                 sensor={spec}
-                values={entry.values}
-                baseline={entry.baseline}
+                values={nilai}
+                baseline={deret ? undefined : entry.baseline}
                 status={reading.status}
-                showBaseline={showBaseline}
+                showBaseline={showBaseline && !deret}
               />
 
               <div
                 className="text-muted tabular"
-                style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginTop: 6 }}
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  fontSize: 11,
+                  marginTop: 6,
+                }}
               >
                 <span>min {stats.min.toFixed(spec.dec)}</span>
                 <span>rata-rata {stats.avg.toFixed(spec.dec)}</span>
@@ -175,17 +366,54 @@ export function AnalysisPage({ bridge, telemetry, series }: AnalysisPageProps) {
                   ambang {spec.warn} / {spec.crit} {spec.unit}
                 </span>
               </div>
+
+              {/*
+                * Berapa lama kanal ini berada di atas ambangnya sepanjang
+                * rentang — bukan hanya seberapa tinggi puncaknya. Satu
+                * keranjang yang menyentuh ambang waspada berbeda artinya
+                * dengan dua belas keranjang berturut-turut yang menyentuhnya.
+                */}
+              {deret && (stats.lewatWaspada > 0 || stats.lewatKritis > 0) ? (
+                <div className="row" style={{ gap: 6, marginTop: 6, fontSize: 11 }}>
+                  {stats.lewatKritis > 0 ? (
+                    <span className="tag tag-bahaya">{stats.lewatKritis} keranjang lewat kritis</span>
+                  ) : null}
+                  {stats.lewatWaspada > 0 ? (
+                    <span className="tag tag-waspada">
+                      {stats.lewatWaspada} keranjang lewat waspada
+                    </span>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
           );
         })}
       </div>
 
-      <p className="text-muted" style={{ fontSize: 12, marginTop: 'var(--space-6)', maxWidth: '70ch' }}>
-        Jendela riwayat menyimpan {series[SENSORS[0].id]?.values.length ?? 0} nilai terakhir per kanal,
-        masing-masing rerata satu menit.
-        Nilai dibangkitkan mesin simulasi, bukan pengukuran lapangan; ambang yang dipakai adalah ambang
-        pada katalog sensor ({SENSOR_BY_ID.strain.warn} µm/m waspada, {SENSOR_BY_ID.strain.crit} µm/m kritis
-        untuk regangan).
+      <p
+        className="text-muted"
+        style={{ fontSize: 12, marginTop: 'var(--space-6)', maxWidth: '78ch', lineHeight: 1.6 }}
+      >
+        {opsi ? (
+          <>
+            Tiap titik adalah <strong style={{ fontWeight: 600 }}>nilai tertinggi</strong> di dalam
+            keranjang selebar {opsi.note.replace('keranjang ', '')}; rerata dan nilai terendahnya
+            disebut di bawah tiap bagan. Garis dasar tidak digambar pada tampilan rentang — ia
+            perilaku kanal pada kondisi layan normal, dan pada skala hari yang dibandingkan bukan
+            lagi cuplikan melainkan pola.{' '}
+            {riwayat?.source === 'api'
+              ? 'Angkanya dibaca dari cuplikan yang tersimpan di server, satu cuplikan tiap menit.'
+              : 'Server belum menyimpan rentang ini, jadi angkanya dibangkitkan model peraga di peramban: pola harian dan mingguan yang ditentukan oleh jamnya, bukan bilangan acak — rentang yang sama selalu menghasilkan grafik yang sama.'}
+          </>
+        ) : (
+          <>
+            Jendela pemantauan menyimpan {series[SENSORS[0].id]?.values.length ?? 0} nilai terakhir
+            per kanal, masing-masing rerata satu menit, dan hilang saat halaman disegarkan. Untuk
+            yang lebih panjang daripada itu, pilih salah satu rentang di atas. Ambang yang dipakai
+            adalah ambang pada katalog sensor ({SENSOR_BY_ID.strain.warn} µm/m waspada,{' '}
+            {SENSOR_BY_ID.strain.crit} µm/m kritis untuk regangan).
+          </>
+        )}
       </p>
     </div>
   );

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { SENSOR_SPOTS } from '../domain/sensors';
+import { SAG_DYNAMICS } from '../domain/deflectionScale';
 
 /**
  * Kembaran digital jembatan rangka baja yang dibangkitkan secara prosedural.
@@ -29,7 +30,7 @@ export const PART_GROUPS: PartGroup[] = [
   { key: 'bawah', name: 'Rangka bawah', test: /^bc/ },
   { key: 'diagonal', name: 'Diagonal', test: /^d\d/ },
   { key: 'vertikal', name: 'Vertikal', test: /^v-?\d/ },
-  { key: 'bracing', name: 'Bracing & gelagar', test: /^(tb|lb|fb)/ },
+  { key: 'bracing', name: 'Gelagar melintang', test: /^fb/ },
   { key: 'tumpuan', name: 'Tumpuan', test: /^bear/ },
   { key: 'sensor', name: 'Titik sensor', test: /^sensor/ },
 ];
@@ -55,6 +56,24 @@ export interface SceneState {
   stressRatio: number;
   /** Rasio kemiringan tumpuan, memiringkan seluruh lantai. */
   tiltRatio: number;
+  /**
+   * Lendutan tengah bentang dalam satuan adegan, sudah dikalikan pengalinya.
+   *
+   * Yang dikirim ke sini bukan milimeter melainkan hasil akhirnya, karena
+   * pengali itu keputusan tampilan, bukan keputusan model: halaman yang
+   * menentukan seberapa dilebih-lebihkan, dan halaman itu pula yang wajib
+   * menuliskan pengalinya di layar.
+   */
+  sagUnits: number;
+  /**
+   * Pita ambang kanal lendutan saat ini.
+   *
+   * Bukan dipakai untuk besarnya — besarnya sudah masak di `sagUnits` — tetapi
+   * untuk **peredamannya**. Rasio redaman yang turun adalah penanda kerusakan
+   * yang sungguhan, jadi lantai yang mengayun lebih lama saat kritis
+   * menyampaikan sesuatu yang benar, bukan sekadar menarik perhatian.
+   */
+  sagStatus: MarkerStatus;
   /** Tag elemen yang sedang rusak menurut skenario aktif. */
   damaged: string[];
   cars: number;
@@ -137,6 +156,8 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
   const state: SceneState = {
     stressRatio: 0,
     tiltRatio: 0,
+    sagUnits: 0,
+    sagStatus: 'AMAN',
     damaged: [],
     cars: 0,
     trucks: 0,
@@ -145,7 +166,10 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
     windRatio: 0,
     floodRatio: 0,
     paused: false,
-    autoRotate: true,
+    // Mati sejak bingkai pertama. Halaman menyetelnya lewat `setState` tepat
+    // setelah adegan siap, dan nilai awal `true` akan membuat model bergeser
+    // sekejap sebelum setelan itu sampai.
+    autoRotate: false,
     pickedSensor: null,
     editSpots: false,
   };
@@ -175,11 +199,13 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
    * dibuat sebagai gradien satu piksel lebar lalu dipetakan ekuirektangular:
    * cukup untuk memberi pantulan lingkungan pada baja tanpa memuat berkas HDR.
    */
+  const SKY_W = 1024;
+  const SKY_H = 512;
   const skyCanvas = document.createElement('canvas');
-  skyCanvas.width = 16;
-  skyCanvas.height = 256;
+  skyCanvas.width = SKY_W;
+  skyCanvas.height = SKY_H;
   const skyCtx = skyCanvas.getContext('2d')!;
-  const gradient = skyCtx.createLinearGradient(0, 0, 0, 256);
+  const gradient = skyCtx.createLinearGradient(0, 0, 0, SKY_H);
   gradient.addColorStop(0, '#2f6fb5');
   gradient.addColorStop(0.34, '#79aede');
   gradient.addColorStop(0.47, '#bcd8ee');
@@ -187,20 +213,78 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
   gradient.addColorStop(0.58, '#93a58c');
   gradient.addColorStop(1, '#5f6c57');
   skyCtx.fillStyle = gradient;
-  skyCtx.fillRect(0, 0, 16, 256);
+  skyCtx.fillRect(0, 0, SKY_W, SKY_H);
+
+  /*
+   * Cakram matahari dan jalur awan.
+   *
+   * Langit gradien murni memantulkan baja sebagai satu bidang rata: permukaan
+   * yang melengkung tidak punya apa pun untuk dipantulkan, sehingga bajanya
+   * terbaca sebagai plastik kelabu. Yang membuat logam terbaca sebagai logam
+   * adalah pantulan yang ikut berubah ketika arah permukaannya berubah — dan
+   * untuk itu langitnya harus punya isi: terang di sekitar matahari, bergumpal
+   * di jalur awan, sepi di sisi berlawanan.
+   */
+  const sunGlow = skyCtx.createRadialGradient(272, 116, 6, 272, 116, 230);
+  sunGlow.addColorStop(0, 'rgba(255,253,240,0.95)');
+  sunGlow.addColorStop(0.16, 'rgba(255,246,216,0.42)');
+  sunGlow.addColorStop(1, 'rgba(255,246,216,0)');
+  skyCtx.fillStyle = sunGlow;
+  skyCtx.fillRect(0, 0, SKY_W, Math.round(SKY_H * 0.56));
+  for (let i = 0; i < 110; i++) {
+    const cx = Math.random() * SKY_W;
+    const cy = 30 + Math.random() * 190;
+    const rx = 26 + Math.random() * 96;
+    const ry = rx * (0.2 + Math.random() * 0.22);
+    const alpha = 0.08 + Math.random() * 0.2;
+    const cloud = skyCtx.createRadialGradient(cx, cy, 0, cx, cy, rx);
+    cloud.addColorStop(0, `rgba(255,255,255,${alpha.toFixed(3)})`);
+    cloud.addColorStop(1, 'rgba(255,255,255,0)');
+    skyCtx.save();
+    skyCtx.translate(cx, cy);
+    skyCtx.scale(1, ry / rx);
+    skyCtx.translate(-cx, -cy);
+    skyCtx.fillStyle = cloud;
+    skyCtx.beginPath();
+    skyCtx.arc(cx, cy, rx, 0, Math.PI * 2);
+    skyCtx.fill();
+    skyCtx.restore();
+  }
+
   const skyTexture = new THREE.CanvasTexture(skyCanvas);
   skyTexture.mapping = THREE.EquirectangularReflectionMapping;
   skyTexture.colorSpace = THREE.SRGBColorSpace;
   scene.background = skyTexture;
-  scene.environment = skyTexture;
-  scene.fog = new THREE.Fog(0xc3d8ea, 45, 175);
+
+  /*
+   * Peta lingkungan disaring lebih dulu.
+   *
+   * Tekstur langit yang dipasang mentah sebagai `scene.environment` dipantulkan
+   * sama tajamnya oleh semua permukaan: baja yang kasar memantulkan awan
+   * setajam kaca, padahal justru kaburnya pantulan itulah yang membedakan
+   * keduanya. PMREM menyiapkan satu tangga pantulan dari tajam sampai kabur,
+   * dan three.js memilih anak tangga yang sesuai dengan kekasaran tiap bahan.
+   */
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  const environmentTarget = pmrem.fromEquirectangular(skyTexture);
+  scene.environment = environmentTarget.texture;
+  pmrem.dispose();
+  /*
+   * Kabut jarak, dan jangkauannya menentukan seberapa luas tanah harus dibuat.
+   *
+   * Apa pun yang berujung di dalam jangkauan ini terbaca sebagai tepi lembar
+   * kertas, bukan sebagai kaki langit. Karena itu tanah dan sungai dibentang
+   * sampai ±120 satuan — di luar `far`, jadi ujungnya larut sebelum sempat
+   * terlihat.
+   */
+  scene.fog = new THREE.Fog(0xc3d8ea, 50, 165);
 
   // Matahari tinggi: bayangannya pendek dan tegas, dan seluruh permukaan
   // mendatar — lantai jalan, oprit, air — ikut terang.
   const sun = new THREE.DirectionalLight(0xfff3df, 3.1);
   sun.position.set(12, 16, 8);
   sun.castShadow = true;
-  sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.mapSize.set(3072, 3072);
   sun.shadow.bias = -0.0006;
   sun.shadow.camera.far = 60;
   Object.assign(sun.shadow.camera, { left: -16, right: 16, top: 16, bottom: -16 });
@@ -238,19 +322,235 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
   const W = 2.2; // setengah lebar antar rangka
   const members: THREE.Mesh[] = [];
 
+  /*
+   * Lendutan.
+   *
+   * Lendutan sebenarnya 8 mm pada bentang 120 m adalah sepersepuluh ribu
+   * panjangnya — tidak akan pernah kasat mata pada model seutuhnya. Karena itu
+   * ia digambar dengan pengali, dan pengali itu wajib tertulis di layar:
+   * lengkungan yang dibesarkan tanpa angka pengalinya membuat orang membaca
+   * skala kerusakan yang sama sekali salah.
+   *
+   * Bentuk kurvanya bukan karangan. (1 − u²)(5 − u²)/5 adalah bentuk lendutan
+   * balok di atas dua tumpuan sederhana dengan beban merata, dinormalkan
+   * terhadap lendutan tengah bentangnya: bernilai 1 di tengah dan 0 tepat di
+   * kedua tumpuan, dengan puncak yang datar seperti lendutan sungguhan.
+   */
+  const sagShape = (x: number): number => {
+    const u = Math.min(1, Math.abs(x) / (L / 2));
+    return ((1 - u * u) * (5 - u * u)) / 5;
+  };
+
+  /**
+   * Garis pengaruh lendutan: berapa bagian sebuah titik pada absis `x` turun
+   * akibat satu beban titik yang sedang berada di absis `a`.
+   *
+   * Rumus baku balok di atas dua tumpuan sederhana, dinormalkan sehingga
+   * bernilai 1 ketika beban dan titik tinjau sama-sama di tengah bentang.
+   * Inilah yang membuat cekungannya berjalan mengikuti truk, bukan sekadar
+   * naik-turun di tempat: beban di seperempat bentang melendutkan bentang di
+   * seperempat itu, bukan di tengahnya.
+   */
+  const influence = (x: number, a: number): number => {
+    const s = x + L / 2;
+    const p = a + L / 2;
+    if (p <= 0 || p >= L) return 0; // beban belum atau sudah lewat bentang
+    if (s <= 0 || s >= L) return 0;
+    // Yang di kiri beban memakai rumusnya apa adanya; yang di kanan memakai
+    // rumus yang sama dari ujung seberang — baloknya simetris.
+    const [near, load] = s <= p ? [s, p] : [L - s, L - p];
+    const b = L - load;
+    return (b * near * (L * L - b * b - near * near) * 48) / (6 * L * L * L * L);
+  };
+
+  /**
+   * Berapa bagian lendutan yang dibawa kendaraan yang sedang melintas.
+   *
+   * Sisanya dibawa berat sendiri dan beban tetap, yang bentuknya tidak
+   * berubah. Pembagian ini yang membuat lantai "bernapas": saat bentang kosong
+   * ia naik ke bagian tetapnya saja, saat konvoi berada di tengah ia turun
+   * penuh. Angkanya perkiraan peraga, bukan hasil hitungan struktur.
+   */
+  const LIVE_SHARE = 0.5;
+
+  /**
+   * Seberapa jauh kerusakan mencondongkan bentuk lendutan ke arahnya.
+   *
+   * Batang yang retak atau putus kehilangan sebagian kekakuannya, dan bentang
+   * melendut paling dalam di dekat batang itu — bukan lagi tepat di tengah.
+   * Itulah tanda yang dicari orang pada model: bukan "jembatannya melendut",
+   * melainkan "melendutnya di sebelah sini".
+   *
+   * Bentuk condongnya memakai garis pengaruh yang sama dengan beban bergerak,
+   * dinormalkan pada tengah bentang supaya angka yang terbaca sensor di tengah
+   * tetap angka yang tergambar di tengah — yang berubah bentuknya, bukan
+   * besarnya. Porsinya perkiraan peraga, bukan hasil hitungan kekakuan.
+   */
+  const DAMAGE_SKEW = 0.6;
+
+  /**
+   * Medan lendutan dicuplik pada titik-titik tetap sepanjang bentang, lalu
+   * dibaca dengan sisipan lurus.
+   *
+   * Tanpa ini tiap simpul geometri — dan jumlahnya ribuan — harus menjumlahkan
+   * sendiri sumbangan enam belas kendaraan tiap bingkai. Dengan tabel, jumlah
+   * itu dikerjakan sembilan puluh tujuh kali saja, dan sisanya tinggal
+   * menyisip. Sisipan juga memastikan dua batang yang bertemu di satu buhul
+   * membaca angka yang sama persis, jadi rangkanya tidak terbuka di sana.
+   */
+  const FIELD_SAMPLES = 97;
+  const fieldY = new Float32Array(FIELD_SAMPLES);
+  const fieldNext = new Float32Array(FIELD_SAMPLES);
+  const liveRaw = new Float32Array(FIELD_SAMPLES);
+
+  /**
+   * Panjang lintasan kendaraan **di luar bentang**, kedua oprit digabung.
+   *
+   * Bukan panjang oprit. Oprit dibuat 48 satuan tiap sisi supaya ujungnya
+   * larut dalam kabut, tetapi kendaraan hanya berputar 18 satuan di luar
+   * bentang tiap sisi: semakin panjang lintasannya, semakin sedikit kendaraan
+   * yang berada di atas jembatan pada saat yang sama, dan jembatan yang
+   * kosong tidak menunjukkan apa pun tentang lendutan.
+   *
+   * Angka ini wajib sama dengan `2 × (TRACK_HALF − L/2)`. Ia dipakai
+   * menghitung berapa bagian armada yang **wajar** berada di atas bentang;
+   * kalau meleset, lendutan beban bergeraknya ikut meleset.
+   */
+  const APPROACH_UNITS = 36;
+
+  /** Lendutan tengah bentang yang sedang tergambar, dalam satuan adegan. */
+  let sagNow = 0;
+  /** Lajunya, disimpan antar bingkai karena peredamannya berupa pegas. */
+  let sagVel = 0;
+
+  /**
+   * Langkah integrasi pegas, tetap dan tidak mengikuti laju bingkai.
+   *
+   * Satu langkah sebesar `dt` membuat lintasan pegas berbeda tiap kali laju
+   * bingkainya berubah, dan laju bingkai yang naik-turun sedikit saja sudah
+   * cukup membuat geraknya terbaca bergetar. Dengan langkah tetap, lintasannya
+   * sama persis pada 30 bingkai per detik maupun pada 144.
+   */
+  const SAG_SUBSTEP = 1 / 240;
+
+  const sagAt = (x: number): number => {
+    const u = (x + L / 2) / L;
+    if (u <= 0) return fieldY[0];
+    if (u >= 1) return fieldY[FIELD_SAMPLES - 1];
+    const t = u * (FIELD_SAMPLES - 1);
+    const i = Math.floor(t);
+    const f = t - i;
+    return fieldY[i] * (1 - f) + fieldY[i + 1] * f;
+  };
+
+  /*
+   * Penampang batang.
+   *
+   * Batang rangka jembatan baja bukan batang pejal berpenampang bujur sangkar.
+   * Yang dipakai profil bersayap — dua sayap dihubungkan satu badan — karena
+   * bahan di tepi penampang jauh lebih berguna menahan lentur daripada bahan
+   * yang menumpuk di sumbunya. Bentuk itu pula yang membuat rangka terbaca
+   * sebagai rangka baja dari kejauhan: ada bayangan di dalam profilnya, bukan
+   * sekadar batang yang rata dari segala arah.
+   *
+   * Batang ikatan angin yang kecil tetap dibuat bulat, karena memang begitu
+   * bentuknya di lapangan.
+   *
+   * Geometri dibuat sekali untuk tiap pasang ukuran lalu dipakai ulang: satu
+   * bentang berisi ratusan batang, tetapi ukurannya hanya belasan.
+   */
+  const sectionCache = new Map<string, THREE.BufferGeometry>();
+
+  const beamGeometry = (width: number, length: number): THREE.BufferGeometry => {
+    const key = `I${width.toFixed(3)}x${length.toFixed(3)}`;
+    const cached = sectionCache.get(key);
+    if (cached) return cached;
+
+    const half = width / 2;
+    const web = width * 0.26; // tebal badan
+    const flange = width * 0.24; // tebal sayap
+    const shape = new THREE.Shape();
+    shape.moveTo(-half, -half);
+    shape.lineTo(half, -half);
+    shape.lineTo(half, -half + flange);
+    shape.lineTo(web / 2, -half + flange);
+    shape.lineTo(web / 2, half - flange);
+    shape.lineTo(half, half - flange);
+    shape.lineTo(half, half);
+    shape.lineTo(-half, half);
+    shape.lineTo(-half, half - flange);
+    shape.lineTo(-web / 2, half - flange);
+    shape.lineTo(-web / 2, -half + flange);
+    shape.lineTo(-half, -half + flange);
+    shape.closePath();
+
+    // Tepi ditumpulkan sedikit. Sudut yang benar-benar tajam menangkap cahaya
+    // sebagai garis putih sempurna, dan garis seperti itu tidak ada pada baja
+    // yang sudah dicat.
+    const bevel = Math.min(width * 0.09, 0.01);
+    const geometry = new THREE.ExtrudeGeometry(shape, {
+      depth: Math.max(0.001, length - bevel * 2),
+      bevelEnabled: true,
+      bevelThickness: bevel,
+      bevelSize: bevel,
+      bevelSegments: 1,
+      steps: 1,
+    });
+    // Diekstrusi sepanjang sumbu z, sedangkan batang dipasang sepanjang sumbu y.
+    geometry.rotateX(-Math.PI / 2);
+    geometry.translate(0, -length / 2 + bevel, 0);
+    geometry.computeVertexNormals();
+    sectionCache.set(key, geometry);
+    return geometry;
+  };
+
+  const rodGeometry = (width: number, length: number): THREE.BufferGeometry => {
+    const key = `O${width.toFixed(3)}x${length.toFixed(3)}`;
+    const cached = sectionCache.get(key);
+    if (cached) return cached;
+    const geometry = new THREE.CylinderGeometry(width / 2, width / 2, length, 10, 1);
+    sectionCache.set(key, geometry);
+    return geometry;
+  };
+
   /** Menambahkan satu batang antara dua titik; panjang dan arahnya dihitung dari vektornya. */
   const addMember = (a: THREE.Vector3, b: THREE.Vector3, tag: string, radius = 0.075) => {
     const direction = new THREE.Vector3().subVectors(b, a);
     const length = direction.length();
-    const mesh = new THREE.Mesh(new THREE.BoxGeometry(radius, length, radius), steel.clone());
+    const geometry =
+      radius >= 0.07 ? beamGeometry(radius * 1.5, length) : rodGeometry(radius * 0.9, length);
+    const mesh = new THREE.Mesh(geometry, steel.clone());
     mesh.position.copy(a).add(b).multiplyScalar(0.5);
     mesh.quaternion.setFromUnitVectors(V(0, 1, 0), direction.normalize());
     mesh.castShadow = true;
     mesh.receiveShadow = true;
     mesh.userData.tag = tag;
+    /*
+     * Kedua ujungnya disimpan supaya batang dapat dipasang ulang saat
+     * jembatannya melendut. Menggeser turun batang sebagai satu benda utuh
+     * tidak cukup: tiap batang akan turun sebanyak lendutan di titik
+     * tengahnya, sementara tetangganya turun sebanyak lendutan di titik
+     * tengahnya sendiri, dan rangka yang seharusnya menyatu terbuka di tiap
+     * buhul. Dipasang ulang dari kedua ujungnya, buhulnya justru menjadi
+     * tempat rangka berpatah — dan memang begitu rangka sungguhan melendut.
+     */
+    mesh.userData.member = true;
+    mesh.userData.a = a.clone();
+    mesh.userData.b = b.clone();
+    mesh.userData.len = length;
     // Batang tepi (chord) memikul gaya aksial terbesar, jadi diwarnai lebih kuat
     // saat regangan naik daripada batang sekunder.
     mesh.userData.chord = /^(bc|d)/.test(tag);
+    /*
+     * Tiap batang diberi selisih warna kecil.
+     *
+     * Rangka yang seluruh batangnya berwarna persis sama terbaca sebagai
+     * gambar komputer, bukan sebagai baja: cat di lapangan tidak pernah rata
+     * antar batang — ada yang lebih lama kena matahari, ada yang baru dicat
+     * ulang, ada yang tertutup jelaga. Selisihnya dibuat kecil saja supaya
+     * warna status tetap terbaca sebagai warna status.
+     */
+    mesh.userData.tint = steelColor.clone().offsetHSL(0, 0, (Math.random() - 0.5) * 0.07);
     bridge.add(mesh);
     members.push(mesh);
   };
@@ -272,16 +572,24 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
     addMember(V(-L / 2, 0, z), V(-L / 2, H, z), `v-1z${zi}`);
   });
 
+  /*
+   * Ikatan angin di bidang atas tidak digambar.
+   *
+   * Pada jembatan sungguhan ia ada — batang melintang dan silang yang
+   * menahan kedua rangka tetap sejajar terhadap tekanan angin. Yang tidak ada
+   * di layar adalah tempatnya: dari sudut pandang isometri bawaan, jala di
+   * bidang atas menutupi seluruh rangka di belakangnya, dan yang paling
+   * banyak dipandang orang justru rangka itu — batang tepi, diagonal, dan
+   * pelat buhulnya, yang semuanya membawa warna status. Jala yang tidak
+   * membawa keterangan apa pun tidak pantas menutupi yang membawanya.
+   *
+   * Gelagar melintang di bawah lantai tetap digambar: ia memikul lantai, dan
+   * lantai yang mengambang tanpa penopang adalah gambar yang salah, bukan
+   * gambar yang bersih.
+   */
   for (let i = 0; i <= P; i++) {
     const x = -L / 2 + i * panelLength;
-    addMember(V(x, H, -W), V(x, H, W), `tb${i}`, 0.06); // ikatan angin atas
     addMember(V(x, -0.08, -W), V(x, -0.08, W), `fb${i}`, 0.12); // gelagar melintang
-  }
-  for (let i = 0; i < P; i++) {
-    const x0 = -L / 2 + i * panelLength;
-    const x1 = x0 + panelLength;
-    addMember(V(x0, H, -W), V(x1, H, W), `lb${i}a`, 0.04);
-    addMember(V(x0, H, W), V(x1, H, -W), `lb${i}b`, 0.04);
   }
 
   // Pelat buhul di tiap titik simpul.
@@ -291,16 +599,119 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
     roughness: 0.6,
     roughnessMap: steelRough,
   });
+  /*
+   * Paku keling pada pelat buhul.
+   *
+   * Kepala paku yang berderet di tepi pelat adalah satu-satunya detail yang
+   * membuat sambungan rangka baja terbaca sebagai sambungan dan bukan sebagai
+   * dua pelat yang saling menempel. Jumlahnya ratusan, jadi dipakai satu
+   * geometri yang digambar berulang dalam sekali perintah — bukan ratusan objek
+   * yang masing-masing minta gilirannya sendiri.
+   */
+  const rivetRing = Array.from({ length: 8 }, (_, i) => {
+    const angle = (i / 8) * Math.PI * 2 + Math.PI / 8;
+    return [Math.cos(angle) * 0.108, Math.sin(angle) * 0.108] as const;
+  });
+  const rivetGeometry = new THREE.CylinderGeometry(0.015, 0.017, 0.018, 8);
+  rivetGeometry.rotateX(Math.PI / 2);
+  const rivetMaterial = new THREE.MeshStandardMaterial({
+    color: 0x767068,
+    metalness: 0.5,
+    roughness: 0.52,
+  });
+  /*
+   * Bentuk pelat buhul: segi delapan, bukan bujur sangkar.
+   *
+   * Pelat buhul sungguhan dipotong mengikuti batang yang bertemu padanya —
+   * tidak ada yang membiarkan sudut sembilan puluh derajat menonjol ke udara,
+   * karena sudut itu tidak memikul apa-apa dan hanya menambah berat. Di layar
+   * akibatnya persis sama: sudut lancip yang mencuat keluar dari siluet batang
+   * membuat sambungannya terbaca sebagai ubin yang ditempelkan, bukan sebagai
+   * pelat yang menyatukan.
+   *
+   * Tepinya ditumpulkan dengan alasan yang sama seperti pada batang: sudut
+   * yang benar-benar tajam menangkap cahaya sebagai garis putih sempurna, dan
+   * garis seperti itu tidak ada pada baja yang sudah dicat.
+   *
+   * Satu geometri untuk keempat puluh empat pelatnya. Bentuknya sama semua,
+   * dan membuat geometri baru tiap simpul hanya menambah kerja unggah ke kartu
+   * grafis tanpa menambah satu piksel pun yang berbeda.
+   */
+  const PLATE_HALF = 0.17;
+  const PLATE_CUT = 0.055;
+  const PLATE_THICK = 0.03;
+  const gussetGeometry = (() => {
+    const bevel = 0.006;
+    const shape = new THREE.Shape();
+    shape.moveTo(-PLATE_HALF + PLATE_CUT, -PLATE_HALF);
+    shape.lineTo(PLATE_HALF - PLATE_CUT, -PLATE_HALF);
+    shape.lineTo(PLATE_HALF, -PLATE_HALF + PLATE_CUT);
+    shape.lineTo(PLATE_HALF, PLATE_HALF - PLATE_CUT);
+    shape.lineTo(PLATE_HALF - PLATE_CUT, PLATE_HALF);
+    shape.lineTo(-PLATE_HALF + PLATE_CUT, PLATE_HALF);
+    shape.lineTo(-PLATE_HALF, PLATE_HALF - PLATE_CUT);
+    shape.lineTo(-PLATE_HALF, -PLATE_HALF + PLATE_CUT);
+    shape.closePath();
+
+    const depth = PLATE_THICK - bevel * 2;
+    const geometry = new THREE.ExtrudeGeometry(shape, {
+      depth,
+      bevelEnabled: true,
+      bevelThickness: bevel,
+      bevelSize: bevel,
+      bevelSegments: 1,
+      steps: 1,
+    });
+    // Diekstrusi dari z = 0 ke depan; digeser supaya tebalnya terbagi rata di
+    // kedua sisi titik pasangnya.
+    geometry.translate(0, 0, -depth / 2);
+    geometry.computeVertexNormals();
+    return geometry;
+  })();
+
+  /*
+   * Letak pelat: menempel pada muka luar batang tepi, bukan menembusnya.
+   *
+   * Batang tepi berpenampang I selebar 0,15 m, jadi muka luarnya berada 0,075 m
+   * dari bidang rangka. Pelat yang dipasang 0,07 m dari bidang itu tertanam
+   * separuh di dalam batangnya: yang tersisa di layar tinggal keempat sudutnya
+   * yang mencuat, dan dua permukaan yang nyaris sebidang saling berebut
+   * kedalaman sehingga tepinya berkedip saat kamera bergerak. Angka di bawah
+   * ini menaruh muka dalam pelat dua milimeter di luar muka batang — menempel,
+   * tanpa sebidang.
+   */
+  const CHORD_FACE = 0.075;
+  const PLATE_Z = CHORD_FACE + PLATE_THICK / 2 + 0.002;
+
+  const rivets = new THREE.InstancedMesh(
+    rivetGeometry,
+    rivetMaterial,
+    (P + 1) * 4 * rivetRing.length,
+  );
+  rivets.castShadow = true;
+  rivets.userData.proxy = true;
+  const rivetMatrix = new THREE.Matrix4();
+  let rivetIndex = 0;
+
   for (let i = 0; i <= P; i++) {
     [-W, W].forEach((z) =>
       [0, H].forEach((y) => {
-        const plate = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.32, 0.03), gussetMaterial);
-        plate.position.set(-L / 2 + i * panelLength, y, z + Math.sign(z) * 0.07);
+        const plate = new THREE.Mesh(gussetGeometry, gussetMaterial);
+        plate.position.set(-L / 2 + i * panelLength, y, z + Math.sign(z) * PLATE_Z);
         plate.castShadow = true;
         bridge.add(plate);
+
+        const faceZ = plate.position.z + Math.sign(z) * (PLATE_THICK / 2 + 0.006);
+        rivetRing.forEach(([rx, ry]) => {
+          rivetMatrix.makeTranslation(plate.position.x + rx, y + ry, faceZ);
+          rivets.setMatrixAt(rivetIndex++, rivetMatrix);
+        });
       }),
     );
   }
+  rivets.count = rivetIndex;
+  rivets.instanceMatrix.needsUpdate = true;
+  bridge.add(rivets);
 
   // ------------------------------------------------------------ lantai jalan
   const asphalt = new THREE.MeshStandardMaterial({
@@ -313,10 +724,24 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
     // memantulkan gradien langit dan terbaca seperti permukaan air, bukan jalan.
     envMapIntensity: 0.3,
   });
-  const deck = new THREE.Mesh(new THREE.BoxGeometry(L, 0.12, W * 2 - 0.5), asphalt);
+  /*
+   * Benda yang membentang penuh dibagi menjadi ruas.
+   *
+   * Sebuah kotak sepanjang bentang hanya punya simpul di kedua ujungnya, jadi
+   * ia tidak bisa melengkung — ia cuma bisa turun rata atau miring. Ruas
+   * sebanyak ini tidak menambah satu pun panggilan gambar (geometrinya tetap
+   * satu), hanya simpul yang cukup untuk mengikuti kurva lendutan.
+   */
+  const SPAN_SEGMENTS = P * 3;
+
+  const deck = new THREE.Mesh(
+    new THREE.BoxGeometry(L, 0.12, W * 2 - 0.5, SPAN_SEGMENTS),
+    asphalt,
+  );
   deck.position.y = 0.06;
   deck.castShadow = true;
   deck.receiveShadow = true;
+  deck.userData.spanMesh = true;
   bridge.add(deck);
 
   const paint = new THREE.MeshStandardMaterial({ color: 0xf2eee4, roughness: 0.7 });
@@ -327,8 +752,9 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
     bridge.add(dash);
   }
   [-1, 1].forEach((side) => {
-    const edge = new THREE.Mesh(new THREE.BoxGeometry(L, 0.004, 0.05), paint);
+    const edge = new THREE.Mesh(new THREE.BoxGeometry(L, 0.004, 0.05, SPAN_SEGMENTS), paint);
     edge.position.set(0, 0.121, side * (W - 0.62));
+    edge.userData.spanMesh = true;
     bridge.add(edge);
   });
 
@@ -338,10 +764,11 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
     map: noiseTexture(128, 200, 45, 8),
   });
   [-1, 1].forEach((side) => {
-    const curb = new THREE.Mesh(new THREE.BoxGeometry(L, 0.18, 0.32), curbMaterial);
+    const curb = new THREE.Mesh(new THREE.BoxGeometry(L, 0.18, 0.32, SPAN_SEGMENTS), curbMaterial);
     curb.position.set(0, 0.13, side * (W - 0.4));
     curb.castShadow = true;
     curb.receiveShadow = true;
+    curb.userData.spanMesh = true;
     bridge.add(curb);
   });
 
@@ -360,9 +787,10 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
       bridge.add(post);
     }
     [0.46, 0.68].forEach((y) => {
-      const rail = new THREE.Mesh(new THREE.BoxGeometry(L, 0.04, 0.04), railMaterial);
+      const rail = new THREE.Mesh(new THREE.BoxGeometry(L, 0.04, 0.04, SPAN_SEGMENTS), railMaterial);
       rail.position.set(0, y, z);
       rail.castShadow = true;
+      rail.userData.spanMesh = true;
       bridge.add(rail);
     });
   });
@@ -411,9 +839,17 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
     map: noiseTexture(256, 195, 45, 4),
   });
   const grass = new THREE.MeshStandardMaterial({
-    color: 0x5b6f44,
+    // Putih, bukan hijau. Warna simpul **dikalikan** dengan warna bahan, jadi
+    // bahan yang sudah hijau akan mengalikan hijau dengan hijau dan seluruh
+    // padang berubah gelap kehitaman. Dengan putih, warna simpullah yang
+    // menjadi warna sebenarnya.
+    color: 0xffffff,
     roughness: 1,
     map: noiseTexture(256, 180, 80, 14),
+    // Warna per simpul dipakai membedakan rumput tepi sungai yang basah dari
+    // padang yang lebih kering di kejauhan. Satu warna rata sepanjang dua
+    // ratus empat puluh satuan terbaca sebagai karpet, bukan sebagai tanah.
+    vertexColors: true,
   });
   const soil = new THREE.MeshStandardMaterial({
     color: 0x6b5c45,
@@ -434,7 +870,17 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
    * jembatan pada ketinggian dan jarak yang sama persis, dan di bawahnya ada
    * timbunan tanah yang menopang perkerasan sampai turun ke tebing.
    */
-  const APPROACH_LENGTH = 17;
+  /*
+   * Panjang oprit tiap sisi.
+   *
+   * Angkanya bukan soal ketelitian melainkan soal ujung: jalan yang berhenti
+   * di tengah padang terbaca sebagai potongan yang belum selesai, dan mata
+   * langsung mencari di mana sisanya. Pada 48 satuan ujungnya jatuh jauh di
+   * dalam kabut, jadi jalannya **menghilang**, bukan berhenti.
+   *
+   * Lintasan kendaraan tidak ikut sepanjang ini — lihat `TRACK_HALF`.
+   */
+  const APPROACH_LENGTH = 48;
   const approachStart = L / 2 - 0.06; // sedikit menumpang supaya sambungan rapat
   const approachMid = approachStart + APPROACH_LENGTH / 2;
 
@@ -485,17 +931,31 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
     approach.receiveShadow = true;
     scene.add(approach);
 
-    // Marka meneruskan marka di atas bentang supaya jalannya terbaca menerus.
+    /*
+     * Marka meneruskan marka di atas bentang supaya jalannya terbaca menerus.
+     *
+     * Satu `InstancedMesh`, bukan seratus enam `Mesh`. Marka putus-putus
+     * sepanjang 48 satuan pada kerapatan 2,2 per satuan berarti seratus enam
+     * benda per sisi — dua ratus dua belas panggilan gambar untuk garis putih
+     * yang lebarnya dua puluh dua sentimeter. Dengan instansi, satu.
+     */
     const approachDashes = Math.round(APPROACH_LENGTH * 2.2);
+    const dashInstance = new THREE.InstancedMesh(
+      new THREE.BoxGeometry(0.22, 0.004, 0.05),
+      paint,
+      approachDashes,
+    );
+    const dashMatrix = new THREE.Matrix4();
     for (let i = 0; i < approachDashes; i++) {
-      const dash = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.004, 0.05), paint);
-      dash.position.set(
+      dashMatrix.makeTranslation(
         side * (approachStart + 0.25 + i * (APPROACH_LENGTH / approachDashes)),
         0.121,
         0,
       );
-      scene.add(dash);
+      dashInstance.setMatrixAt(i, dashMatrix);
     }
+    dashInstance.instanceMatrix.needsUpdate = true;
+    scene.add(dashInstance);
 
     [-1, 1].forEach((wing) => {
       const edge = new THREE.Mesh(new THREE.BoxGeometry(APPROACH_LENGTH, 0.004, 0.05), paint);
@@ -510,67 +970,251 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
       kerb.receiveShadow = true;
       scene.add(kerb);
 
-      // Pagar pengaman meneruskan sandaran jembatan sejauh delapan unit lalu
-      // berhenti: sandaran yang putus persis di ujung lantai membuat jembatan
-      // seolah terpotong di udara.
+      /*
+       * Pagar pengaman menemani seluruh panjang oprit, bukan delapan satuan
+       * pertama saja. Pagar yang putus di tengah jalan lurus terbaca sebagai
+       * pagar yang hilang, bukan sebagai pagar yang memang berakhir — dan
+       * pada oprit sepanjang ini jaraknya terlalu jauh untuk dimaafkan mata.
+       *
+       * Tiangnya diinstansi dengan alasan yang sama seperti marka: tiap 1,4
+       * satuan sepanjang 48 satuan berarti tiga puluh lima tiang per sayap,
+       * seratus empat puluh untuk dua sisi.
+       */
       const guardZ = wing * (W + 0.06);
-      for (let i = 0; i <= 10; i++) {
-        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.036, 0.46, 6), railMaterial);
-        post.position.set(side * (approachStart + i * 0.8), 0.13, guardZ);
-        post.castShadow = true;
-        scene.add(post);
+      const guardCount = Math.floor(APPROACH_LENGTH / 1.4);
+      const postInstance = new THREE.InstancedMesh(
+        new THREE.CylinderGeometry(0.03, 0.036, 0.46, 6),
+        railMaterial,
+        guardCount,
+      );
+      const postMatrix = new THREE.Matrix4();
+      for (let i = 0; i < guardCount; i++) {
+        postMatrix.makeTranslation(side * (approachStart + i * 1.4), 0.13, guardZ);
+        postInstance.setMatrixAt(i, postMatrix);
       }
-      const beam = new THREE.Mesh(new THREE.BoxGeometry(8, 0.11, 0.05), railMaterial);
-      beam.position.set(side * (approachStart + 4), 0.27, guardZ);
+      postInstance.instanceMatrix.needsUpdate = true;
+      postInstance.castShadow = true;
+      scene.add(postInstance);
+
+      const beam = new THREE.Mesh(
+        new THREE.BoxGeometry(APPROACH_LENGTH - 0.6, 0.11, 0.05),
+        railMaterial,
+      );
+      beam.position.set(side * approachMid, 0.27, guardZ);
       beam.castShadow = true;
       scene.add(beam);
     });
   });
 
-  // Tebing sungai: permukaan berumput bergelombang di atas satu blok pejal.
-  // Tanpa blok itu tanahnya hanya selembar bidang tipis yang, dilihat dari sudut
-  // rendah, menggantung dua setengah unit di atas air.
-  // Dibuat panjang ke arah hulu dan hilir supaya tepinya jatuh di luar jarak
-  // kabut — tanah yang berujung tegak lurus di tengah pandangan merusak ilusi.
-  const bankGeometry = new THREE.PlaneGeometry(32, 80, 40, 64);
-  bankGeometry.rotateX(-Math.PI / 2);
-  const bankPos = bankGeometry.attributes.position;
-  for (let i = 0; i < bankPos.count; i++) {
-    bankPos.setY(
-      i,
-      Math.sin(bankPos.getX(i) * 0.5) * 0.045 + Math.cos(bankPos.getZ(i) * 0.4) * 0.06 + Math.random() * 0.025,
-    );
-  }
-  bankGeometry.computeVertexNormals();
+  /*
+   * Tanah di kedua sisi sungai.
+   *
+   * Ukurannya bukan selera: lebarnya dihitung mundur dari jangkauan kabut.
+   * Sebelumnya tanahnya 32 × 80 satuan sementara airnya 130 × 64, jadi air
+   * menyembul **di luar** tepi tanah dan tergambar sebagai pita biru yang
+   * mengambang di atas padang — persis di tempat yang seharusnya kaki langit.
+   * Sekarang keduanya berbagi satu batas: tanah 110 × 240 dengan bibir tepat
+   * di tepi alur, air selebar alurnya saja dan sepanjang tanahnya.
+   *
+   * Permukaannya tidak lagi rata. Bergelombang hanya **jauh dari sungai** —
+   * bukit yang tumbuh tepat di bawah oprit akan menaikkan perkerasan yang
+   * memang harus datar, jadi kelerengannya baru dimulai 26 satuan dari bibir
+   * alur dan naik penuh pada 71 satuan.
+   */
+  const ALUR = 6.5;
+  const BANK_W = 110;
+  const BANK_Z = 240;
+
+  const RUMPUT_BASAH = new THREE.Color(0x4e6b39);
+  const RUMPUT_KERING = new THREE.Color(0x87824e);
+
+  /**
+   * Tinggi permukaan tanah pada jarak `dari` dari bibir alur dan pada `lz`.
+   *
+   * Dipisah sebagai fungsi karena dua hal harus memakai rumus yang **persis
+   * sama**: simpul bidang rumputnya, dan kaki tiap pohon yang berdiri di
+   * atasnya. Begitu keduanya dihitung terpisah, pohonnya melayang atau
+   * terbenam — dan selisih sepuluh sentimeter pun langsung terlihat.
+   */
+  const tinggiTanah = (dari: number, lz: number): number => {
+    const lereng = Math.min(1, Math.max(0, (dari - 24) / 40));
+    const bukit =
+      Math.sin(dari * 0.055) * 1.5 +
+      Math.cos(lz * 0.042) * 1.1 +
+      Math.sin(lz * 0.015 + dari * 0.024) * 2.3;
+    return lereng * bukit;
+  };
+
+  const buatTebing = (side: number) => {
+    const geometry = new THREE.PlaneGeometry(BANK_W, BANK_Z, 88, 96);
+    geometry.rotateX(-Math.PI / 2);
+    const pos = geometry.attributes.position;
+    const warna = new Float32Array(pos.count * 3);
+    const c = new THREE.Color();
+
+    for (let i = 0; i < pos.count; i++) {
+      const lx = pos.getX(i);
+      const lz = pos.getZ(i);
+      // Jarak dari bibir alur. Tandanya dibalik pada sisi seberang supaya
+      // kedua tebing menghitungnya dari sungai, bukan dari sumbu adegan.
+      const dari = BANK_W / 2 + side * lx;
+
+      // Kerutan kecil tetap ada di mana-mana: tanah yang benar-benar rata
+      // memantulkan cahaya terlalu seragam dan terbaca sebagai kaca.
+      const kerut =
+        Math.sin(lx * 0.5) * 0.045 + Math.cos(lz * 0.4) * 0.06 + Math.random() * 0.025;
+
+      const y = kerut + tinggiTanah(dari, lz);
+      pos.setY(i, y);
+
+      // Makin jauh dari air makin kering, dan punggung bukit lebih pucat
+      // daripada lembahnya — dua petunjuk yang sama-sama datang dari air.
+      const lereng = Math.min(1, Math.max(0, (dari - 24) / 40));
+      const kering = Math.min(1, lereng * 0.7 + Math.max(0, y) * 0.1);
+      c.copy(RUMPUT_BASAH).lerp(RUMPUT_KERING, kering);
+      const bintik = 0.94 + Math.random() * 0.12;
+      warna[i * 3] = c.r * bintik;
+      warna[i * 3 + 1] = c.g * bintik;
+      warna[i * 3 + 2] = c.b * bintik;
+    }
+
+    geometry.setAttribute('color', new THREE.BufferAttribute(warna, 3));
+    geometry.computeVertexNormals();
+    return geometry;
+  };
+
   [-1, 1].forEach((side) => {
-    const bank = new THREE.Mesh(bankGeometry.clone(), grass);
-    bank.position.set(side * (L / 2 + 16.5), -0.55, 0);
+    const pusat = side * (ALUR + BANK_W / 2);
+
+    const bank = new THREE.Mesh(buatTebing(side), grass);
+    bank.position.set(pusat, -0.55, 0);
     bank.receiveShadow = true;
     scene.add(bank);
 
-    const bankBody = new THREE.Mesh(new THREE.BoxGeometry(31.6, 2.6, 79.6), soil);
-    bankBody.position.set(side * (L / 2 + 16.5), -1.98, 0); // puncak -0,68, di bawah rumput
+    // Blok pejal di bawah rumput. Tanpanya tanahnya hanya selembar bidang
+    // tipis yang, dilihat dari sudut rendah, menggantung dua setengah satuan
+    // di atas air.
+    const bankBody = new THREE.Mesh(new THREE.BoxGeometry(BANK_W - 0.4, 2.6, BANK_Z - 0.4), soil);
+    bankBody.position.set(pusat, -1.98, 0); // puncak -0,68, di bawah rumput
     bankBody.receiveShadow = true;
     scene.add(bankBody);
   });
 
   /*
+   * Rumpun pohon di kedua sisi.
+   *
+   * Padang kosong seluas dua ratus empat puluh satuan tidak punya apa pun yang
+   * memberi tahu mata seberapa jauh ujungnya. Pohon adalah pengukur jarak
+   * yang paling murah: tingginya diketahui semua orang, jadi yang mengecil di
+   * kejauhan langsung terbaca sebagai jauh, bukan sebagai kecil.
+   *
+   * Dua `InstancedMesh`, bukan dua ratus `Mesh`. Seratus sepuluh pohon berarti
+   * dua ratus dua puluh panggilan gambar kalau dibuat satu per satu — lebih
+   * mahal daripada seluruh rangka jembatannya. Dengan instansi, dua.
+   */
+  const JUMLAH_POHON = 110;
+  const batangGeometry = new THREE.CylinderGeometry(0.13, 0.2, 1.3, 5);
+  batangGeometry.translate(0, 0.65, 0);
+  const daunGeometry = new THREE.ConeGeometry(1.05, 2.6, 7);
+  daunGeometry.translate(0, 2.4, 0);
+
+  const batangMaterial = new THREE.MeshStandardMaterial({ color: 0x5a4632, roughness: 1 });
+  const daunMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, vertexColors: false });
+
+  const batangInstance = new THREE.InstancedMesh(batangGeometry, batangMaterial, JUMLAH_POHON);
+  const daunInstance = new THREE.InstancedMesh(daunGeometry, daunMaterial, JUMLAH_POHON);
+  daunInstance.instanceColor = new THREE.InstancedBufferAttribute(
+    new Float32Array(JUMLAH_POHON * 3),
+    3,
+  );
+  batangInstance.castShadow = true;
+  daunInstance.castShadow = true;
+
+  const DAUN_MUDA = new THREE.Color(0x4a6b34);
+  const DAUN_TUA = new THREE.Color(0x30492a);
+  const matriks = new THREE.Matrix4();
+  const putar = new THREE.Quaternion();
+  const posisi = new THREE.Vector3();
+  const skala = new THREE.Vector3();
+  const warnaDaun = new THREE.Color();
+
+  for (let i = 0; i < JUMLAH_POHON; i++) {
+    const side = i % 2 === 0 ? 1 : -1;
+    /*
+     * Dua daerah dikosongkan, dan keduanya punya alasan yang sama: pohon di
+     * situ menutupi benda yang justru harus dilihat. Sampai 30 satuan dari
+     * alur berdiri oprit beserta timbunannya, dan lorong selebar 20 satuan di
+     * sekitar sumbu jalan adalah arah pandang ke jembatannya sendiri.
+     */
+    const dari = 30 + Math.random() * 78;
+    let lz = (Math.random() * 2 - 1) * 112;
+    if (Math.abs(lz) < 10 && dari < 64) lz += lz >= 0 ? 12 : -12;
+
+    const x = side * (ALUR + dari);
+    const y = -0.55 + tinggiTanah(dari, lz);
+    const tinggi = 0.75 + Math.random() * 0.75;
+
+    posisi.set(x, y, lz);
+    putar.setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.random() * Math.PI * 2);
+    skala.set(tinggi * (0.85 + Math.random() * 0.3), tinggi, tinggi * (0.85 + Math.random() * 0.3));
+    matriks.compose(posisi, putar, skala);
+    batangInstance.setMatrixAt(i, matriks);
+    daunInstance.setMatrixAt(i, matriks);
+
+    warnaDaun.copy(DAUN_MUDA).lerp(DAUN_TUA, Math.random());
+    daunInstance.setColorAt(i, warnaDaun);
+  }
+  batangInstance.instanceMatrix.needsUpdate = true;
+  daunInstance.instanceMatrix.needsUpdate = true;
+  if (daunInstance.instanceColor) daunInstance.instanceColor.needsUpdate = true;
+  scene.add(batangInstance);
+  scene.add(daunInstance);
+
+  /*
    * Kerapatan petak air ditentukan gelombang terpendek yang digambar, bukan
    * selera. Gelombang banjir melintang punya panjang gelombang 2π/1,6 ≈ 3,9
-   * satuan; dengan 80 petak arah aliran jaraknya 0,8 satuan, jadi satu
-   * gelombang disusun hampir lima titik. Di bawah dua titik per gelombang
-   * bentuknya tidak terwakili sama sekali — yang tampil bukan riak yang
-   * berjalan, melainkan kedip yang berpindah acak tiap bingkai.
+   * satuan; dengan petak 0,77 satuan satu gelombang disusun lima titik. Di
+   * bawah dua titik per gelombang bentuknya tidak terwakili sama sekali —
+   * yang tampil bukan riak yang berjalan, melainkan kedip yang berpindah acak
+   * tiap bingkai.
    */
-  const WATER_SEG_X = 96;
-  const WATER_SEG_Z = 80;
-  const waterGeometry = new THREE.PlaneGeometry(130, 64, WATER_SEG_X, WATER_SEG_Z);
+  const WATER_SEG_X = 26;
+  const WATER_SEG_Z = 300;
+  const AIR_W = 20;
+  const waterGeometry = new THREE.PlaneGeometry(AIR_W, BANK_Z, WATER_SEG_X, WATER_SEG_Z);
   waterGeometry.rotateX(-Math.PI / 2);
+
+  /*
+   * Warna per simpul: tepian lebih pucat daripada tengah alur.
+   *
+   * Air sungguhan tidak berwarna rata — yang dangkal memantulkan dasarnya dan
+   * tampak lebih terang serta lebih hijau, yang dalam menelan cahayanya. Satu
+   * warna rata di seluruh permukaan adalah hal pertama yang membuat air
+   * buatan terbaca sebagai plastik biru.
+   *
+   * Nilainya pengali, bukan warna jadi: warna dasar materialnya masih berubah
+   * dari biru tenang ke cokelat banjir, dan pengali ini ikut terbawa.
+   */
+  const airPos = waterGeometry.attributes.position;
+  const airWarna = new Float32Array(airPos.count * 3);
+  for (let i = 0; i < airPos.count; i++) {
+    const jarak = Math.abs(airPos.getX(i));
+    // Halus dari tengah (0) ke tepi (1); `t*t*(3-2t)` supaya peralihannya
+    // tidak meninggalkan garis lurus yang terlihat di permukaan.
+    const t0 = Math.min(1, Math.max(0, (jarak - 2.5) / (ALUR - 2.5)));
+    const t = t0 * t0 * (3 - 2 * t0);
+    airWarna[i * 3] = 0.82 + t * 0.5;
+    airWarna[i * 3 + 1] = 0.86 + t * 0.46;
+    airWarna[i * 3 + 2] = 0.94 + t * 0.2;
+  }
+  waterGeometry.setAttribute('color', new THREE.BufferAttribute(airWarna, 3));
+
   const waterMaterial = new THREE.MeshStandardMaterial({
     color: 0x2e6d97,
     metalness: 0.55,
     roughness: 0.22,
     envMapIntensity: 1.5,
+    vertexColors: true,
   });
   const water = new THREE.Mesh(waterGeometry, waterMaterial);
   water.position.y = -2.7;
@@ -787,7 +1431,14 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
   const placeMarker = (sensorId: string, spot: [number, number, number]) => {
     const index = spotMeshes.findIndex((sprite) => sprite.userData.sensorId === sensorId);
     if (index < 0) return;
-    spotMeshes[index].position.set(spot[0], spot[1] + MARKER_LIFT, spot[2]);
+    // Titik pasang disimpan pada jembatan yang belum melendut; lendutan yang
+    // sedang tergambar ditambahkan di sini. Kalau tidak, penanda akan
+    // menggantung di udara persis sebanyak lendutan yang sedang dibesarkan.
+    spotMeshes[index].position.set(
+      spot[0],
+      spot[1] + MARKER_LIFT - sagAt(spot[0]),
+      spot[2],
+    );
     spotMeshes[index].userData.spot = spot;
     pickProxies[index].position.copy(spotMeshes[index].position);
   };
@@ -959,12 +1610,63 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
     tire: number;
     speedJitter: number;
     x: number;
+    /**
+     * Jarak tempuh sepanjang lintasan, 0 di mulut masuk sampai `TRACK_LEN` di
+     * mulut keluar — selalu bertambah, pada kedua lajur.
+     *
+     * Disimpan terpisah dari `x` supaya pengurutan antrean tidak perlu tahu
+     * arah tiap lajur: yang di depan selalu yang `p`-nya lebih besar.
+     */
+    p: number;
+    /** Panjang bodi; menentukan jarak aman ke kendaraan di depannya. */
+    len: number;
+    isTruck: boolean;
+    /**
+     * Nomor urut di antara sesama jenisnya.
+     *
+     * Dipakai memilih kendaraan mana yang ditampilkan: skenario menyebut
+     * "empat belas mobil dan lima truk", dan yang tampil harus benar-benar
+     * empat belas mobil dan lima truk.
+     */
+    kindIndex: number;
+    /** Seharusnya ada di adegan menurut skenario yang sedang berjalan. */
+    wanted: boolean;
+    /** Ketinggian roda di atas lantai yang belum melendut. */
+    baseY: number;
+    /** Bobot relatif terhadap mobil penumpang; menentukan porsi lendutannya. */
+    weight: number;
   }
   const vehicles: Vehicle[] = [];
 
-  for (let i = 0; i < 16; i++) {
-    const isTruck = i % 3 === 0;
-    const lane = i % 2;
+  /** Setengah panjang lintasan; kendaraan berputar antara −24 dan +24. */
+  const TRACK_HALF = L / 2 + APPROACH_UNITS / 2;
+  const TRACK_LEN = TRACK_HALF * 2;
+  /** Jarak bemper ke bemper yang dijaga saat beriringan. */
+  const JARAK_AMAN = 0.55;
+
+  /*
+   * Armada: 16 mobil lalu 8 truk, bukan 16 kendaraan yang jenisnya ditentukan
+   * `i % 3`.
+   *
+   * Dengan pola `i % 3`, jenis kendaraan terikat pada nomor urutnya, sehingga
+   * skenario yang meminta "satu mobil dan empat truk" mendapat tiga truk dan
+   * dua mobil — susunan yang tidak pernah bisa dipenuhi karena yang dipilih
+   * selalu N pertama. Dipisah per jenis, permintaan apa pun dapat dipenuhi
+   * persis selama jumlahnya tidak melebihi persediaan.
+   *
+   * Jumlahnya naik dari 16 menjadi 24 karena lintasannya memanjang dari 30
+   * menjadi 48 satuan; tanpa tambahan itu jembatan terbaca lengang pada arus
+   * yang seharusnya biasa.
+   */
+  const MOBIL_TERSEDIA = 16;
+  const TRUK_TERSEDIA = 8;
+
+  for (let i = 0; i < MOBIL_TERSEDIA + TRUK_TERSEDIA; i++) {
+    const isTruck = i >= MOBIL_TERSEDIA;
+    const kindIndex = isTruck ? i - MOBIL_TERSEDIA : i;
+    // Lajur dibagi di dalam tiap jenis, bukan pada nomor urut keseluruhan —
+    // kalau tidak, permintaan yang berat sebelah menumpuk di satu lajur.
+    const lane = kindIndex % 2;
     const group = new THREE.Group();
     const wheels: THREE.Object3D[] = [];
     const bodyMaterial = new THREE.MeshStandardMaterial({
@@ -1093,8 +1795,220 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
       tire: isTruck ? TRUCK_TIRE : CAR_TIRE,
       speedJitter: 0.9 + Math.random() * 0.2,
       x: 0,
+      p: 0,
+      // Panjang bodi diukur dari geometrinya, bukan dikira-kira: truk
+      // membentang −1,06…1,12 dan mobil −0,6…0,6.
+      len: isTruck ? 2.25 : 1.3,
+      isTruck,
+      kindIndex,
+      wanted: false,
+      // Ketinggian rodanya di atas lantai yang belum melendut. Kendaraan
+      // menempel pada lantai: begitu lantainya turun, ia ikut turun.
+      baseY: group.position.y,
+      // Truk sumbu ganda dihitung tiga kali mobil penumpang. Ini perbandingan
+      // kasar untuk peraga, bukan beban gandar sungguhan — yang penting truk
+      // meninggalkan cekungan yang jelas lebih dalam saat melintas.
+      weight: isTruck ? 3 : 1,
     });
   }
+
+  // ---------------------------------------------------- penerapan lendutan
+  /*
+   * Tiga cara memindahkan benda, dipilih menurut bentuknya.
+   *
+   *   benda pendek   digeser turun sesuai absis titik pasangnya
+   *   benda membentang  simpul geometrinya digeser satu per satu
+   *   batang rangka  dipasang ulang dari kedua ujungnya yang sudah turun
+   *
+   * Yang terakhir itu yang membuat rangkanya tidak terkoyak di buhul, dan
+   * sekaligus satu-satunya yang benar secara struktur: batang baja tetap lurus,
+   * yang berpindah adalah titik pertemuannya.
+   */
+  const bendables = bridge.children
+    .filter(
+      (child) =>
+        child !== rivets &&
+        child.userData.tag !== 'sensor' &&
+        child.userData.member !== true &&
+        child.userData.spanMesh !== true,
+    )
+    .map((obj) => ({ obj, baseY: obj.position.y, x: obj.position.x }));
+
+  const spanMeshes = bridge.children
+    .filter((child): child is THREE.Mesh => child.userData.spanMesh === true)
+    .map((mesh) => ({
+      mesh,
+      base: Float32Array.from(
+        (mesh.geometry.attributes.position as THREE.BufferAttribute).array as Float32Array,
+      ),
+    }));
+
+  // Paku keling hidup sebagai matriks contoh, jadi yang disimpan absis dan
+  // ordinat bawaannya — elemen ke-12 dan ke-13 tiap matriks.
+  const rivetArray = rivets.instanceMatrix.array as Float32Array;
+  const rivetBaseY = new Float32Array(rivets.count);
+  for (let i = 0; i < rivets.count; i++) rivetBaseY[i] = rivetArray[i * 16 + 13];
+
+  /*
+   * Benda yang melendut dikeluarkan dari pemangkasan kerucut pandang.
+   *
+   * Bola pembatasnya dihitung dari geometri sebelum dilenturkan, dan
+   * menghitungnya ulang tiap bingkai — sementara kendaraan terus menggeser
+   * cekungannya — jauh lebih mahal daripada sekadar selalu menggambarnya.
+   * Pada adegan berisi satu jembatan, benda-benda ini memang selalu di layar.
+   */
+  spanMeshes.forEach(({ mesh }) => {
+    mesh.frustumCulled = false;
+  });
+  rivets.frustumCulled = false;
+
+  const sagA = new THREE.Vector3();
+  const sagB = new THREE.Vector3();
+  const sagDir = new THREE.Vector3();
+
+  /** Kendaraan yang sedang tampak, disusun ulang tiap kali medan dihitung. */
+  const loaded: Array<{ x: number; weight: number }> = [];
+
+  /** Absis tengah tiap batang, untuk mencari letak kerusakan dari tagnya. */
+  const memberX = new Map<string, number>();
+  members.forEach((mesh) => {
+    const a = mesh.userData.a as THREE.Vector3 | undefined;
+    const b = mesh.userData.b as THREE.Vector3 | undefined;
+    if (a && b) memberX.set(mesh.userData.tag as string, (a.x + b.x) / 2);
+  });
+
+  /** Absis batang yang sedang rusak; diisi ulang tiap medan dihitung. */
+  const broken: number[] = [];
+
+  /**
+   * Hitung ulang medan lendutan dari lendutan tengah bentang dan letak
+   * kendaraan. Mengembalikan `true` bila ada yang berubah — kalau tidak,
+   * seluruh kerja memindahkan geometri di bawah ini dilewati.
+   */
+  const rebuildField = (sag: number): boolean => {
+    const liveAmp = LIVE_SHARE * sag;
+    const deadAmp = sag - liveAmp;
+
+    loaded.length = 0;
+    let totalWeight = 0;
+    let onSpanWeight = 0;
+    for (const vehicle of vehicles) {
+      if (!vehicle.group.visible) continue;
+      loaded.push({ x: vehicle.x, weight: vehicle.weight });
+      totalWeight += vehicle.weight;
+      if (Math.abs(vehicle.x) < L / 2) onSpanWeight += vehicle.weight;
+    }
+
+    /*
+     * Seberapa penuh bentangnya sedang terbebani, 0..1.
+     *
+     * Pembandingnya beban yang wajar berada di atas bentang pada arus yang
+     * merata — sebagian armada sebanding panjang bentang terhadap seluruh
+     * lintasan termasuk kedua oprit. Faktor inilah yang membuat lantainya
+     * bernapas: nol saat bentang kosong, satu saat seluruh armada di atasnya.
+     */
+    const expected = totalWeight * (L / (L + APPROACH_UNITS));
+    const loadFactor = expected > 0 ? Math.min(1, onSpanWeight / expected) : 0;
+
+    // Batang yang sedang rusak, dicari absisnya. Tag tumpuan tidak ada di
+    // sini dan memang tidak perlu: tumpuan yang turun sudah diwakili
+    // kemiringan seluruh lantai lewat `tiltRatio`.
+    broken.length = 0;
+    for (const tag of state.damaged) {
+      const x = memberX.get(tag);
+      if (x !== undefined) broken.push(x);
+    }
+    const skewShare = broken.length ? DAMAGE_SKEW : 0;
+
+    /*
+     * Bentuk beban bergerak dikumpulkan dulu, lalu dinormalkan pada
+     * **puncaknya sendiri**.
+     *
+     * Tanpa itu, angka yang tergambar tidak pernah sampai ke angka yang
+     * dijanjikan: sumbangan tiap kendaraan dibagi bobot seluruh armada,
+     * sedangkan sebagian armada selalu berada di oprit, sehingga lendutan
+     * tengah bentang yang tergambar hanya sekitar 0,6 kali nilai sensornya.
+     * Dinormalkan pada puncak, besarnya kembali benar dan yang tetap dibawa
+     * bentuknya: cekungannya berada di tempat bebannya, bukan selalu di
+     * tengah.
+     */
+    let peak = 0;
+    for (let i = 0; i < FIELD_SAMPLES; i++) {
+      const x = -L / 2 + (i / (FIELD_SAMPLES - 1)) * L;
+      let moving = 0;
+      for (const load of loaded) moving += load.weight * influence(x, load.x);
+      liveRaw[i] = moving;
+      if (moving > peak) peak = moving;
+    }
+    const liveScale = peak > 1e-6 ? loadFactor / peak : 0;
+
+    let changed = false;
+    for (let i = 0; i < FIELD_SAMPLES; i++) {
+      const x = -L / 2 + (i / (FIELD_SAMPLES - 1)) * L;
+
+      let dead = sagShape(x);
+      if (skewShare > 0) {
+        let skew = 0;
+        for (const xd of broken) skew += influence(x, xd) / Math.max(0.35, influence(0, xd));
+        skew /= broken.length;
+        // Dibatasi supaya kerusakan tepat di atas tumpuan — yang pembaginya
+        // hampir nol — tidak melahirkan cekungan yang tidak masuk akal.
+        dead = (1 - skewShare) * dead + skewShare * Math.min(2.2, skew);
+      }
+
+      const value = deadAmp * dead + liveAmp * liveRaw[i] * liveScale;
+      fieldNext[i] = value;
+      if (Math.abs(value - fieldY[i]) > 1e-5) changed = true;
+    }
+
+    if (!changed) return false;
+    fieldY.set(fieldNext);
+    return true;
+  };
+
+  const applyDeflection = () => {
+    bendables.forEach(({ obj, baseY, x }) => {
+      obj.position.y = baseY - sagAt(x);
+    });
+
+    spanMeshes.forEach(({ mesh, base }) => {
+      const attribute = mesh.geometry.attributes.position as THREE.BufferAttribute;
+      const array = attribute.array as Float32Array;
+      for (let i = 0; i < array.length; i += 3) {
+        array[i + 1] = base[i + 1] - sagAt(base[i] + mesh.position.x);
+      }
+      attribute.needsUpdate = true;
+    });
+
+    members.forEach((mesh) => {
+      const a = mesh.userData.a as THREE.Vector3 | undefined;
+      const b = mesh.userData.b as THREE.Vector3 | undefined;
+      const len = mesh.userData.len as number | undefined;
+      if (!a || !b || !len) return;
+      sagA.set(a.x, a.y - sagAt(a.x), a.z);
+      sagB.set(b.x, b.y - sagAt(b.x), b.z);
+      sagDir.subVectors(sagB, sagA);
+      const length = sagDir.length();
+      mesh.position.copy(sagA).add(sagB).multiplyScalar(0.5);
+      mesh.quaternion.setFromUnitVectors(V(0, 1, 0), sagDir.normalize());
+      // Panjangnya ikut berubah sedikit karena buhulnya bergeser. Geometrinya
+      // dipakai bersama antar batang seukuran, jadi yang disetel skalanya —
+      // hanya pada sumbu batang, sehingga penampangnya tidak ikut melar.
+      mesh.scale.y = length / len;
+    });
+
+    for (let i = 0; i < rivets.count; i++) {
+      rivetArray[i * 16 + 13] = rivetBaseY[i] - sagAt(rivetArray[i * 16 + 12]);
+    }
+    rivets.instanceMatrix.needsUpdate = true;
+
+    spotMeshes.forEach((sprite) =>
+      placeMarker(
+        sprite.userData.sensorId as string,
+        sprite.userData.spot as [number, number, number],
+      ),
+    );
+  };
 
   // -------------------------------------------------- pohon bagian & seleksi
   const tagged: THREE.Object3D[] = [...bridge.children, ...bearings];
@@ -1210,7 +2124,15 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
       const point = surfaceAt(event);
       if (point) {
         const local = bridge.worldToLocal(point.clone());
-        placeMarker(draggingSensor, [local.x, local.y, local.z]);
+        // Sinar mengenai struktur yang sedang melendut, sedangkan titik pasang
+        // disimpan pada jembatan yang belum melendut. Lendutan di absis itu
+        // dikembalikan dulu, kalau tidak letaknya akan turun sendiri setiap
+        // kali pengalinya dinaikkan.
+        placeMarker(draggingSensor, [
+          local.x,
+          local.y + sagAt(local.x),
+          local.z,
+        ]);
       }
       return;
     }
@@ -1287,7 +2209,16 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
   /** Fase gelombang sungai, ditumpuk per bingkai supaya tidak melompat. */
   let wavePhase = 0;
   let lastFrameAt = performance.now() / 1000;
-  let lastVehicleCount = -1;
+  /*
+   * Jumlah tiap jenis dilacak terpisah, bukan totalnya.
+   *
+   * Skenario dapat menukar mobil dengan truk tanpa mengubah jumlah
+   * keseluruhan — "enam mobil dua truk" menjadi "empat mobil empat truk" —
+   * dan susunan armadanya tetap harus ikut berubah. Yang membandingkan total
+   * akan melewatkan pertukaran itu diam-diam.
+   */
+  let lastCars = -1;
+  let lastTrucks = -1;
   let lastScaleAt = -9;
   let lastLabelAt = -9;
   let reportedScale = -1;
@@ -1310,46 +2241,144 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
     }
     material.emissiveIntensity = 0;
     material.color
-      .copy(steelColor)
+      .copy((mesh.userData.tint as THREE.Color | undefined) ?? steelColor)
       .lerp(hotColor, mesh.userData.chord ? state.stressRatio * 0.85 : state.stressRatio * 0.25);
   };
 
   const render = () => {
     frame = requestAnimationFrame(render);
     const now = performance.now() / 1000;
-    const visibleCount = state.cars + state.trucks;
+    const dimintaBerubah = state.cars !== lastCars || state.trucks !== lastTrucks;
     const speedScale = state.paused ? 0 : 1;
 
-    // Susun ulang posisi awal hanya saat jumlah kendaraan berubah, supaya arus
-    // tetap merata dan tidak menumpuk di satu titik.
-    if (visibleCount !== lastVehicleCount) {
-      lastVehicleCount = visibleCount;
-      const perLane = [0, 0];
-      vehicles.forEach((v, i) => {
-        if (i < visibleCount) perLane[v.lane] += 1;
+    /*
+     * Lalu lintas disusun sebagai **antrean**, bukan sebagai kumpulan benda
+     * yang berjalan sendiri-sendiri.
+     *
+     * Sebelumnya tiap kendaraan maju dengan lajunya sendiri (`speedJitter`
+     * 0,9–1,1) dan membungkus posisinya tanpa melihat siapa pun. Akibatnya
+     * yang lebih cepat menyusul yang lebih lambat lalu **menembusnya** —
+     * truk dan mobil tergambar saling tumpang tindih di lajur yang sama,
+     * persis keluhan yang dilaporkan. Sebaran ulang saat jumlah berubah tidak
+     * menolong: ia hanya menata ulang sekali, sedangkan tabrakannya lahir
+     * dari selisih laju yang terus berjalan.
+     *
+     * Sekarang tiap kendaraan mengejar yang di depannya dan berhenti pada
+     * jarak aman. Selisih laju tetap ada — dan justru itu yang membuat
+     * arusnya hidup: iring-iringan terbentuk sendiri di belakang truk yang
+     * lambat, lalu merenggang lagi setelah ia keluar.
+     */
+    if (dimintaBerubah) {
+      lastCars = state.cars;
+      lastTrucks = state.trucks;
+      vehicles.forEach((v) => {
+        v.wanted = v.kindIndex < (v.isTruck ? state.trucks : state.cars);
       });
-      const index = [0, 0];
-      vehicles.forEach((v, i) => {
-        if (i < visibleCount) {
-          const slot = index[v.lane]++;
-          // Sebaran dibuat lebih panjang daripada bentang supaya kendaraan yang
-          // kini sepanjang 1,2–2,2 unit tidak tumpang tindih saat arus disusun.
-          v.x = -L / 2 - 3 + (slot + Math.random() * 0.25) * ((L + 6) / Math.max(1, perLane[v.lane]));
+
+      /*
+       * Yang baru diminta ditaruh di **celah terlapang** pada lintasannya,
+       * bukan diantre di mulut masuk.
+       *
+       * Mengantre di mulut memang lebih jujur, tetapi mulutnya 18 satuan dari
+       * ujung jembatan: pada laju arus biasa butuh enam detik sampai kendaraan
+       * pertama tiba, dan selama itu jembatan kosong. Skenario yang
+       * menjanjikan kemacetan lalu memperlihatkan bentang lengang adalah
+       * kebohongan yang lebih mahal daripada kendaraan yang muncul di tengah
+       * oprit.
+       *
+       * Yang **tidak** dilakukan adalah memindahkan kendaraan yang sudah
+       * berjalan. Sebelumnya seluruh armada ditata ulang tiap kali jumlahnya
+       * berubah, dan arus yang sedang mengalir melompat serentak.
+       */
+      const tempatKosong = (lane: number, calon: Vehicle): number | null => {
+        const ada = vehicles.filter((o) => o.lane === lane && o.group.visible);
+        let terbaik: number | null = null;
+        let terlapang = -Infinity;
+        const CALON_TITIK = 24;
+        for (let k = 0; k < CALON_TITIK; k++) {
+          const cand = (k + 0.5) * (TRACK_LEN / CALON_TITIK);
+          let sempit = Infinity;
+          for (const o of ada) {
+            sempit = Math.min(sempit, Math.abs(o.p - cand) - (o.len + calon.len) / 2);
+          }
+          if (sempit > terlapang) {
+            terlapang = sempit;
+            terbaik = cand;
+          }
         }
+        return terlapang >= JARAK_AMAN ? terbaik : null;
+      };
+
+      vehicles.forEach((v) => {
+        if (!v.wanted || v.group.visible) return;
+        const tempat = tempatKosong(v.lane, v);
+        // Tidak ada celah? Ia menunggu di luar dan masuk lewat mulut nanti.
+        if (tempat === null) return;
+        v.p = tempat;
+        v.group.visible = true;
       });
+      // Yang tidak diminta lagi tidak dihilangkan seketika — ia menghabiskan
+      // lintasannya lalu keluar sendiri di ujung, seperti kendaraan yang
+      // memang sedang lewat.
     }
 
-    vehicles.forEach((v, i) => {
-      v.group.visible = i < visibleCount;
-      if (!v.group.visible) return;
-      const dx = (v.lane ? 1 : -1) * state.speed * speedScale * v.speedJitter * 0.05;
-      v.x += dx;
-      if (v.x > L / 2 + 9) v.x = -L / 2 - 9;
-      if (v.x < -L / 2 - 9) v.x = L / 2 + 9;
-      v.group.position.x = v.x;
-      v.wheels.forEach((wheel) => {
-        wheel.rotation.z -= dx / v.tire;
+    const langkah = state.speed * speedScale * 0.05;
+
+    [0, 1].forEach((lane) => {
+      // Yang paling depan lebih dulu: jarak aman pengikutnya dihitung
+      // terhadap kedudukan pemimpin yang **sudah** diperbarui bingkai ini,
+      // bukan terhadap kedudukannya sebelumnya.
+      const antre = vehicles
+        .filter((v) => v.lane === lane && v.group.visible)
+        .sort((a, b) => b.p - a.p);
+
+      antre.forEach((v, urut) => {
+        let maju = langkah * v.speedJitter;
+        if (urut > 0) {
+          const depan = antre[urut - 1];
+          const batas = depan.p - (depan.len + v.len) / 2 - JARAK_AMAN;
+          maju = Math.min(maju, Math.max(0, batas - v.p));
+        }
+        v.p += maju;
+
+        if (v.p > TRACK_LEN) {
+          // Sampai di mulut keluar. Ia disembunyikan di sini dan menunggu
+          // giliran masuk lagi — atau tidak sama sekali, bila skenarionya
+          // sudah tidak memintanya.
+          v.group.visible = false;
+          return;
+        }
+
+        const arah = lane ? 1 : -1;
+        v.x = arah * (v.p - TRACK_HALF);
+        v.group.position.x = v.x;
+        v.group.position.y = v.baseY - sagAt(v.x);
+        // Roda berputar menurut jarak yang benar-benar ditempuh, jadi
+        // kendaraan yang tertahan di belakang truk rodanya ikut berhenti.
+        v.wheels.forEach((wheel) => {
+          wheel.rotation.z -= (arah * maju) / v.tire;
+        });
       });
+
+      /*
+       * Satu kendaraan dimasukkan per bingkai, dan hanya bila mulut
+       * lintasannya lapang. Tanpa pemeriksaan itu kendaraan baru lahir tepat
+       * di atas kendaraan yang belum sempat menjauh — bentuk tumpang tindih
+       * yang sama dengan yang baru saja diperbaiki, hanya pindah tempat.
+       */
+      const menunggu = vehicles.find((v) => v.lane === lane && v.wanted && !v.group.visible);
+      if (menunggu) {
+        const buntut = antre[antre.length - 1];
+        const lapang = !buntut || buntut.p > (buntut.len + menunggu.len) / 2 + JARAK_AMAN;
+        if (lapang) {
+          menunggu.p = 0;
+          const arah = lane ? 1 : -1;
+          menunggu.x = arah * -TRACK_HALF;
+          menunggu.group.position.x = menunggu.x;
+          menunggu.group.position.y = menunggu.baseY - sagAt(menunggu.x);
+          menunggu.group.visible = true;
+        }
+      }
     });
 
     const pulse = 0.55 + 0.45 * Math.sin(now * 4);
@@ -1377,6 +2406,55 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
     // per bingkai akan membuat banjir seolah tidak pernah naik.
     const dt = Math.min(0.25, Math.max(0, now - lastFrameAt));
     lastFrameAt = now;
+
+    /*
+     * Lendutan dikejar dengan **pegas teredam**, bukan dengan tarikan
+     * eksponensial.
+     *
+     * Tarikan eksponensial mendekat tanpa pernah sampai: sisa perjalanan
+     * terakhirnya merayap semakin pelan, dan gerak yang melambat tanpa
+     * berhenti terbaca sebagai gambar yang tersendat, bukan sebagai benda yang
+     * berpindah. Pegas punya ujung — ia sampai, sedikit melewatinya, lalu
+     * diam. Dan itulah yang memang dilakukan jembatan ketika beban naik ke
+     * atasnya: turun, terlewat sedikit, lalu tenang.
+     *
+     * Redamannya mengikuti pita ambang, tidak tetap. Di bawah ambang waspada
+     * pegasnya hampir teredam kritis: lantainya turun tenang, tanpa ayunan. Di
+     * atas ambang kritis redamannya tinggal sepertiga: tiap perubahan terlewat
+     * jauh dan lama tenangnya. Rasio redaman yang turun memang salah satu
+     * penanda kerusakan yang paling dikenal, jadi yang bertambah di sini
+     * keterangan, bukan hiasan.
+     */
+    if (sagNow !== state.sagUnits || sagVel !== 0) {
+      const { omega, zeta } = SAG_DYNAMICS[state.sagStatus];
+      /*
+       * Bingkai yang tertahan lama — tab di belakang, jeda pemeriksa galat —
+       * dipangkas seperempat detik. Tanpa batas itu satu bingkai tersendat
+       * berubah menjadi ribuan putaran integrasi sekaligus.
+       */
+      let remaining = Math.min(dt, 0.25);
+      while (remaining > 1e-6) {
+        const h = Math.min(remaining, SAG_SUBSTEP);
+        sagVel += (omega * omega * (state.sagUnits - sagNow) - 2 * zeta * omega * sagVel) * h;
+        sagNow += sagVel * h;
+        remaining -= h;
+      }
+      // Sisa selisih yang tinggal sepersepuluh ribu satuan dibulatkan supaya
+      // nilainya benar-benar berhenti di sasarannya.
+      if (Math.abs(state.sagUnits - sagNow) < 1e-5 && Math.abs(sagVel) < 1e-4) {
+        sagNow = state.sagUnits;
+        sagVel = 0;
+      }
+    }
+
+    /*
+     * Medan lendutan dihitung ulang tiap bingkai karena kendaraannya memang
+     * bergerak tiap bingkai — cekungannya berjalan bersama truk, bukan
+     * naik-turun di tempat. Bila tidak ada satu pun cuplikan medan yang
+     * berubah — bentang kosong, lendutan tetap, aliran data dijeda — seluruh
+     * kerja memindahkan geometri di bawahnya dilewati.
+     */
+    if (rebuildField(sagNow)) applyDeflection();
 
     // Angin dikejar perlahan, tidak seketika: mangkuk anemometer punya
     // kelembaman, dan putaran yang melompat dari pelan ke cepat dalam satu
@@ -1551,6 +2629,8 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
       element.removeEventListener('wheel', onWheel);
       label.remove();
       renderer.dispose();
+      environmentTarget.dispose();
+      skyTexture.dispose();
       renderer.domElement.remove();
       scene.traverse((object) => {
         const mesh = object as THREE.Mesh;

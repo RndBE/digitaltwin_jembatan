@@ -1,5 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { AlertEvent, Bridge, DataSource, Telemetry } from '../lib/types';
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import type { AlertEvent, Bridge, DataSource, Status, Telemetry } from '../lib/types';
+import { activeRule } from '../domain/alertRules';
+import { langganAmbang, versiAmbang } from '../domain/thresholds';
 import { LocalSimulation, HISTORY_LENGTH } from '../domain/simulationEngine';
 import { SENSORS } from '../domain/sensors';
 import { DEFAULT_SCENARIO, REFERENCE_SCENARIOS, SCENARIOS } from '../domain/scenarios';
@@ -55,6 +57,15 @@ const IDLE_STEP = MEAN_WINDOW_MS / 1000 / IDLE_SAMPLES;
 export interface Series {
   values: number[];
   baseline: number[];
+  /**
+   * Waktu tiap cuplikan dalam milidetik epoch, sejajar indeks dengan `values`.
+   *
+   * Bagan tidak memerlukannya — sumbu datarnya hanya urutan. Tabel data
+   * memerlukannya: sebuah angka tanpa jam pengambilannya tidak dapat dicocokkan
+   * dengan kejadian di lapangan, dan itulah satu-satunya alasan orang mengunduh
+   * tabelnya.
+   */
+  times: number[];
 }
 
 export interface TelemetryController {
@@ -73,6 +84,14 @@ export interface TelemetryController {
   residual: Record<string, number>;
   /** Pesan galat terakhir dari perintah kendali (mis. perlu masuk). */
   controlError: string | null;
+  /**
+   * Sejak kapan tingkat siaga yang sekarang berlaku, dalam waktu cuplikan.
+   *
+   * "Sejak kapan" sama pentingnya dengan "sekarang apa": kanal yang melewati
+   * ambang dua menit lalu dan kanal yang melewatinya sejak kemarin sore
+   * menuntut tindakan yang berbeda walau statusnya sama.
+   */
+  alertSince: string;
   setScenario: (key: string) => void;
   stopScenario: () => void;
   togglePause: () => void;
@@ -111,8 +130,22 @@ export function useTelemetry(bridge: Bridge, apiAvailable: boolean): TelemetryCo
   if (!simRef.current || simRef.current.bridge.id !== bridge.id) {
     const sim = new LocalSimulation(bridge);
     simRef.current = sim;
+    // Riwayat awal dibangkitkan sekaligus, tanpa jam pengambilan. Karena tiap
+    // nilainya mewakili rerata satu menit, jamnya diisi mundur satu menit per
+    // cuplikan — bukan tebakan, melainkan arti deret itu sendiri.
+    const mulai = Date.now();
     seriesRef.current = Object.fromEntries(
-      SENSORS.map((s) => [s.id, { values: [...sim.series[s.id]], baseline: [...sim.baseline[s.id]] }]),
+      SENSORS.map((s) => {
+        const values = [...sim.series[s.id]];
+        return [
+          s.id,
+          {
+            values,
+            baseline: [...sim.baseline[s.id]],
+            times: values.map((_, i) => mulai - (values.length - 1 - i) * MEAN_WINDOW_MS),
+          },
+        ];
+      }),
     );
     referenceRef.current = Object.fromEntries(SENSORS.map((s) => [s.id, [...sim.series[s.id]]]));
   }
@@ -127,13 +160,19 @@ export function useTelemetry(bridge: Bridge, apiAvailable: boolean): TelemetryCo
 
   const pushSeries = useCallback((snapshot: Telemetry) => {
     const normal = REFERENCE_SCENARIOS.includes(snapshot.scenario);
+    // Satu jam untuk seluruh kanal: cuplikannya memang satu paket, dan jam yang
+    // dihitung ulang per kanal akan menggeser baris tabel yang sama beberapa
+    // milidetik satu sama lain tanpa alasan.
+    const waktu = Date.parse(snapshot.at) || Date.now();
     snapshot.readings.forEach((reading) => {
       const entry = seriesRef.current[reading.id];
       if (entry) {
         entry.values.push(reading.value);
         entry.baseline.push(reading.baseline);
+        entry.times.push(waktu);
         if (entry.values.length > HISTORY_LENGTH) entry.values.shift();
         if (entry.baseline.length > HISTORY_LENGTH) entry.baseline.shift();
+        if (entry.times.length > HISTORY_LENGTH) entry.times.shift();
       }
       // Rekaman acuan hanya tumbuh selama jembatan berada di kondisi normal.
       if (normal) {
@@ -183,7 +222,24 @@ export function useTelemetry(bridge: Bridge, apiAvailable: boolean): TelemetryCo
       setTelemetry(snapshot);
       pushSeries(snapshot);
 
-      const quiet = sim.scenario === 'idle' && sim.isSettled();
+      /*
+       * Laju rutin hanya berlaku pada struktur yang benar-benar tenang, dan
+       * "tenang" tidak sama dengan "berhenti berubah".
+       *
+       * Sisa kerusakan membuat kanal mengendap di atas ambangnya: nilainya
+       * tidak bergerak lagi, `isSettled()` berkata ya, dan sebelum ini laju
+       * langsung turun ke satu cuplikan per menit — padahal tangga siaga masih
+       * membaca WASPADA. Yang terjadi kemudian adalah kebalikan dari cara
+       * pemantauan bekerja: struktur yang sudah melewati ambangnya justru
+       * diawasi paling jarang, dan menit pertama setelah keadaannya memburuk
+       * lagi akan hilang seluruhnya dari rekaman.
+       *
+       * Karena itu status ikut menentukan: selama vonisnya bukan AMAN,
+       * cuplikan tetap datang tiap `LIVE_TICK_MS`, berapa pun tenangnya angka
+       * itu terlihat.
+       */
+      const quiet =
+        sim.scenario === 'idle' && sim.isSettled() && snapshot.assessment.status === 'AMAN';
       // Cuplikan rutin pertama diambil segera setelah struktur tenang, bukan
       // satu menit sesudahnya: nilai terakhir dari pemantauan langsung masih
       // memuat menit pemulihannya, dan menahannya selama itu membuat angka
@@ -323,6 +379,28 @@ export function useTelemetry(bridge: Bridge, apiAvailable: boolean): TelemetryCo
     setWake((n) => n + 1);
   }, []);
 
+  /*
+   * Kapan tingkat siaga terakhir berpindah.
+   *
+   * Tingkatnya dihitung ulang dari pembacaan lewat aturan yang sama yang
+   * ditampilkan halaman Tingkat siaga, bukan dibaca dari `assessment.status`:
+   * ambang dapat diubah operator di peramban ini, dan jam perpindahan harus
+   * mengikuti tingkat yang benar-benar sedang ditampilkan. Karena itu versi
+   * ambang ikut menjadi pemicu — mengubah ambang memang memindahkan tingkat,
+   * dan jam perpindahannya adalah saat itu juga.
+   */
+  const ambangVersi = useSyncExternalStore(langganAmbang, versiAmbang);
+  const [alertSince, setAlertSince] = useState(() => new Date().toISOString());
+  const alertLevelRef = useRef<Status>('AMAN');
+
+  useEffect(() => {
+    if (!telemetry) return;
+    const level = activeRule(telemetry.readings).rule.level;
+    if (level === alertLevelRef.current) return;
+    alertLevelRef.current = level;
+    setAlertSince(telemetry.at);
+  }, [telemetry, ambangVersi]);
+
   const series = useMemo(() => ({ ...seriesRef.current }), [seriesTick]);
   const reference = useMemo(() => ({ ...referenceRef.current }), [seriesTick]);
 
@@ -338,6 +416,7 @@ export function useTelemetry(bridge: Bridge, apiAvailable: boolean): TelemetryCo
     intervalMs,
     residual: telemetry?.residual ?? {},
     controlError,
+    alertSince,
     setScenario,
     stopScenario,
     togglePause,

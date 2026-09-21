@@ -5,6 +5,9 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5174,
+    // host: true agar server dev juga mendengarkan di alamat IP LAN,
+    // sehingga perangkat lain di jaringan yang sama bisa membuka aplikasi.
+    host: true,
     // Permintaan /api diteruskan ke server Express, sehingga kode klien
     // cukup memakai jalur relatif dan tidak perlu tahu porta API.
     proxy: {

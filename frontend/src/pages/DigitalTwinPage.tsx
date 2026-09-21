@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { Bridge, DataSource, Telemetry } from '../lib/types';
+import type { Bridge, Telemetry } from '../lib/types';
 import type { Series } from '../hooks/useTelemetry';
 import {
   DEFAULT_SCENARIO,
@@ -10,6 +10,8 @@ import {
   scenariosOf,
 } from '../domain/scenarios';
 import { Select } from '../components/Select';
+import { SAG_GAIN, sagBand } from '../domain/deflectionScale';
+import { SENSOR_BY_ID, TAG_CLASS } from '../domain/sensors';
 import { TrussViewer } from '../three/TrussViewer';
 import { GlbViewer, type GlbViewerHandle } from '../three/GlbViewer';
 import type { TwinScene } from '../three/proceduralBridge';
@@ -21,17 +23,13 @@ import {
   ProceduralPartTree,
 } from '../components/PartTree';
 import { SensorCard } from '../components/SensorCard';
-import { LiveStrip } from '../components/LiveStrip';
-import { PageHeader, Stage, StatusTag } from '../components/Ui';
+import { PageHeader, Stage } from '../components/Ui';
 import { clearSpots, hasCustomSpots } from '../lib/sensorSpots';
 
 export interface DigitalTwinPageProps {
   bridge: Bridge;
   telemetry: Telemetry | null;
   series: Record<string, Series>;
-  source: DataSource;
-  /** Jarak antar cuplikan yang sedang dipakai. */
-  intervalMs: number;
   /** Kanal yang masih membawa sisa kerusakan. */
   residual: Record<string, number>;
   onScenario: (key: string) => void;
@@ -56,14 +54,13 @@ const PANEL_GRID = {
   alignItems: 'start',
 } as const;
 
+
 /* ------------------------------------------------------------------ prosedural */
 
 function LiveTwinView({
   bridge,
   telemetry,
   series,
-  source,
-  intervalMs,
   residual,
   onScenario,
   onStop,
@@ -75,17 +72,20 @@ function LiveTwinView({
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
   const [picked, setPicked] = useState<string | null>(null);
   /*
-   * Putaran kamera mengikuti preferensi gerak yang dinyatakan sistem.
+   * Putaran kamera mati secara bawaan.
    *
-   * Aturan `prefers-reduced-motion` di CSS hanya menjangkau animasi CSS;
-   * putaran ini digambar tiap bingkai oleh WebGL dan lolos begitu saja —
-   * padahal justru gerak sebidang penuh yang tidak berhenti seperti inilah
-   * yang paling mungkin membuat pusing. Tombolnya tetap ada: yang berubah
-   * hanya keadaan awalnya, dan pengguna tetap boleh menyalakannya.
+   * Halaman ini dipakai untuk membaca: batang mana yang memerah, penanda mana
+   * yang keluar rentang, elemen mana yang ditandai rusak. Model yang berputar
+   * sendiri memaksa pembacanya mengejar benda yang sedang dilihat, dan tiap
+   * kali ia hendak menunjuk sesuatu, sasarannya sudah bergeser. Putaran itu
+   * peraga, bukan alat kerja — jadi ia dinyalakan saat memang diinginkan.
+   *
+   * Ini juga menyelesaikan soal `prefers-reduced-motion`: aturan itu di CSS
+   * hanya menjangkau animasi CSS, sedangkan putaran ini digambar tiap bingkai
+   * oleh WebGL dan lolos begitu saja — padahal gerak sebidang penuh yang tidak
+   * berhenti justru yang paling mungkin membuat pusing.
    */
-  const [autoRotate, setAutoRotate] = useState(
-    () => !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches,
-  );
+  const [autoRotate, setAutoRotate] = useState(false);
   // Mode geser penanda, mati secara bawaan. Halaman ini lebih sering dibaca
   // daripada diatur, dan letak penanda adalah data pemasangan — memindahkannya
   // semestinya perbuatan yang disengaja, bukan akibat tarikan yang meleset.
@@ -142,25 +142,22 @@ function LiveTwinView({
   );
   const pickedReading = picked ? telemetry?.readings.find((r) => r.id === picked) : undefined;
 
+  // Lendutan yang sedang terukur, beserta besarnya setelah dibesarkan. Kedua
+  // angka ditulis berdampingan supaya tidak ada yang mengira lengkungan di
+  // layar adalah lendutan sebenarnya.
+  const deflection = telemetry?.readings.find((r) => r.id === 'defl');
+  const sag = deflection ? sagBand(deflection.value) : null;
+  const deflSpec = SENSOR_BY_ID.defl;
+
   return (
     <div className="screen">
-      <LiveStrip
-        telemetry={telemetry}
-        source={source}
-        sensorCount={bridge.sensorCount}
-        intervalMs={intervalMs}
-      />
 
       <PageHeader
         kicker="Digital Twin"
         title={bridge.name}
         lede="Seret untuk memutar, gulir untuk memperbesar, klik penanda sensor untuk membaca nilainya di tempat. Warna batang mengikuti regangan yang terukur, warna penanda mengikuti status kanalnya. Letak penanda hanya dapat diubah setelah tombol Geser penanda dinyalakan — di luar mode itu penanda sekadar dibaca."
-        actions={telemetry ? <StatusTag status={telemetry.assessment.status} /> : undefined}
-      />
-
-      <section className="split" style={PANEL_GRID}>
-        <div>
-          <div className="row" style={{ marginBottom: 'var(--space-3)' }}>
+        leading={
+          <>
             <button
               type="button"
               className="btn btn-secondary btn-sm"
@@ -192,8 +189,12 @@ function LiveTwinView({
                 Kembalikan letak penanda
               </button>
             ) : null}
-          </div>
+          </>
+        }
+      />
 
+      <section className="split" style={PANEL_GRID}>
+        <div>
           <Stage>
             <TrussViewer
               bridge={bridge}
@@ -313,6 +314,47 @@ function LiveTwinView({
               </div>
             ) : null}
           </Stage>
+
+          {deflection && sag && deflSpec ? (
+            <p
+              className="text-muted"
+              style={{ fontSize: 12, lineHeight: 1.55, marginTop: 'var(--space-2)', maxWidth: '86ch' }}
+            >
+              <strong style={{ fontWeight: 700, color: 'var(--mist-100)' }}>
+                Lendutan tengah bentang {deflection.value.toFixed(1)} mm
+              </strong>{' '}
+              · pita <span className={TAG_CLASS[sag.status]}>{sag.status}</span>, digambar ×{' '}
+              <span className="tabular">{Math.round(sag.effective)}</span>, jadi lengkungan yang
+              terlihat setara <span className="tabular">{sag.drawnMetres.toFixed(2)} m</span> pada
+              bentang {bridge.spanMeters} m.{' '}
+              <strong style={{ fontWeight: 600, color: 'var(--mist-100)' }}>
+                Pengalinya naik bertingkat
+              </strong>{' '}
+              — × {SAG_GAIN.AMAN} untuk milimeter di bawah ambang waspada{' '}
+              {deflSpec.warn.toFixed(0)} mm, × {SAG_GAIN.WASPADA} untuk yang di antara waspada dan
+              kritis {deflSpec.crit.toFixed(0)} mm, × {SAG_GAIN.KRITIS} untuk yang di atasnya —
+              sehingga milimeter yang berbahaya tergambar{' '}
+              {Math.round(SAG_GAIN.KRITIS / SAG_GAIN.AMAN)} kali lebih dalam daripada milimeter
+              yang biasa, sementara keadaan normal tetap tampak hampir lurus. Redamannya ikut turun
+              pada pita yang lebih tinggi: aman turun tenang tanpa ayunan, kritis mengayun dan lama
+              tenangnya — rasio redaman yang menurun memang penanda kerusakan.{' '}
+              Setengah lendutannya berat sendiri — paling dalam di tengah, nol di kedua tumpuan —
+              dan setengahnya kendaraan yang sedang melintas, jadi cekungannya
+              <strong style={{ fontWeight: 600, color: 'var(--mist-100)' }}> berjalan bersama
+              truk</strong> dan lantainya naik lagi begitu bentangnya kosong.
+              {damagedCount > 0 ? (
+                <>
+                  {' '}
+                  Selama {damagedCount} elemen masih ditandai rusak, cekungannya juga{' '}
+                  <strong style={{ fontWeight: 600, color: 'var(--state-waspada)' }}>
+                    condong ke elemen itu
+                  </strong>{' '}
+                  — bentang yang kehilangan kekakuan melendut paling dalam di dekat kerusakannya,
+                  bukan lagi tepat di tengah.
+                </>
+              ) : null}
+            </p>
+          ) : null}
 
           {/*
             * Kenapa masih ada yang merah setelah skenario dihentikan.

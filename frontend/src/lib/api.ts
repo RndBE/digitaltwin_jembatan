@@ -76,10 +76,41 @@ export const api = {
   getTelemetry: (bridgeId: string) => request<Telemetry>(`/bridges/${bridgeId}/telemetry`),
   getAlerts: (bridgeId: string, limit = 20) =>
     request<AlertEvent[]>(`/bridges/${bridgeId}/alerts?limit=${limit}`),
+  /**
+   * Riwayat deret waktu.
+   *
+   * Tanpa rentang: penyangga terakhir di memori server — rapat, beberapa
+   * menit, untuk bagan pemantauan langsung. Dengan rentang: simpanan di disk
+   * yang sudah diringkas per keranjang, untuk pertanyaan yang lebih panjang
+   * daripada layar. Keduanya berbagi satu alamat karena keduanya riwayat
+   * kanal yang sama; yang membedakan cuma sejauh apa ke belakang.
+   */
   getHistory: (bridgeId: string, sensors?: string[]) =>
     request<{ bridgeId: string; series: Array<{ sensorId: string; values: number[]; baseline: number[] }> }>(
       `/bridges/${bridgeId}/history${sensors?.length ? `?sensors=${sensors.join(',')}` : ''}`,
     ),
+  getHistoryRange: (
+    bridgeId: string,
+    opts: { from: number; to: number; bucket?: number; sensors?: string[] },
+  ) => {
+    const q = new URLSearchParams({ from: String(opts.from), to: String(opts.to) });
+    if (opts.bucket) q.set('bucket', String(opts.bucket));
+    if (opts.sensors?.length) q.set('sensors', opts.sensors.join(','));
+    return request<{
+      bridgeId: string;
+      from: number;
+      to: number;
+      bucketMs: number;
+      series: Array<{
+        sensorId: string;
+        name: string;
+        unit: string;
+        warn: number;
+        crit: number;
+        points: Array<{ t: number; min: number; avg: number; max: number }>;
+      }>;
+    }>(`/bridges/${bridgeId}/history?${q.toString()}`);
+  },
   listScenarios: () => request<Scenario[]>('/scenarios'),
   setScenario: (bridgeId: string, scenario: string) =>
     request<{ scenario: string; name: string }>(`/bridges/${bridgeId}/scenario`, {

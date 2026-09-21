@@ -3,7 +3,7 @@ import type { Status, Telemetry } from '../lib/types';
 import type { Series } from '../hooks/useTelemetry';
 import { SENSORS, SENSOR_BY_ID, statusOf } from '../domain/sensors';
 import { SCENARIOS } from '../domain/scenarios';
-import { ThresholdChart, sharedDomain } from '../components/Charts';
+import { OverlayChart, sharedDomain } from '../components/Charts';
 import { PageHeader, SectionTitle, StatusTag } from '../components/Ui';
 
 export interface ComparePageProps {
@@ -78,23 +78,23 @@ export function ComparePage({
         lede={
           referenceFrozen ? (
             <>
-              Grafik kiri adalah rekaman jembatan pada kondisi normal, dibekukan saat skenario{' '}
+              Dua keadaan struktur yang sama, ditumpuk pada satu sumbu. Garis putus adalah rekaman
+              kondisi normal, dibekukan saat skenario{' '}
               <strong style={{ fontWeight: 700, color: 'var(--mist-100)' }}>{scenario.name}</strong>{' '}
-              dijalankan. Grafik kanan adalah kondisi sekarang. Keduanya memakai rentang sumbu yang
-              sama, jadi tinggi garis dapat dibandingkan langsung.
+              dijalankan; garis penuh adalah kondisi sekarang. Daerah yang terarsir di antara
+              keduanya itulah selisihnya — dan selisih itulah yang sedang dicari, bukan nilai mutlak
+              salah satunya.
             </>
           ) : (
             <>
-              Jembatan sedang berada pada kondisi normal, sehingga kedua grafik menunjukkan keadaan
-              yang sama. Jalankan sebuah skenario untuk membekukan rekaman sebelah kiri dan melihat
-              perubahannya.
+              Jembatan sedang berada pada kondisi normal, sehingga kedua garis berimpit dan tidak
+              ada yang terarsir. Jalankan sebuah skenario untuk membekukan rekaman pembandingnya dan
+              melihat seberapa jauh keadaannya berpisah.
             </>
           )
         }
         actions={
-          referenceFrozen ? (
-            <StatusTag status={telemetry.assessment.status} />
-          ) : (
+          referenceFrozen ? undefined : (
             <button type="button" className="btn btn-primary btn-sm" onClick={onOpenScenario}>
               Pilih skenario
             </button>
@@ -178,24 +178,40 @@ export function ComparePage({
           marginBottom: 'var(--space-8)',
         }}
       >
-        <ComparePanel
-          title="Kondisi normal"
-          note={referenceFrozen ? 'rekaman sebelum skenario' : 'sedang berjalan'}
-          spec={focusSpec}
-          values={focusNormal}
-          domain={focusDomain}
-          status="AMAN"
-          mean={tailMean(focusNormal)}
-        />
-        <ComparePanel
-          title="Kondisi sekarang"
-          note={scenario.name}
-          spec={focusSpec}
-          values={focusNow}
-          domain={focusDomain}
-          status={statusOf(focusSpec, tailMean(focusNow))}
-          mean={tailMean(focusNow)}
-        />
+        <div className="glass card" style={{ padding: 'var(--space-4)', gridColumn: '1 / -1' }}>
+          <div
+            className="row"
+            style={{ justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 'var(--space-2)' }}
+          >
+            <div>
+              <span className="card-kicker">Kanal disorot</span>
+              <div className="card-title" style={{ fontSize: 16 }}>
+                {focusSpec.name}{' '}
+                <span className="text-muted" style={{ fontWeight: 400, fontSize: 12 }}>
+                  ({focusSpec.unit}) · {focusSpec.node}
+                </span>
+              </div>
+            </div>
+            <StatusTag status={statusOf(focusSpec, tailMean(focusNow))} />
+          </div>
+
+          <OverlayChart
+            sensor={focusSpec}
+            current={focusNow}
+            reference={focusNormal}
+            status={statusOf(focusSpec, tailMean(focusNow))}
+            domain={focusDomain}
+            height={200}
+          />
+
+          <p className="text-muted" style={{ fontSize: 12, lineHeight: 1.55, marginTop: 'var(--space-2)', maxWidth: '86ch' }}>
+            Garis putus abu adalah rekaman kondisi normal, garis penuh berwarna adalah kondisi
+            sekarang, dan daerah di antaranya adalah selisihnya — yang justru itulah yang dicari.
+            Keduanya berbagi satu sumbu tegak, jadi tinggi garis benar-benar berarti nilai yang
+            lebih besar. Sumbu datarnya lama pengamatan yang sama, bukan jam yang sama: rekaman
+            pembandingnya memang berhenti lebih dulu.
+          </p>
+        </div>
       </section>
 
       <SectionTitle note={`${rows.length} kanal`}>Seluruh kanal</SectionTitle>
@@ -230,23 +246,34 @@ export function ComparePage({
               </span>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-2)' }}>
-              <MiniPane
-                label="normal"
-                value={row.normalMean}
-                spec={row.spec}
-                values={row.normal}
-                domain={row.domain}
-                status="AMAN"
-              />
-              <MiniPane
-                label="sekarang"
-                value={row.nowMean}
-                spec={row.spec}
-                values={row.now}
-                domain={row.domain}
-                status={row.status}
-              />
+            {/* Sepasang bagan kecil berdampingan menuntut mata mengurangkan
+                dua gambar; ditumpuk, selisihnya menjadi satu bentuk yang
+                langsung terlihat besar-kecilnya. */}
+            <OverlayChart
+              sensor={row.spec}
+              current={row.now}
+              reference={row.normal}
+              status={row.status}
+              domain={row.domain}
+              height={76}
+              compact
+            />
+
+            <div
+              className="row tabular"
+              style={{ justifyContent: 'space-between', fontSize: 11.5, marginTop: 2 }}
+            >
+              <span className="text-muted">
+                normal{' '}
+                <span style={{ color: 'var(--mist-200)' }}>
+                  {row.normalMean.toFixed(row.spec.dec)}
+                </span>
+              </span>
+              <span className="text-muted">
+                sekarang{' '}
+                <span style={{ color: '#fff' }}>{row.nowMean.toFixed(row.spec.dec)}</span>{' '}
+                {row.spec.unit}
+              </span>
             </div>
           </div>
         ))}
@@ -255,85 +282,21 @@ export function ComparePage({
       <div className="glass glass--chip card" style={{ padding: 'var(--space-4)' }}>
         <span className="card-kicker">Cara membaca</span>
         <p className="card-body" style={{ maxWidth: '78ch' }}>
-          Kedua grafik tiap kanal memakai rentang sumbu yang sama, dan garis ambang waspada (kuning)
-          serta kritis (merah) berada pada ketinggian yang sama di keduanya. Selisih persen dihitung
-          dari rata-rata sepertiga data terakhir, bukan dari satu nilai sesaat, supaya satu lonjakan
-          tidak menggeser angkanya.
+          Tiap kanal digambar sebagai satu bagan, bukan sepasang. Dua bagan berdampingan menuntut
+          mata mengurangkan dua gambar, dan mata tidak bisa melakukannya; ditumpuk pada satu sumbu,
+          selisihnya menjadi satu bentuk yang langsung terlihat besar-kecilnya. Sumbu tegaknya
+          tunggal dan selalu memuat ambang kritis, jadi garis yang lebih tinggi memang bernilai
+          lebih besar — dan garis ambang waspada (kuning) serta kritis (merah) berlaku untuk kedua
+          deret sekaligus.
+        </p>
+        <p className="card-body" style={{ maxWidth: '78ch' }}>
+          Rekaman pembanding sengaja diputus-putus, bukan dibedakan warnanya saja: data yang
+          dibekukan dan nilai yang sedang berjalan tidak boleh terlihat sama, dan bentuk garis tetap
+          terbaca oleh orang yang tidak membedakan warna. Selisih persen dihitung dari rata-rata
+          sepertiga data terakhir, bukan dari satu nilai sesaat, supaya satu lonjakan tidak
+          menggeser angkanya.
         </p>
       </div>
-    </div>
-  );
-}
-
-function ComparePanel({
-  title,
-  note,
-  spec,
-  values,
-  domain,
-  status,
-  mean,
-}: {
-  title: string;
-  note: string;
-  spec: (typeof SENSORS)[number];
-  values: number[];
-  domain: [number, number];
-  status: Status;
-  mean: number;
-}) {
-  return (
-    <div className="glass card" style={{ padding: 'var(--space-4)' }}>
-      <div className="row" style={{ justifyContent: 'space-between', alignItems: 'baseline' }}>
-        <div>
-          <span className="card-kicker">{title}</span>
-          <div className="text-muted" style={{ fontSize: 11 }}>
-            {note}
-          </div>
-        </div>
-        <div style={{ textAlign: 'right' }}>
-          <div className="stat-value tabular" style={{ fontSize: 24 }}>
-            {mean.toFixed(spec.dec)}
-            <span className="stat-unit">{spec.unit}</span>
-          </div>
-          <StatusTag status={status} />
-        </div>
-      </div>
-
-      <ThresholdChart sensor={spec} values={values} status={status} domain={domain} height={150} />
-
-      <div className="text-muted tabular" style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
-        <span>ambang waspada {spec.warn}</span>
-        <span>ambang kritis {spec.crit}</span>
-      </div>
-    </div>
-  );
-}
-
-function MiniPane({
-  label,
-  value,
-  spec,
-  values,
-  domain,
-  status,
-}: {
-  label: string;
-  value: number;
-  spec: (typeof SENSORS)[number];
-  values: number[];
-  domain: [number, number];
-  status: Status;
-}) {
-  return (
-    <div>
-      <div className="row" style={{ justifyContent: 'space-between', fontSize: 11 }}>
-        <span className="text-muted">{label}</span>
-        <span className="tabular" style={{ fontWeight: 700 }}>
-          {value.toFixed(spec.dec)}
-        </span>
-      </div>
-      <ThresholdChart sensor={spec} values={values} status={status} domain={domain} height={68} />
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { SENSOR_BY_ID, excessRatio, statusOf } from '../domain/sensors';
 import { SCENARIOS } from '../domain/scenarios';
 import { buildTwinScene, type TwinScene } from './proceduralBridge';
 import { loadSpots, saveSpot } from '../lib/sensorSpots';
+import { sagBand } from '../domain/deflectionScale';
 
 /**
  * Pembungkus React untuk adegan three.js prosedural.
@@ -109,13 +110,37 @@ export function TrussViewer({
     const strainSpec = SENSOR_BY_ID.strain;
     const tiltSpec = SENSOR_BY_ID.tilt;
 
-    // Rasio tegangan dihitung dari nilai sensor, bukan dari keadaan internal
-    // mesin simulasi, sehingga model bereaksi sama baik saat data datang dari
-    // API maupun dari mesin lokal.
-    const stressRatio = strain
-      ? Math.min(1, Math.max(0, (strain.value / strainSpec.base - 1) / 1.1))
-      : 0;
+    /*
+     * Rasio tegangan dihitung dari nilai sensor, bukan dari keadaan internal
+     * mesin simulasi, sehingga model bereaksi sama baik saat data datang dari
+     * API maupun dari mesin lokal.
+     *
+     * Pembaginya adalah **jarak dasar ke ambang kritis**, bukan pengali tetap.
+     * Sebelum ini rasionya `(nilai/dasar − 1) / 1,1`, yang mencapai satu pada
+     * 178,5 µm/m sementara ambang kritisnya 190: dua batang pada 178 dan 195
+     * µm/m tergambar dengan warna yang sama persis, dan perpindahan pita —
+     * satu-satunya hal yang ingin dikabarkan warna itu — tidak terlihat di
+     * model. `excessRatio` memakai ambang yang sama dengan yang dipakai kartu
+     * sensor dan halaman Tingkat siaga, jadi merah penuh jatuh tepat di ambang
+     * kritis dan ikut berpindah bila operator mengubah ambangnya.
+     */
+    const stressRatio = strain ? excessRatio(strainSpec, strain.value) : 0;
     const tiltRatio = tilt ? Math.max(0, tilt.value / tiltSpec.base - 1) : 0;
+
+    /*
+     * Lendutan dibaca dari kanalnya, dalam milimeter, lalu dibawa ke satuan
+     * adegan lewat panjang bentang yang sebenarnya: satu satuan adegan setara
+     * `spanMeters / spanUnits` meter di lapangan. Skala gambarnya — yang
+     * bertingkat menurut pita ambang — dikerjakan `sagBand`, sehingga adegan
+     * hanya menerima satu angka dan tidak perlu tahu apa-apa soal milimeter.
+     *
+     * Pitanya ikut dikirim karena adegan memakainya untuk peredaman, bukan
+     * untuk besarnya: aman turun tenang, kritis mengayun dan lama tenangnya.
+     */
+    const deflection = telemetry?.readings.find((r) => r.id === 'defl');
+    const metresPerUnit = bridge.spanMeters / (bridge.model.spanUnits ?? 12);
+    const band = deflection ? sagBand(deflection.value) : null;
+    const sagUnits = band ? band.drawnMetres / metresPerUnit : 0;
 
     // Kantong angin membaca anemometer, bukan skenarionya: benda itu memang
     // menunjukkan angin yang sedang bertiup, dari mana pun angkanya datang.
@@ -137,6 +162,8 @@ export function TrussViewer({
     scene.setState({
       stressRatio,
       tiltRatio,
+      sagUnits,
+      sagStatus: band?.status ?? 'AMAN',
       damaged: telemetry?.damagedParts ?? [],
       cars: telemetry?.traffic.cars ?? 0,
       trucks: telemetry?.traffic.trucks ?? 0,
@@ -146,7 +173,7 @@ export function TrussViewer({
       floodRatio,
       paused: telemetry?.paused ?? false,
     });
-  }, [telemetry]);
+  }, [telemetry, bridge.spanMeters, bridge.model.spanUnits]);
 
   useEffect(() => {
     sceneRef.current?.setState({ pickedSensor });

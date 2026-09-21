@@ -60,6 +60,17 @@
   --radius-glass: 20px;
   --radius-chip: 14px;
   --radius-inset: 16px;
+
+  /*
+   * Tinggi pita kepala.
+   *
+   * Dipakai dua tempat sekaligus: blok tanda platform di puncak rel, dan bilah
+   * kepala di sebelahnya. Keduanya harus setinggi sama — kalau tidak, dua
+   * kartu yang bersebelahan di baris pertama layar berakhir pada garis yang
+   * berbeda, dan mata membacanya sebagai pemasangan yang meleset. Satu angka
+   * di sini supaya keduanya tidak bisa berpisah.
+   */
+  --kepala-h: 58px;
   --radius-sm: 10px;
   --radius-pill: 999px;
 

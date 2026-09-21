@@ -55,7 +55,6 @@ export function ScenarioPage({
         kicker="Simulasi"
         title="Skenario pembebanan"
         lede="Menjalankan sebuah skenario mengubah beban yang bekerja pada model: nilai sensor bergerak menuju kondisi baru dengan laju yang sesuai, dan elemen struktur yang terdampak disorot pada model 3D."
-        actions={telemetry ? <StatusTag status={telemetry.assessment.status} /> : undefined}
       />
 
       {controlError ? (

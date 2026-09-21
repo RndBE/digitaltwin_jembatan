@@ -1,5 +1,7 @@
 require('dotenv').config();
 
+const path = require('path');
+
 const config = {
   PORT: Number(process.env.PORT) || 5175,
   NODE_ENV: process.env.NODE_ENV || 'development',
@@ -20,8 +22,21 @@ const config = {
   // Mesin simulasi memajukan waktu setiap TICK_INTERVAL_MS milidetik.
   TICK_INTERVAL_MS: Number(process.env.TICK_INTERVAL_MS) || 200,
 
-  // Panjang riwayat deret waktu yang disimpan per sensor.
+  // Panjang riwayat deret waktu yang disimpan per sensor di dalam memori.
   HISTORY_LENGTH: 180,
+
+  /*
+   * Riwayat yang bertahan di disk.
+   *
+   * `HISTORY_SAMPLE_MS` menentukan jarak antar cuplikan yang disimpan, bukan
+   * jarak antar detak simulasi: satu menit menghasilkan 1.440 baris sehari per
+   * jembatan — sekitar 200 kB sebulan — sementara menyimpan tiap detak
+   * menghasilkan setengah juta baris sehari untuk menjawab pertanyaan yang
+   * tidak pernah ditanyakan.
+   */
+  HISTORY_DIR: process.env.HISTORY_DIR || path.join(__dirname, '..', 'data', 'history'),
+  HISTORY_SAMPLE_MS: Number(process.env.HISTORY_SAMPLE_MS) || 60_000,
+  HISTORY_RETENTION_DAYS: Number(process.env.HISTORY_RETENTION_DAYS) || 90,
 };
 
 if (config.NODE_ENV === 'production' && config.JWT_SECRET.startsWith('rahasia-pengembangan')) {

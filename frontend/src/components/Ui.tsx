@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { type ReactNode } from 'react';
 import type { Status } from '../lib/types';
 
 /**
@@ -31,33 +31,58 @@ export const STATUS_TONE: Record<Status, string> = {
   KRITIS: 'var(--state-bahaya)',
 };
 
+/**
+ * Kepala halaman — tombolnya, dan pengantar yang hanya dibaca mesin.
+ *
+ * Sejak nama halaman pindah ke kepala lajur isi (`AppHeader`), tajuk besar di
+ * sini mengulang salah satu dari dua hal yang sudah tertulis di kerangka yang
+ * tidak ikut tergulir: nama halamannya, atau nama jembatannya yang menetap di
+ * rel. Kalimat pengantarnya dibuang karena alasan yang berbeda: ia dibaca
+ * sekali, oleh orang yang pertama kali membuka layar itu, lalu dilewati
+ * ribuan kali oleh orang yang sudah hafal — sementara tiga barisnya menekan
+ * isi halaman ke bawah pada tiap kunjungan.
+ *
+ * Pengantarnya tidak dapat dibuka lagi: tombol `?` yang dulu melipatnya ikut
+ * dibuang, karena satu benda yang ditekan sekali seumur pemakaian tetap
+ * menyita tempat di baris yang dipakai berulang. Teksnya tidak dihapus — ia
+ * tetap ada di dokumen lewat `.sr-only`, jadi pembaca layar dan pencarian
+ * dalam halaman masih menemukannya, sementara layar tidak pernah
+ * menampilkannya. `<h1>`-nya juga: halaman tanpa tajuk memaksa pembaca layar
+ * menebak batas dokumennya, dan tautan "Lompat ke isi" mendarat di wilayah
+ * yang tidak dapat diumumkan namanya.
+ */
 export function PageHeader({
   kicker,
   title,
   lede,
   actions,
+  leading,
 }: {
   kicker?: string;
   title: string;
   lede?: ReactNode;
   actions?: ReactNode;
+  /**
+   * Kendali milik halaman yang duduk di ujung kiri baris yang sama dengan
+   * lencana status. Tanpa ini baris itu hanya berisi satu benda kecil di ujung
+   * kanan, dan satu pita kosong selebar layar terbuang di atas isi halaman;
+   * dengan ini baris tersebut memuat tombol yang memang dipakai berulang,
+   * sehingga tidak ada tinggi yang dibayar percuma.
+   */
+  leading?: ReactNode;
 }) {
   return (
     <header className="page-header">
-      {kicker ? <div className="page-kicker">{kicker}</div> : null}
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'flex-end',
-          gap: 'var(--space-4)',
-          flexWrap: 'wrap',
-        }}
-      >
-        <h1 className="page-title">{title}</h1>
-        {actions ? <div className="row">{actions}</div> : null}
-      </div>
-      {lede ? <p className="page-lede">{lede}</p> : null}
+      <h1 className="sr-only">{kicker ? `${kicker} · ${title}` : title}</h1>
+
+      {actions || leading ? (
+        <div className="page-header-aksi">
+          {leading ? <div className="row page-header-utama">{leading}</div> : null}
+          {actions}
+        </div>
+      ) : null}
+
+      {lede ? <p className="sr-only">{lede}</p> : null}
     </header>
   );
 }

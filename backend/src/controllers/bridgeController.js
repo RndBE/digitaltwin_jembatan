@@ -54,11 +54,52 @@ exports.getTelemetry = (req, res) => {
   });
 };
 
+/**
+ * Riwayat deret waktu.
+ *
+ * Dua bentuk, dipilih oleh ada-tidaknya rentang waktu pada permintaan:
+ *
+ *   tanpa `from`/`to`  penyangga terakhir di memori — beberapa menit, rapat,
+ *                      untuk bagan pemantauan langsung
+ *   dengan rentang     simpanan di disk, diringkas per keranjang, untuk
+ *                      pertanyaan yang lebih panjang daripada layar
+ *
+ * Bentuk pertama dipertahankan apa adanya supaya pemanggil lama tidak perlu
+ * ikut berubah, dan karena keduanya memang menjawab pertanyaan yang berbeda:
+ * yang satu "sedang bagaimana", yang lain "sepanjang bulan ini bagaimana".
+ */
 exports.getHistory = (req, res) => {
   const ctx = resolve(req, res);
   if (!ctx) return;
-  const ids = req.query.sensors ? String(req.query.sensors).split(',') : SENSORS.map((s) => s.id);
-  const series = ids.map((id) => ctx.sim.history(id.trim())).filter(Boolean);
+  const ids = req.query.sensors
+    ? String(req.query.sensors)
+        .split(',')
+        .map((id) => id.trim())
+        .filter(Boolean)
+    : SENSORS.map((s) => s.id);
+
+  if (req.query.from || req.query.to) {
+    const from = Number(req.query.from);
+    const to = Number(req.query.to);
+    if ((req.query.from && !Number.isFinite(from)) || (req.query.to && !Number.isFinite(to))) {
+      return res.status(400).json({
+        success: false,
+        message: '`from` dan `to` harus berupa waktu epoch dalam milidetik',
+      });
+    }
+    const data = store.history.query(ctx.bridge.id, {
+      from,
+      to,
+      bucketMs: Number(req.query.bucket) || 0,
+      sensorIds: ids,
+    });
+    if (!data.series.length) {
+      return res.status(400).json({ success: false, message: 'Tidak ada kanal sensor yang cocok' });
+    }
+    return res.json({ success: true, data });
+  }
+
+  const series = ids.map((id) => ctx.sim.history(id)).filter(Boolean);
   if (!series.length) {
     return res.status(400).json({ success: false, message: 'Tidak ada kanal sensor yang cocok' });
   }

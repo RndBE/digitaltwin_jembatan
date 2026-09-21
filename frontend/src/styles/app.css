@@ -360,7 +360,23 @@
  |  membuat keduanya terbaca sebagai dua benda yang tidak saling berhubungan.
  * ------------------------------------------------------------------ */
 
-.app-shell { min-height: 100vh; padding: var(--space-3); }
+/*
+ * Cangkang setinggi layar, dan hanya isi halaman yang bergulir.
+ *
+ * Sebelumnya yang bergulir adalah jendela: rel dan bilah siaga dipaku dengan
+ * `position: sticky`, dan posisi gulir dibawa lintas layar. Dua hal rusak
+ * karenanya — halaman yang lebih pendek daripada halaman sebelumnya terbuka
+ * dalam keadaan tergulir ke ruang kosong, dan tiap `sticky` menambah satu
+ * lapisan yang harus disusun ulang tiap bingkai. Dengan tinggi dikunci,
+ * kerangkanya benar-benar diam, isinya punya gulirannya sendiri, dan tiap
+ * layar mulai dari atas.
+ */
+.app-shell {
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  padding: var(--space-3);
+}
 
 /*
  * Tautan lompat. Bukan disembunyikan dengan `display: none` — yang begitu ikut
@@ -389,20 +405,59 @@
  * Tanpa batas lebar: pada monitor lebar, memotong wadah di tengah menyisakan
  * dua pita kosong di kiri dan kanan, sementara isinya justru muat lebih banyak
  * kolom. Yang dijaga lebarnya adalah barisan teks, bukan halamannya — paragraf
- * panjang punya batasnya sendiri lewat `.page-lede`, dan kisi kartu menambah
+ * panjang punya batasnya sendiri lewat `max-width`, dan kisi kartu menambah
  * kolom alih-alih melebarkan kartunya.
  */
 .app-container {
   display: flex;
-  align-items: flex-start;
+  align-items: stretch;
   gap: var(--space-3);
   width: 100%;
+  flex: 1;
+  min-height: 0;
 }
 
+/*
+ * Lajur kanan: bilah tingkat siaga di atas, isi halaman di bawahnya.
+ *
+ * Jaraknya dibawa lajur ini, bukan `main`, supaya bilah dan isi halaman
+ * berdiri pada garis kiri yang sama. Bilah yang menjorok sendiri terbaca
+ * sebagai benda yang menumpang di atas halaman, bukan sebagai bagian tetap
+ * dari kerangkanya.
+ */
+.app-column {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  /* Tanpa jarak atas: kepala harus berangkat dari garis yang sama dengan
+     puncak rel di sebelahnya, bukan dua puluh piksel di bawahnya. */
+  padding: 0 clamp(var(--space-3), 2vw, var(--space-6)) 0;
+  /*
+   * Wadah kueri untuk kepala di dalamnya.
+   *
+   * Kepala menyusut menurut ruang yang benar-benar dipunyainya, bukan menurut
+   * lebar jendela — dan keduanya berbeda sekitar 250 piksel, selebar rel di
+   * sebelahnya. Dengan kueri layar, kepalanya melimpah pada jendela yang
+   * menurut angkanya lapang tetapi kenyataannya sempit.
+   */
+  container-type: inline-size;
+}
+
+/*
+ * Inilah satu-satunya yang bergulir. Jarak bawahnya dibawa sini, bukan
+ * lajurnya: baris terakhir halaman harus punya ruang di bawahnya ketika
+ * digulir sampai habis, dan jarak yang dipasang pada wadah yang tidak
+ * bergulir tidak pernah ikut tergulir.
+ */
 .app-main {
   flex: 1;
   min-width: 0;
-  padding: var(--space-4) clamp(var(--space-3), 2vw, var(--space-6)) var(--space-8);
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-bottom: var(--space-8);
 }
 
 /* ------------------------------------------------------------------ *
@@ -419,21 +474,33 @@
  */
 .sidebar {
   width: clamp(208px, 15vw, 280px); flex: none;
-  position: sticky; top: var(--space-3);
-  height: calc(100vh - var(--space-6));
+  /* Tingginya mengikuti cangkang yang sudah dikunci, jadi tidak perlu
+     dipaku sendiri — `sticky` di sini hanya menambah lapisan yang tidak
+     menghasilkan apa-apa. */
+  height: 100%;
   display: flex; flex-direction: column; gap: var(--space-4);
-  padding: var(--space-4);
+  /* Jarak atas dibawa blok tanda platform lewat tingginya sendiri, bukan oleh
+     rel — supaya blok itu berangkat dari puncak rel, sejajar kepala. */
+  padding: 0 var(--space-4) var(--space-4);
   overflow-y: auto;
 }
-.sidebar-brand { display: flex; align-items: center; gap: var(--space-2); }
+/*
+ * Blok tanda platform: pita setinggi kepala, isinya di tengah.
+ *
+ * Tingginya tidak dibiarkan mengikuti isinya. Nama platform membungkus jadi
+ * dua baris pada rel yang sempit dan satu baris pada rel yang lebar, jadi
+ * tinggi alaminya berubah-ubah antara 38 dan 56 piksel — dan bilah kepala di
+ * sebelahnya tidak ikut berubah. Dipaku pada `--kepala-h`, keduanya berakhir
+ * pada garis yang sama pada lebar berapa pun.
+ */
+.sidebar-brand {
+  display: flex; align-items: center; gap: var(--space-2);
+  flex: none; min-height: var(--kepala-h);
+}
 .sidebar-asset-card {
   display: flex; flex-direction: column; gap: 3px;
   padding: var(--space-2) var(--space-3);
 }
-/*
- * Acuan aset di bilah samping: keterangan yang berlaku sepanjang sesi, jadi
- * tempatnya menetap di rel, bukan di badan halaman yang berganti-ganti.
- */
 .sidebar-nav { display: flex; flex-direction: column; gap: var(--space-3); }
 .sidebar-nav-items { display: flex; flex-direction: column; gap: 2px; }
 .sidebar-foot {
@@ -462,20 +529,378 @@
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.32), 0 12px 26px -14px rgb(31 139 245 / 0.9);
 }
 
+/*
+ * Titik penanda pada butir navigasi.
+ *
+ * Dipasang di ujung kanan butirnya, bukan menggantikan labelnya: yang
+ * disampaikan titik ini cuma "ada yang perlu dilihat di sini", dan pesan
+ * sesingkat itu tidak boleh memakan tempat nama menunya. Warnanya dibawa
+ * pemanggil karena artinya berbeda tiap butir — keadaan struktur pada Tingkat
+ * siaga, kejadian yang belum dibaca pada Data.
+ */
+.nav-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  margin-left: auto; flex: none;
+  box-shadow: 0 0 0 3px rgb(2 8 20 / 0.45);
+}
+
+/* ------------------------------------------------------------------ *
+ |  Bilah tingkat siaga
+ * ------------------------------------------------------------------ */
+
+/*
+ * Menempel di atas layar pada tinggi yang sama dengan rel di sebelahnya,
+ * sehingga keduanya terbaca sebagai satu kerangka yang diam sementara isinya
+ * bergulir. `z-index` di atas isi halaman, tetapi di bawah label melayang
+ * model 3D yang memang harus menutupinya.
+ */
+.app-header {
+  flex: none; z-index: 5;
+  display: flex; align-items: center; flex-wrap: nowrap;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  margin-bottom: var(--space-4);
+  /* Setinggi blok tanda platform di puncak rel; lihat `--kepala-h`. */
+  min-height: var(--kepala-h);
+  font-size: 13px;
+  /* Latarnya lebih pekat daripada kartu biasa: ia bagian dari kerangka yang
+     diam bersama rel, bukan kartu yang mengambang di atas halaman. */
+  background: rgb(9 16 30 / 0.94);
+}
+
+/*
+ * Nama halaman yang sedang dibuka.
+ *
+ * Ia tidak ikut menyusut dan tidak ikut disembunyikan pada lebar berapa pun:
+ * satu-satunya keterangan di kepala yang menjawab "saya sedang di mana", dan
+ * layar sempit justru yang paling butuh jawabannya.
+ */
+.app-header-judul {
+  font-size: 14.5px; font-weight: 700; color: #fff;
+  flex: none; white-space: nowrap;
+  padding-right: var(--space-3);
+  border-right: 1px solid rgb(148 163 184 / 0.18);
+}
+
+.app-header-siaga {
+  display: flex; align-items: center; gap: 6px;
+  flex: none;
+  background: none; border: 0; padding: 0; cursor: pointer;
+}
+.app-header-tombol { margin-left: 0; }
+
+/*
+ * Kalimat aturan yang menyusut, bukan bilah yang tumbuh.
+ *
+ * Ia satu-satunya butir yang boleh dipotong: tingkat, kode, dan jam
+ * perpindahan semuanya pendek dan tidak tergantikan, sedangkan kalimat
+ * kriterianya masih berguna walau hanya terbaca separuh — dan selengkapnya
+ * selalu ada satu klik jauhnya di halaman Tingkat siaga. Dibiarkan
+ * membungkus, bilah ini tumbuh jadi tiga baris dan mendorong turun seisi
+ * halaman tiap kali aturannya berganti.
+ */
+/* Dipakai hanya oleh kepala aset acuan — aset tanpa sensor, yang tidak punya
+   tingkat siaga untuk diterangkan. */
+.app-header .topbar-rule {
+  flex: 1 1 130px; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+/*
+ * "Sejak" boleh menyusut, karena panjangnya berubah sendiri sepanjang hari:
+ * "< 1 menit" dan "23 jam 59 menit" berbeda tujuh puluh piksel, dan kepala
+ * yang pas pada yang pertama akan melimpah pada yang kedua. Ia menyusut lebih
+ * dulu daripada melimpah.
+ */
+.topbar-since {
+  white-space: nowrap; flex: 0 1 auto;
+  min-width: 0; overflow: hidden; text-overflow: ellipsis;
+}
+/* Tombolnya tidak boleh ikut menyusut atau membelah katanya: bilah ini satu
+   baris, dan tombol dua baris membuat tingginya melompat. */
+.app-header .btn { flex: none; white-space: nowrap; }
+
+.topbar-aliran {
+  display: flex; align-items: center; flex: none;
+  gap: var(--space-3);
+  white-space: nowrap;
+}
+
+.topbar-denyut { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+
+.topbar-mode { font-weight: 650; font-size: 12.5px; }
+
+.topbar-butir { font-size: 12px; }
+.topbar-butir .tabular { color: var(--color-text); }
+
+/*
+ * Penyusutan bertahap, diukur terhadap lebar kepalanya sendiri.
+ *
+ * Urutannya bukan sembarang. Yang dibuang lebih dulu adalah yang dapat
+ * disimpulkan dari tempat lain: lama siaga ada di kaki kartu tangga siaga,
+ * kalimat kriteria ada di halaman Aturan & ambang, tanggal ada di berkas
+ * unduhan. Yang dipertahankan paling akhir adalah yang tidak tertulis di mana
+ * pun selain di sini — nama halaman, tingkat siaga, bukti bahwa datanya
+ * mengalir, dan jalan menuju keterangan lengkapnya.
+ */
+@container (max-width: 940px) {
+  .topbar-since, .topbar-rule { display: none; }
+}
+
+@container (max-width: 780px) {
+  .topbar-tanggal { display: none; }
+}
+
+@container (max-width: 680px) {
+  .topbar-mode { display: none; }
+}
+
+/*
+ * Selebar telapak tangan. Yang dibuang di sini bukan keterangan, melainkan
+ * **pengulangan**: nomor tingkat dan kode aturan sama-sama menerangkan lencana
+ * yang warnanya sudah menyebutkan dirinya, dan keduanya tinggal satu ketukan
+ * jauhnya lewat tombol di sebelah kanan.
+ */
+.topbar-pendek { display: none; }
+
+@container (max-width: 620px) {
+  .app-header { gap: var(--space-2); }
+  .siaga-tingkat, .topbar-kode { display: none; }
+  .topbar-panjang { display: none; }
+  .topbar-pendek { display: inline; }
+}
+
+/* Ponsel paling sempit: judul halaman boleh dipotong — tidak ada lagi yang
+   dapat disembunyikan sebelum ia — dan jarak tepi ikut dikecilkan. */
+@container (max-width: 420px) {
+  .app-header { padding: var(--space-2); gap: 6px; }
+  /* Zona waktu dibuang, bukan jamnya: seluruh aplikasi memakai satu zona, dan
+     menuliskannya di tiap jam tidak menambah keterangan apa pun. */
+  .topbar-zona { display: none; }
+  .app-header-judul {
+    flex: 0 1 auto; min-width: 0;
+    overflow: hidden; text-overflow: ellipsis;
+    padding-right: var(--space-2);
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ |  Jendela bertumpuk
+ * ------------------------------------------------------------------ */
+
+/*
+ * `<dialog>` sendiri hanya wadah: seluruh tampilannya dibuang supaya kartunya
+ * di dalam yang menentukan bentuk. Peramban memberi elemen ini bingkai, jarak
+ * tepi, dan latar putih bawaan yang tidak ada hubungannya dengan tema gelap.
+ */
+.modal {
+  border: 0; padding: 0; margin: 0;
+  max-width: 100vw; max-height: 100vh;
+  width: 100%; height: 100%;
+  background: transparent; overflow: visible;
+
+  /*
+   * Munculnya dianimasikan, termasuk **hilangnya**.
+   *
+   * Itu bagian yang biasanya gagal pada `<dialog>`: `close()` mencabut elemen
+   * dari lapisan atas dan menyetel `display: none` seketika, jadi peralihan
+   * keluar tidak pernah sempat berjalan dan jendelanya lenyap begitu saja.
+   * Dua sifat diskret itu — `display` dan `overlay` — karena itu ikut
+   * dialihkan dengan `allow-discrete`: keduanya ditahan sampai peralihan
+   * lainnya selesai.
+   *
+   * Tanpa dukungan peramban, yang hilang hanya animasinya; jendelanya tetap
+   * muncul dan tetap tertutup seperti biasa.
+   */
+  /*
+   * Munculnya dianimasikan, termasuk **hilangnya**.
+   *
+   * Itu bagian yang biasanya gagal pada `<dialog>`: `close()` mencabut elemen
+   * dari lapisan atas dan menyetel `display: none` seketika, jadi peralihan
+   * keluar tidak pernah sempat berjalan dan jendelanya lenyap begitu saja.
+   * Dua sifat diskret itu — `display` dan `overlay` — karena itu ikut
+   * dialihkan dengan `allow-discrete`: keduanya ditahan sampai peralihan
+   * lainnya selesai.
+   *
+   * Aturan dasar ini yang mengatur **keluarnya** (140 ms), dan aturan
+   * `[open]` di bawahnya yang mengatur **masuknya** (220 ms). Keluar memang
+   * harus lebih cepat: yang menutup jendela sudah selesai dengan isinya dan
+   * sedang menunggu halaman di belakangnya, sementara yang membukanya perlu
+   * matanya sempat mengikuti dari mana benda itu datang.
+   *
+   * Tanpa dukungan peramban, yang hilang hanya animasinya; jendelanya tetap
+   * muncul dan tetap tertutup seperti biasa.
+   */
+  opacity: 0;
+  transition:
+    opacity 140ms ease,
+    display 140ms allow-discrete,
+    overlay 140ms allow-discrete;
+}
+
+/*
+ * Selama peralihan keluar berjalan, elemennya masih `display: block` padahal
+ * atribut `open`-nya sudah lepas — itu memang syarat animasi keluarnya. Yang
+ * tidak boleh ikut tertinggal adalah kemampuannya menangkap klik: seratus
+ * empat puluh milidetik lembar tak terlihat yang menutupi seluruh layar cukup
+ * untuk menelan satu klik, dan klik yang hilang tanpa sebab adalah kerusakan
+ * yang paling sulit dilaporkan orang.
+ */
+.modal:not([open]) { pointer-events: none; }
+
+.modal[open] {
+  opacity: 1;
+  /*
+   * `cubic-bezier(0.4, 0, 0.2, 1)`, bukan lengkung yang tajam di awal.
+   *
+   * Lengkung yang mempercepat di awal menyelesaikan delapan puluh persen
+   * perjalanannya dalam sepertiga waktu, dan sisanya merayap — pada jarak
+   * sependek ini yang terbaca bukan gerak, melainkan kedipan. Lengkung ini
+   * menahan kecepatan puncaknya di tengah, jadi seluruh 220 milidetiknya
+   * benar-benar terlihat bergerak.
+   */
+  transition:
+    opacity 220ms cubic-bezier(0.4, 0, 0.2, 1),
+    display 220ms allow-discrete,
+    overlay 220ms allow-discrete;
+}
+
+/* Keadaan awal peralihan masuk. Tanpa ini tidak ada yang dapat dialihkan:
+   elemennya lahir langsung dalam keadaan akhirnya. */
+@starting-style {
+  .modal[open] { opacity: 0; }
+}
+
+.modal::backdrop {
+  background: rgb(3 8 18 / 0);
+  backdrop-filter: blur(0px);
+  transition:
+    background 140ms ease,
+    backdrop-filter 140ms ease,
+    display 140ms allow-discrete,
+    overlay 140ms allow-discrete;
+}
+.modal[open]::backdrop {
+  background: rgb(3 8 18 / 0.72);
+  backdrop-filter: blur(2px);
+  transition:
+    background 220ms cubic-bezier(0.4, 0, 0.2, 1),
+    backdrop-filter 220ms cubic-bezier(0.4, 0, 0.2, 1),
+    display 220ms allow-discrete,
+    overlay 220ms allow-discrete;
+}
+@starting-style {
+  .modal[open]::backdrop {
+    background: rgb(3 8 18 / 0);
+    backdrop-filter: blur(0px);
+  }
+}
+
+.modal-latar {
+  min-height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  padding: var(--space-4);
+}
+
+/*
+ * Kartunya naik 12 piksel sambil membesar dari 97 %.
+ *
+ * Jaraknya sengaja pendek. Jendela yang meluncur jauh terasa lambat pada kali
+ * kesepuluh, dan tombol Ubah ini memang ditekan berkali-kali; yang dibutuhkan
+ * cuma cukup gerak untuk memberi tahu dari mana benda itu datang.
+ *
+ * Geraknya 20 milidetik lebih panjang daripada pudarnya, jadi bentuk kartunya
+ * mantap sesaat setelah warnanya penuh alih-alih keduanya berhenti serentak —
+ * berhenti serentak terbaca sebagai satu kedipan, bukan sebagai benda yang
+ * mendarat.
+ */
+.modal-kartu {
+  transform: translateY(12px) scale(0.97);
+  transition: transform 140ms ease;
+  width: min(520px, 100%);
+  max-height: calc(100vh - var(--space-6) * 2);
+  display: flex; flex-direction: column;
+  border-radius: var(--radius-glass);
+  /* Lebih pekat daripada kartu biasa: di belakangnya ada seisi halaman, dan
+     kaca yang terlalu bening membuat formulir terbaca di atas tabel. */
+  background: rgb(10 18 33 / 0.97);
+}
+
+.modal[open] .modal-kartu {
+  transform: none;
+  transition: transform 240ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+@starting-style {
+  .modal[open] .modal-kartu { transform: translateY(12px) scale(0.97); }
+}
+
+/*
+ * Yang meminta gerak dikurangi tetap mendapat jendelanya, tanpa geraknya.
+ * Durasi tidak dinolkan melainkan disisakan satu milidetik: nol membuat
+ * sebagian peramban melewati peristiwa peralihan sama sekali, dan kode yang
+ * kelak menunggunya akan menggantung.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .modal, .modal::backdrop, .modal-kartu { transition-duration: 1ms; }
+  .modal-kartu { transform: none; }
+  @starting-style {
+    .modal[open] .modal-kartu { transform: none; }
+  }
+}
+
+.modal-kepala {
+  display: flex; align-items: flex-start; gap: var(--space-3);
+  padding: var(--space-4) var(--space-4) var(--space-3);
+  border-bottom: 1px solid rgb(148 163 184 / 0.16);
+}
+.modal-judul { font-size: 16px; font-weight: 700; margin: 0; }
+.modal-subjudul {
+  font-size: 11.5px; line-height: 1.5; margin: 4px 0 0;
+  color: var(--mist-300);
+}
+
+.modal-tutup {
+  flex: none; margin-left: auto;
+  width: 28px; height: 28px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 8px; border: 1px solid rgb(148 163 184 / 0.28);
+  background: transparent; color: var(--mist-300);
+  font-size: 17px; line-height: 1; cursor: pointer;
+}
+.modal-tutup:hover { background: rgb(148 163 184 / 0.16); color: #fff; }
+
+.modal-isi {
+  padding: var(--space-4);
+  overflow-y: auto;
+  display: flex; flex-direction: column; gap: var(--space-3);
+}
+
+.modal-kaki {
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid rgb(148 163 184 / 0.16);
+}
+
 /* ------------------------------------------------------------------ *
  |  Kepala halaman dan ubin angka
  * ------------------------------------------------------------------ */
 
-.page-header { margin-bottom: var(--space-6); }
-.page-kicker {
-  font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
-  color: var(--brand-300); font-weight: 700; margin-bottom: 8px;
+/*
+ * Kepala halaman tidak lagi punya tinggi sendiri: isinya tinggal tajuk dan
+ * pengantar yang keduanya `.sr-only`, plus deretan tombol bila ada. Jaraknya
+ * karena itu dibawa deretan tombolnya, bukan pembungkusnya — pembungkus yang
+ * memberi jarak pada halaman tanpa tombol akan menyisakan celah kosong yang
+ * tidak dapat dijelaskan.
+ */
+.page-header { margin: 0; }
+.page-header-aksi {
+  display: flex; justify-content: flex-end; align-items: center;
+  gap: var(--space-2); flex-wrap: wrap;
+  margin-bottom: var(--space-4);
 }
-.page-title { font-size: clamp(24px, 3vw, 32px); font-weight: 800; }
-.page-lede {
-  font-size: 14px; line-height: 1.65; max-width: 68ch; margin-top: var(--space-2);
-  color: var(--mist-300);
-}
+/* Kendali halaman mendorong lencana status tetap ke ujung kanan. */
+.page-header-utama { margin-right: auto; gap: 6px; }
+/* Jarak bawah deret tab hanya berlaku saat ia berdiri sendiri, bukan di baris ini. */
+.page-header-utama .tabs { margin-bottom: 0; }
 
 .stat { display: flex; flex-direction: column; gap: 3px; }
 .stat-label {
@@ -577,12 +1002,76 @@
 .table tbody tr:last-child td { border-bottom: 0; }
 .table tbody tr:hover td { background: rgb(255 255 255 / 0.04); }
 .table .num { text-align: right; font-variant-numeric: tabular-nums; color: #fff; }
+/* Kepala lajur dibesarkan hurufnya, satuannya tidak: `um/m` yang ditulis
+   dengan huruf besar bukan lagi satuan yang sama. */
+.table th .satuan { text-transform: none; letter-spacing: 0; }
 
 /* ------------------------------------------------------------------ *
  |  Utilitas
  * ------------------------------------------------------------------ */
 
+/* ------------------------------------------------------------------ *
+ |  Ubin kamera
+ * ------------------------------------------------------------------ */
+
+/*
+ * Lapisan keterangan di atas gambar kamera.
+ *
+ * HTML, bukan bagian dari gambarnya — itu yang membuatnya tetap di tempatnya
+ * ketika `<svg>` peraga diganti `<video>` sungguhan. Latarnya gelap sendiri
+ * karena gambar di belakangnya bisa apa saja, termasuk langit putih tengah
+ * hari.
+ */
+.cam-hud {
+  position: absolute; left: var(--space-2); right: var(--space-2);
+  top: var(--space-2);
+  display: flex; align-items: center; gap: 6px;
+  pointer-events: none;
+}
+.cam-hud--bawah { top: auto; bottom: var(--space-2); }
+.cam-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 2px 8px; border-radius: var(--radius-chip);
+  background: rgb(4 10 20 / 0.66);
+  color: #fff; font-size: 10.5px; font-weight: 700;
+  letter-spacing: 0.04em;
+  backdrop-filter: blur(3px);
+}
+.cam figcaption { border-top: 1px solid rgb(255 255 255 / 0.08); }
+
+/* ------------------------------------------------------------------ *
+ |  Pohon elemen
+ * ------------------------------------------------------------------ */
+
+/*
+ * Baris elemen adalah tombol, bukan baris tabel: yang dipilih menentukan isi
+ * panel di sebelahnya, dan satu-satunya cara memberitahu itu adalah membuatnya
+ * terlihat dapat ditekan.
+ */
+.elemen-baris {
+  display: flex; align-items: center; gap: var(--space-2);
+  width: 100%; padding: 8px var(--space-4);
+  border: 0; background: transparent; color: var(--mist-200);
+  font: inherit; font-size: 13px; text-align: left; cursor: pointer;
+  transition: background var(--dur-fast) var(--ease);
+}
+.elemen-baris:hover { background: rgb(255 255 255 / 0.05); color: #fff; }
+.elemen-baris[aria-pressed='true'] {
+  background: rgb(71 166 255 / 0.12);
+  box-shadow: inset 2px 0 0 var(--brand-400);
+  color: #fff;
+}
+
 .text-muted { color: var(--mist-400); }
+
+/* Teks yang hanya dibacakan pembaca layar. Bukan `display: none` — yang begitu
+   ikut hilang dari pohon aksesibilitas, jadi tidak pernah sampai ke siapa
+   pun. */
+.sr-only {
+  position: absolute; width: 1px; height: 1px;
+  margin: -1px; padding: 0; border: 0;
+  clip-path: inset(50%); overflow: hidden; white-space: nowrap;
+}
 .tabular { font-variant-numeric: tabular-nums; }
 .hairline { height: 1px; border: 0; background: rgb(255 255 255 / 0.1); }
 .hr { height: 1px; border: 0; margin: var(--space-4) 0; background: rgb(255 255 255 / 0.1); }
@@ -607,7 +1096,21 @@
  * butirnya sendiri.
  */
 @media (max-width: 960px) {
-  .app-container { flex-direction: column; }
+  /*
+   * Di bawah lebar tablet, gulirannya dikembalikan ke jendela.
+   *
+   * Rel berubah jadi bilah mendatar di atas isi, jadi tidak ada lagi dua
+   * kolom yang perlu bergulir sendiri-sendiri. Mengunci tinggi di sini justru
+   * merugikan: peramban ponsel menyembunyikan bilah alamatnya saat halaman
+   * digulir, dan itu hanya terjadi bila yang bergulir memang jendelanya.
+   */
+  .app-shell { height: auto; min-height: 100vh; overflow: visible; display: block; }
+  .app-container { flex-direction: column; min-height: 0; }
+  .app-column { min-height: 0; }
+  .app-main { overflow: visible; min-height: 0; }
+  /* Bilah siaga dipaku kembali — di sini jendelanya yang bergulir, dan
+     keadaan jembatan tetap harus terbaca sejauh apa pun halamannya turun. */
+  .app-header { position: sticky; top: 0; }
   .sidebar {
     position: static;
     width: 100%;
@@ -639,14 +1142,356 @@
    * halaman. Dengan lebar dikunci, luberan kembali ke pembungkus tabel yang
    * memang sudah bergulir sendiri.
    */
-  .app-main { padding: var(--space-4) var(--space-2) var(--space-6); max-width: 100%; }
+  .app-column { padding: var(--space-4) var(--space-2) var(--space-6); max-width: 100%; }
 }
 
 @media (max-width: 640px) {
   .app-shell { padding: var(--space-2); }
   .sidebar { padding: var(--space-3); }
-  .sidebar-asset-card span:last-child { display: none; }
-  .page-title { font-size: 22px; }
   .stat-value { font-size: 23px; }
   .table th, .table td { padding: 8px; }
+}
+
+/* ------------------------------------------------------------------ *
+ |  Kepala kartu, bilah penyaring, dan tab
+ * ------------------------------------------------------------------ */
+
+/*
+ * Kartu tabel memakai `padding: 0` supaya tabelnya menempel ke tepi kartu.
+ * Judul dan kakinya karena itu membawa jaraknya sendiri, dan dipisahkan garis
+ * rambut yang sama dengan garis antar baris tabel — jadi kepala kartu terbaca
+ * sebagai bagian dari tabel, bukan sebagai kartu kedua yang menumpang di atasnya.
+ */
+.card-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid rgb(255 255 255 / 0.08);
+}
+.card-foot {
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid rgb(255 255 255 / 0.08);
+}
+
+.toolbar {
+  display: flex; align-items: flex-end; flex-wrap: wrap;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.tabs {
+  display: flex; gap: 6px; flex-wrap: wrap;
+  margin-bottom: var(--space-4);
+}
+.tab {
+  border: 0; cursor: pointer; font: inherit;
+  padding: 8px 14px; border-radius: var(--radius-inset);
+  font-size: 13px; font-weight: 600;
+  color: var(--mist-300); background: rgb(255 255 255 / 0.05);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.08);
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+.tab:hover { background: rgb(255 255 255 / 0.1); color: #fff; }
+.tab--active {
+  color: #fff;
+  background: linear-gradient(120deg, rgb(31 139 245 / 0.85), rgb(18 104 201 / 0.68));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.28);
+}
+
+/*
+ * Tabel panjang digulir di dalam kartunya, jadi kepala lajur harus ikut
+ * menempel — tanpa itu, baris ke-40 tidak lagi punya nama lajur. Latarnya
+ * pekat, bukan tembus pandang: kaca di atas kaca membuat angka yang lewat di
+ * bawahnya masih terbaca samar.
+ */
+.table--sticky thead th {
+  position: sticky; top: 0; z-index: 1;
+  background: rgb(9 16 30 / 0.96);
+  backdrop-filter: blur(6px);
+}
+
+/* ------------------------------------------------------------------ *
+ |  Cetak
+ * ------------------------------------------------------------------ */
+
+/*
+ * Lembar cetak bukan tangkapan layar. Yang dibawa ke kertas hanya isinya:
+ * navigasi, tombol, dan penyaring tidak berguna di sana, dan latar gelap
+ * menghabiskan tinta sekaligus membuat angka tipis hilang. Warna keadaan
+ * tetap dipertahankan — itu satu-satunya warna yang membawa arti, dan tabel
+ * tercetak tanpa warna itu kehilangan status tiap barisnya.
+ */
+@media print {
+  @page { margin: 12mm; }
+
+  .d-print-none, .sidebar, .backdrop, .stage-overlay, .lompat-isi { display: none !important; }
+
+  html, body, .app-shell, .app-container, .app-column, .app-main {
+    background: #fff !important;
+    color: #111 !important;
+    display: block !important;
+    height: auto !important;
+    max-width: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+  }
+
+  .glass, .card, .glass--chip, .glass--inset {
+    background: #fff !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    border: 1px solid #d0d0d0 !important;
+    break-inside: auto;
+  }
+
+  /* Pembungkus tabel membawa batas tinggi dan gulirannya sendiri lewat gaya
+     sebaris; keduanya harus dicabut, kalau tidak yang tercetak hanya layar
+     pertama dari tabel yang panjangnya seratus baris. */
+  .card > div, .table-wrap, [style*="max-height"] {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .card-title, .stat-value, .table .num, strong { color: #111 !important; }
+  .text-muted, .stat-label, .stat-note, .card-kicker, .table th { color: #555 !important; }
+
+  .table { font-size: 10.5px; }
+  .table th, .table td {
+    color: #111 !important;
+    border-bottom: 1px solid #ddd !important;
+    padding: 5px 7px;
+  }
+  .table thead { display: table-header-group; }
+  .table tr { break-inside: avoid; }
+  .table--sticky thead th { position: static; background: #f3f3f3 !important; backdrop-filter: none; }
+
+  .tag {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    border: 1px solid currentColor;
+  }
+}
+
+/* ------------------------------------------------------------ tangga siaga */
+
+/*
+ * Satu anak tangga tingkat siaga.
+ *
+ * Yang tidak berlaku sengaja dibuat redup tetapi tetap terbaca: ia batas yang
+ * belum dilewati, bukan keterangan yang dimatikan. Yang berlaku mendapat
+ * bingkai berwarna dan latar tipis warna keadaannya, bukan sekadar huruf
+ * tebal — pada layar yang penuh, tebal saja tidak menang melawan sekelilingnya.
+ */
+.siaga-langkah {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid rgb(148 163 184 / 0.16);
+  border-radius: var(--radius-chip);
+  background: rgb(148 163 184 / 0.04);
+  opacity: 0.62;
+  transition: opacity 140ms ease, background 140ms ease;
+}
+
+.siaga-langkah[data-aktif='ya'] {
+  opacity: 1;
+  background: rgb(148 163 184 / 0.1);
+}
+
+.siaga-titik {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-top: 5px;
+  flex: none;
+}
+
+/* ------------------------------------------- ringkasan kondisi per bagian */
+
+/*
+ * Batang skor tiap bagian struktur.
+ *
+ * Angka 0,77 tidak memberi tahu apa pun tanpa pembanding; batang memberi
+ * pembandingnya tanpa satu pun kata tambahan. Ambang baik dan pantau digambar
+ * sebagai garis tipis di atasnya, jadi yang dibaca bukan "batangnya panjang"
+ * melainkan "batangnya masih di sebelah kanan garis".
+ */
+.bagian-baris {
+  display: grid;
+  grid-template-columns: minmax(96px, auto) 1fr auto;
+  gap: var(--space-2) var(--space-3);
+  align-items: center;
+  font-size: 11.5;
+}
+
+.bagian-rel {
+  position: relative;
+  height: 6px;
+  border-radius: 3px;
+  background: rgb(148 163 184 / 0.16);
+  overflow: hidden;
+}
+
+.bagian-isi {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 3px;
+}
+
+.bagian-ambang {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 1px;
+  background: rgb(226 232 240 / 0.45);
+}
+
+/* ------------------------------------------------------------------ *
+ |  Tata letak dashboard
+ * ------------------------------------------------------------------ */
+
+/*
+ * Tiga kolom tetap, bukan kartu yang mengalir.
+ *
+ * `auto-fit` menyusun kartu menurut sisa ruang, dan itu berarti kartu yang
+ * sama berpindah kolom tiap kali jendela diubah atau bilah samping dilipat.
+ * Di dashboard pemantauan hal itu bukan kelenturan melainkan beban: operator
+ * yang hafal "tangga siaga di kiri, kejadian di kanan" kehilangan hafalannya
+ * justru pada saat sesuatu sedang berlangsung. Kolomnya karena itu dinamai,
+ * dan yang berubah pada layar sempit hanyalah bagaimana ketiganya ditumpuk.
+ */
+.dash-ubin {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(158px, 1fr));
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.dash-utama {
+  display: grid;
+  gap: var(--space-3);
+  align-items: start;
+  margin-bottom: var(--space-3);
+  grid-template-columns: minmax(250px, 310px) minmax(0, 1fr) minmax(268px, 330px);
+  grid-template-areas: 'siaga kondisi kejadian';
+}
+
+.dash-kolom { display: flex; flex-direction: column; gap: var(--space-3); }
+
+.dash-area--siaga { grid-area: siaga; }
+.dash-area--kondisi { grid-area: kondisi; }
+.dash-area--kejadian { grid-area: kejadian; }
+
+.dash-bawah {
+  display: grid;
+  gap: var(--space-3);
+  align-items: start;
+  grid-template-columns: minmax(0, 1fr) minmax(268px, 330px);
+}
+
+/*
+ * Gambar elevasi: bidang sendiri, supaya batangnya tidak menempel ke tepi
+ * kartu.
+ *
+ * Latarnya gradien tipis, bukan satu warna rata: bagian bawah sedikit lebih
+ * gelap, jadi palung sungai terbaca sebagai palung dan rangkanya duduk di
+ * ruang, bukan menempel di kertas. Selisihnya sengaja kecil — yang dicari
+ * kedalaman, bukan gambar pemandangan.
+ */
+.dash-elevasi {
+  border-radius: var(--radius-inset);
+  background:
+    linear-gradient(180deg, rgb(16 42 63 / 0.4) 0%, rgb(6 20 32 / 0.72) 62%, rgb(3 11 20 / 0.85) 100%);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.06);
+  padding: var(--space-2) var(--space-3) var(--space-1);
+}
+
+/* Kelompok batang dapat ditunjuk; penunjuknya ikut mengatakan begitu. */
+.elevasi svg g[opacity] { cursor: default; }
+
+.elevasi-kaki {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--space-3); flex-wrap: wrap;
+  margin-top: 2px; padding-top: var(--space-2);
+  border-top: 1px solid var(--color-divider);
+  font-size: 11.5px;
+}
+.elevasi-baca { display: inline-flex; align-items: baseline; gap: 7px; flex-wrap: wrap; }
+.elevasi-titik {
+  width: 7px; height: 7px; border-radius: 50%;
+  align-self: center; flex: none;
+}
+.elevasi-nama { color: var(--color-text); font-weight: 650; }
+.elevasi-skor { color: var(--color-text); font-weight: 700; }
+/* Dari mana angka itu diambil — ditulis kecil supaya tidak dibaca lebih dulu
+   daripada angkanya sendiri. */
+.elevasi-sumber::before { content: '· '; }
+
+.elevasi-tautan {
+  border: 0; background: none; padding: 0; cursor: pointer;
+  font: inherit; color: var(--color-accent); font-weight: 600;
+}
+.elevasi-tautan:hover { color: var(--brand-300); text-decoration: underline; }
+
+/*
+ * Di layar telepon gambar ini menyusut ke sepertiga lebarnya, dan teks di
+ * dalam SVG ikut menyusut bersamanya — nomor panel jatuh di bawah lima piksel,
+ * yang bukan lagi angka melainkan noda. Keduanya disembunyikan; keterangan di
+ * bawah gambar adalah teks HTML biasa, jadi ia tetap sebesar yang semestinya
+ * dan tetap menyebut kelompok terburuk beserta skornya.
+ */
+@media (max-width: 640px) {
+  .elevasi-nomor, .elevasi-semat { display: none; }
+}
+
+.dash-lingkungan {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--space-2);
+}
+
+.dash-lingkungan-ubin {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-inset);
+}
+
+.dash-kamera {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(232px, 1fr));
+  gap: var(--space-3);
+}
+
+/*
+ * Yang runtuh lebih dulu adalah kolom kiri, bukan kolom tengah.
+ *
+ * Gambar elevasi dan strip lingkungan adalah isi yang paling rugi bila
+ * dipersempit — siluet jembatan selebar dua ratus piksel tidak lagi
+ * menunjukkan panel mana yang merah. Tangga siaga sebaliknya hanya daftar
+ * tiga baris, dan sama terbacanya di bawah gambar maupun di sebelahnya.
+ */
+@media (max-width: 1280px) {
+  .dash-utama {
+    grid-template-columns: minmax(0, 1fr) minmax(262px, 320px);
+    grid-template-areas:
+      'kondisi kejadian'
+      'siaga kejadian';
+  }
+}
+
+@media (max-width: 900px) {
+  .dash-utama {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'kondisi'
+      'siaga'
+      'kejadian';
+  }
+  .dash-bawah { grid-template-columns: minmax(0, 1fr); }
 }

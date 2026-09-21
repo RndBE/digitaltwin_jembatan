@@ -10,6 +10,7 @@ const bcrypt = require('bcryptjs');
 const config = require('../config');
 const { BRIDGES, BRIDGE_BY_ID } = require('../data/bridges');
 const { BridgeSimulation } = require('../domain/simulationEngine');
+const history = require('./historyStore');
 
 const MAX_ALERTS = 200;
 
@@ -69,7 +70,13 @@ function recordScenarioChange(bridgeId, scenarioKey, scenarioName) {
 function startTicker() {
   if (ticker) return;
   ticker = setInterval(() => {
-    simulations.forEach((sim, bridgeId) => pushAlerts(bridgeId, sim.tick()));
+    simulations.forEach((sim, bridgeId) => {
+      pushAlerts(bridgeId, sim.tick());
+      // Cuplikan disimpan ke disk dari sini, bukan dari pengendali: yang
+      // menentukan isi riwayat adalah jalannya simulasi, bukan ada-tidaknya
+      // orang yang sedang membuka layar.
+      history.record(bridgeId, sim.snapshot());
+    });
   }, config.TICK_INTERVAL_MS);
   // Pengatur waktu tidak boleh menahan proses tetap hidup saat proses hendak keluar.
   if (typeof ticker.unref === 'function') ticker.unref();
@@ -124,12 +131,15 @@ async function seedDemoUser() {
 async function init() {
   initSimulations();
   await seedDemoUser();
+  const dibuang = history.prune();
+  if (dibuang) console.log(`[riwayat] ${dibuang} berkas melewati masa simpan, dibuang`);
   startTicker();
 }
 
 module.exports = {
   init,
   stopTicker,
+  history,
   getSimulation,
   getAlerts,
   pushAlerts,

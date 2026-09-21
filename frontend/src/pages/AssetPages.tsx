@@ -1,6 +1,7 @@
 import type { Bridge, Telemetry } from '../lib/types';
-import { PageHeader, SectionTitle, Stat, StatusTag } from '../components/Ui';
+import { PageHeader, SectionTitle, Stat } from '../components/Ui';
 import { Meter } from '../components/Charts';
+import { clockOf } from '../components/EventLog';
 import {
   CONDITION_LABELS,
   dossierFor,
@@ -68,7 +69,7 @@ export interface InfoPageProps extends AssetPageProps {
  * siapa yang bertanggung jawab. Justru karena jarang berubah, inilah acuan yang
  * dipakai membaca semua angka yang berubah tiap menit di halaman lain.
  */
-export function InfoPage({ bridge, telemetry, onOpen }: InfoPageProps) {
+export function InfoPage({ bridge, onOpen }: InfoPageProps) {
   const dossier = dossierFor(bridge.id);
   if (!dossier) return <NoDossier bridge={bridge} what="berkas teknis" />;
 
@@ -87,7 +88,6 @@ export function InfoPage({ bridge, telemetry, onOpen }: InfoPageProps) {
             Berkas ini adalah data contoh untuk keperluan peraga.
           </>
         }
-        actions={telemetry ? <StatusTag status={telemetry.assessment.status} /> : undefined}
       />
 
       <section
@@ -401,8 +401,34 @@ export function RepairPage({ bridge }: AssetPageProps) {
 
 /* --------------------------------------------------------------------- sensor */
 
-/** Sensor: alat yang terpasang, umurnya, dan sisa dayanya. */
-export function SensorPage({ bridge }: AssetPageProps) {
+export interface SensorPageProps extends AssetPageProps {
+  /** Jarak antar cuplikan yang sedang dipakai, dalam milidetik. */
+  intervalMs?: number;
+}
+
+/** Jarak antar cuplikan, ditulis dalam satuan yang enak dibaca. */
+function jarakCuplikan(ms: number): string {
+  if (ms >= 60_000) return `${Math.round(ms / 60_000)} menit`;
+  if (ms >= 1_000) return `${(ms / 1000).toFixed(ms % 1000 === 0 ? 0 : 1)} detik`;
+  return `${ms} ms`;
+}
+
+/** Lama pemantauan berjalan, dibulatkan ke satuan yang masih terbaca sekilas. */
+function lamaJalan(detik: number): string {
+  if (detik >= 3600) return `${Math.floor(detik / 3600)} jam ${Math.floor((detik % 3600) / 60)} menit`;
+  if (detik >= 60) return `${Math.floor(detik / 60)} menit`;
+  return `${Math.round(detik)} detik`;
+}
+
+/**
+ * Sensor: alat yang terpasang, umurnya, sisa dayanya, dan aliran datanya.
+ *
+ * Dua hal berbeda dijawab satu halaman karena keduanya menjawab pertanyaan yang
+ * sama — "apakah angka di layar masih boleh dipercaya". Alat yang bagus dengan
+ * paket yang berhenti masuk sama tidak berartinya dengan paket yang lancar dari
+ * alat yang bateranya tinggal seperempat.
+ */
+export function SensorPage({ bridge, telemetry, intervalMs }: SensorPageProps) {
   const dossier = dossierFor(bridge.id);
   if (!dossier) return <NoDossier bridge={bridge} what="inventaris sensor" />;
 
@@ -441,6 +467,52 @@ export function SensorPage({ bridge }: AssetPageProps) {
         />
       </section>
 
+      {telemetry ? (
+        <>
+          <SectionTitle note="cuplikan yang benar-benar sampai ke antarmuka">
+            Data masuk
+          </SectionTitle>
+          <section
+            className="glass glass--chip stat-row"
+            style={{
+              gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
+              marginBottom: 'var(--space-6)',
+            }}
+          >
+            <Stat
+              label="Paket diterima"
+              value={telemetry.packets.toLocaleString('id-ID')}
+              note="sejak pemantauan dimulai"
+            />
+            <Stat
+              label="Cuplikan terakhir"
+              value={clockOf(telemetry.at)}
+              note={telemetry.paused ? 'aliran data dijeda' : 'aliran data berjalan'}
+              tone={telemetry.paused ? 'warn' : 'default'}
+            />
+            <Stat
+              label="Jarak cuplikan"
+              value={intervalMs ? jarakCuplikan(intervalMs) : '—'}
+              note={
+                intervalMs && intervalMs >= 60_000 ? 'pemantauan rutin' : 'pemantauan langsung'
+              }
+            />
+            <Stat
+              label="Kanal mengirim"
+              value={`${telemetry.readings.length}/${units.length}`}
+              note="kanal daring terhadap unit terpasang"
+              tone={telemetry.readings.length < units.length ? 'warn' : 'default'}
+            />
+            <Stat
+              label="Lama berjalan"
+              value={lamaJalan(telemetry.runtimeSeconds)}
+              note="tanpa terputus"
+            />
+          </section>
+        </>
+      ) : null}
+
+      <SectionTitle note="letak, umur pemasangan, sisa daya">Unit terpasang</SectionTitle>
       <div
         style={{
           display: 'grid',
