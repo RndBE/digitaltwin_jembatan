@@ -60,6 +60,23 @@ const PATHS: Record<IconName, string[]> = {
   wrench: ['M14.8 6.4a4.2 4.2 0 1 0 5 5L9.6 21.6a2.2 2.2 0 0 1-3.1-3.1z'],
 };
 
+/**
+ * Geseran agar tinta tiap ikon benar-benar duduk di tengah kotak 24 × 24.
+ *
+ * Jalurnya digambar tangan, dan beberapa berakhir condong ke satu sisi —
+ * kamera 1,1 satuan terlalu tinggi, kunci pas 2,3 terlalu rendah. Selisih
+ * sekecil itu tidak terlihat pada satu ikon, tetapi pada rel berisi dua belas
+ * butir bertumpuk ia terbaca sebagai baris yang tidak lurus. Angkanya diukur
+ * dari `getBBox()` tiap jalur; ubah jalurnya, ukur lagi.
+ */
+const NUDGE: Partial<Record<IconName, [number, number]>> = {
+  home: [0, 0.3],
+  play: [-1.5, 0],
+  camera: [0, 1.1],
+  layers: [0, -0.3],
+  wrench: [-0.9, -2.3],
+};
+
 export interface IconProps {
   name: IconName;
   size?: number;
@@ -80,9 +97,16 @@ export function Icon({ name, size = 16 }: IconProps) {
       focusable="false"
       style={{ flex: 'none', opacity: 0.9 }}
     >
-      {PATHS[name].map((d) => (
-        <path key={d} d={d} />
-      ))}
+      <g transform={geser(name)}>
+        {PATHS[name].map((d) => (
+          <path key={d} d={d} />
+        ))}
+      </g>
     </svg>
   );
+}
+
+function geser(name: IconName): string | undefined {
+  const n = NUDGE[name];
+  return n ? `translate(${n[0]} ${n[1]})` : undefined;
 }

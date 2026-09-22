@@ -27,8 +27,8 @@ Bawaan: `http://localhost:5175`.
 | GET | `/api/scenarios` | Daftar skenario pembebanan |
 | POST | `/api/bridges/:id/scenario` | Jalankan skenario — **perlu token** |
 | POST | `/api/bridges/:id/pause` | Jeda / lanjutkan aliran — **perlu token** |
-| POST | `/api/auth/register` | Daftar akun |
-| POST | `/api/auth/login` | Masuk, mengembalikan JWT |
+| POST | `/api/auth/register` | Daftar akun (`username`, `password`, `name`) |
+| POST | `/api/auth/login` | Masuk dengan `username` + `password`, mengembalikan JWT |
 | GET | `/api/auth/me` | Profil pemilik token |
 
 ## Penyimpanan

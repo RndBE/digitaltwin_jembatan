@@ -433,7 +433,7 @@
   flex-direction: column;
   /* Tanpa jarak atas: kepala harus berangkat dari garis yang sama dengan
      puncak rel di sebelahnya, bukan dua puluh piksel di bawahnya. */
-  padding: 0 clamp(var(--space-3), 2vw, var(--space-6)) 0;
+  padding: 0 var(--space-2) 0;
   /*
    * Wadah kueri untuk kepala di dalamnya.
    *
@@ -458,6 +458,25 @@
   overflow-y: auto;
   overflow-x: hidden;
   padding-bottom: var(--space-8);
+}
+
+/*
+ * Bilah gulir menempel di tepi kanan jendela, bukan mengambang di tengah.
+ *
+ * Yang bergulir adalah `main`, dan `main` berdiri di dalam dua lapis jarak —
+ * jarak cangkang dan jarak lajur kanan. Bilah gulirnya lalu tergambar pada
+ * tepi kanan `main`, sekitar 45 piksel dari tepi jendela, terbaca sebagai
+ * garis yang menggantung di tengah halaman. Kotaknya dilebarkan sampai tepi
+ * lewat margin negatif, lalu isinya didorong kembali ke garis semula oleh
+ * jarak dalam yang sama besar: bilahnya pindah ke pojok, isinya tidak bergeser
+ * sepiksel pun.
+ */
+@media (min-width: 961px) {
+  .app-main {
+    --tepi-gulir: calc(var(--space-3) + var(--space-2));
+    margin-right: calc(-1 * var(--tepi-gulir));
+    padding-right: var(--tepi-gulir);
+  }
 }
 
 /* ------------------------------------------------------------------ *
@@ -494,13 +513,55 @@
  * pada garis yang sama pada lebar berapa pun.
  */
 .sidebar-brand {
-  display: flex; align-items: center; gap: var(--space-2);
+  display: flex; align-items: center; justify-content: center; gap: var(--space-2);
   flex: none; min-height: var(--kepala-h);
+  /* Rel tidak punya jarak atas sendiri; logo yang membawanya. */
+  padding-top: var(--space-3);
+}
+/* Logo berwarna putih penuh pada berkasnya, jadi cukup diatur lebarnya. */
+.sidebar-logo {
+  width: 100%; max-width: 132px; height: auto; display: block;
 }
 .sidebar-asset-card {
   display: flex; flex-direction: column; gap: 3px;
   padding: var(--space-2) var(--space-3);
 }
+/* Kaki rel: siapa yang sedang masuk, dan tombol keluarnya. */
+.sidebar-akun {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--space-2); margin-top: var(--space-2);
+}
+.sidebar-akun-nama {
+  font-size: 12.5px; font-weight: 650; color: var(--mist-100);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.sidebar-akun-peran { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; }
+
+/* ------------------------------------------------------------------ *
+ |  Layar masuk
+ * ------------------------------------------------------------------ */
+
+/*
+ * Satu kartu di tengah layar, selebar isian yang nyaman diketik. Tidak ada rel
+ * navigasi di sini: sebelum masuk tidak ada satu pun halaman yang boleh
+ * dibuka, jadi menggambar jalannya hanya menawarkan pintu yang terkunci.
+ */
+.login-layar {
+  min-height: 100vh;
+  display: flex; align-items: center; justify-content: center;
+  padding: var(--space-4);
+}
+.login-kartu {
+  width: 100%; max-width: 360px;
+  display: flex; flex-direction: column; gap: var(--space-3);
+  padding: var(--space-6);
+}
+.login-logo { width: 132px; height: auto; display: block; margin-bottom: var(--space-2); }
+.login-catatan {
+  margin: 0; font-size: 11.5px; text-align: center;
+  padding-top: var(--space-2); border-top: 1px solid var(--color-divider);
+}
+
 .sidebar-nav { display: flex; flex-direction: column; gap: var(--space-3); }
 .sidebar-nav-items { display: flex; flex-direction: column; gap: 2px; }
 .sidebar-foot {
@@ -1448,13 +1509,6 @@
 .dash-area--kondisi { grid-area: kondisi; }
 .dash-area--kejadian { grid-area: kejadian; }
 
-.dash-bawah {
-  display: grid;
-  gap: var(--space-3);
-  align-items: start;
-  grid-template-columns: minmax(0, 1fr) minmax(268px, 330px);
-}
-
 /*
  * Gambar elevasi: bidang sendiri, supaya batangnya tidak menempel ke tepi
  * kartu.
@@ -1512,7 +1566,9 @@
 
 .dash-lingkungan {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  /* Empat ubin harus muat satu baris pada lajur tengah; 150 px meleset
+     beberapa piksel dan menyisakan satu ubin sendirian di baris kedua. */
+  grid-template-columns: repeat(auto-fit, minmax(124px, 1fr));
   gap: var(--space-2);
 }
 
@@ -1555,5 +1611,4 @@
       'siaga'
       'kejadian';
   }
-  .dash-bawah { grid-template-columns: minmax(0, 1fr); }
 }

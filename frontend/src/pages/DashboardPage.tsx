@@ -340,213 +340,212 @@ export function DashboardPage({
           * kenapa angka hari ini berbeda dari kemarin, dan ketiganya bukan
           * cacat struktur.
           */}
-        <div className="glass card dash-area--kondisi">
-          <div className="row" style={{ justifyContent: 'space-between' }}>
-            <span className="card-kicker">Kondisi struktur</span>
-            <div className="row" style={{ gap: 6 }}>
-              <button type="button" className="btn btn-sm" onClick={onOpenCondition}>
-                Kondisi elemen
-              </button>
-              <button type="button" className="btn btn-sm btn-primary" onClick={onOpenTwin}>
-                Buka model 3D
-              </button>
-            </div>
-          </div>
-
-          <div className="dash-elevasi">
-            <BridgeElevation
-              elements={kondisi.elements}
-              panels={bridge.model.panels ?? 10}
-              waterRatio={(env.water - 1) / 5.1}
-              waterMetres={env.water}
-              onOpen={onOpenCondition}
-            />
-          </div>
-
-          <div className="dash-lingkungan">
-            <Ubin label="Angin" value={angin ? angin.value.toFixed(0) : '—'} unit={angin?.unit ?? ''} />
-            <Ubin label="Suhu deck" value={suhu ? suhu.value.toFixed(1) : '—'} unit={suhu?.unit ?? ''} />
-            <Ubin label="Curah hujan" value={env.rain.toFixed(1)} unit="mm/j" />
-            <Ubin
-              label="Getaran RMS"
-              value={getaran ? getaran.value.toFixed(3) : '—'}
-              unit={getaran?.unit ?? ''}
-            />
-          </div>
-
-          <div className="hairline" />
-
-          {/*
-            * Bagian bawah kartu: kondisi **elemen**, bukan kanal.
-            *
-            * Angka di ubin teratas bergerak tiap cuplikan dan turun lagi
-            * begitu truk lewat; batang di bawah ini hampir tidak bergerak
-            * sepanjang hari. Itu bukan kekurangan — keduanya memang menjawab
-            * pertanyaan yang berbeda, dan menaruhnya dalam satu halaman justru
-            * supaya selisihnya terbaca. Karat pada pelat buhul tidak akan
-            * pernah muncul di indeks kesehatan, dan truk yang sedang melintas
-            * tidak akan pernah muncul di batang ini.
-            */}
-          <div className="row" style={{ justifyContent: 'space-between', alignItems: 'baseline' }}>
-            <span className="text-muted" style={{ fontSize: 11.5 }}>
-              Indeks kondisi elemen
-            </span>
-            <span
-              className="tabular"
-              style={{ fontSize: 20, fontWeight: 650, color: CONDITION_COLOR[kondisiStatus] }}
-            >
-              {kondisi.index.toFixed(2)}
-            </span>
-          </div>
-
-          <div className="stack" style={{ gap: 'var(--space-2)' }}>
-            {perSistem.map(({ sistem, skor, terburuk }) => {
-              const status = conditionStatus(skor);
-              return (
-                <div className="bagian-baris" key={sistem}>
-                  <span className="text-muted" style={{ fontSize: 11.5 }} title={terburuk?.name}>
-                    {sistem}
-                  </span>
-                  <span className="bagian-rel">
-                    <span
-                      className="bagian-isi"
-                      style={{
-                        width: `${Math.round(skor * 100)}%`,
-                        background: CONDITION_COLOR[status],
-                      }}
-                    />
-                    <span
-                      className="bagian-ambang"
-                      style={{ left: `${CONDITION_THRESHOLDS.pantau * 100}%` }}
-                    />
-                    <span
-                      className="bagian-ambang"
-                      style={{ left: `${CONDITION_THRESHOLDS.baik * 100}%` }}
-                    />
-                  </span>
-                  <span className="tabular" style={{ fontSize: 11.5 }}>
-                    {skor.toFixed(2)}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-
-          <p className="text-muted" style={{ fontSize: 11, lineHeight: 1.5, margin: 0 }}>
-            Warna batang pada gambar dan dua garis tipis pada tiap bilah memakai ambang yang sama,{' '}
-            <span className="tabular">0,70</span> dan <span className="tabular">0,85</span>. Skornya
-            minimum berbobot, bukan rata-rata: satu elemen buruk di antara elemen sehat tetap
-            menarik turun bagiannya.
-            {kondisi.driver ? (
-              <>
-                {' '}
-                Yang menarik turun seluruhnya:{' '}
-                <strong style={{ fontWeight: 600, color: 'var(--mist-100)' }}>
-                  {kondisi.driver.name}
-                </strong>{' '}
-                <span className="tabular">({kondisi.driver.score.toFixed(2)})</span>.
-              </>
-            ) : null}
-          </p>
-        </div>
-
-        {/* Kolom kanan: apa yang baru saja terjadi. */}
-        <div className="glass card dash-area--kejadian">
-          <div className="row" style={{ justifyContent: 'space-between' }}>
-            <span className="card-kicker">Kejadian terbaru</span>
-            <div className="row" style={{ gap: 6 }}>
-              {alarm.baru > 0 ? (
-                <button
-                  type="button"
-                  className="tag tag-bahaya"
-                  style={{ border: 0, cursor: 'pointer', font: 'inherit' }}
-                  title="alarm yang belum diakui siapa pun — buka daftar kerja"
-                  onClick={onOpenEvents}
-                >
-                  {alarm.baru} belum diakui
+        <div className="dash-kolom dash-area--kondisi">
+          <div className="glass card">
+            <div className="row" style={{ justifyContent: 'space-between' }}>
+              <span className="card-kicker">Kondisi struktur</span>
+              <div className="row" style={{ gap: 6 }}>
+                <button type="button" className="btn btn-sm" onClick={onOpenCondition}>
+                  Kondisi elemen
                 </button>
-              ) : barusan > 0 ? (
-                <span className="tag tag-brand" title="kejadian dalam satu jam terakhir">
-                  {barusan} baru
-                </span>
-              ) : null}
-              <button type="button" className="btn btn-sm" onClick={onOpenEvents}>
-                Semua
-              </button>
+                <button type="button" className="btn btn-sm btn-primary" onClick={onOpenTwin}>
+                  Buka model 3D
+                </button>
+              </div>
             </div>
-          </div>
-          <EventLog events={alerts} limit={12} />
-        </div>
-      </section>
 
-      <section className="dash-bawah">
-        <div className="glass card">
-          <div className="row" style={{ justifyContent: 'space-between' }}>
-            <span className="card-kicker">CCTV</span>
-            <button type="button" className="btn btn-sm" onClick={onOpenCamera}>
-              Ruang monitor
-            </button>
-          </div>
-          {kamera.length > 0 ? (
-            <div className="dash-kamera">
-              {kamera.map((cam) => (
-                <CameraTile
-                  key={cam.id}
-                  camera={cam}
-                  at={telemetry.at}
-                  detection={
-                    cam.channel === 'wim' && telemetry.traffic.trucks > 0
-                      ? `${telemetry.traffic.trucks} truk`
-                      : null
-                  }
-                />
-              ))}
+            <div className="dash-elevasi">
+              <BridgeElevation
+                elements={kondisi.elements}
+                panels={bridge.model.panels ?? 10}
+                waterRatio={(env.water - 1) / 5.1}
+                waterMetres={env.water}
+                onOpen={onOpenCondition}
+              />
             </div>
-          ) : (
-            <p className="text-muted" style={{ fontSize: 13 }}>
-              Tidak ada kamera daring.
-            </p>
-          )}
-        </div>
 
-        {/*
-          * Papan pengumuman.
-          *
-          * Log peristiwa di kolom kanan mencatat apa yang **berubah**; papan
-          * ini menyatakan apa yang sedang **berlaku** — pembatasan beban,
-          * pekerjaan yang sedang berjalan, cuaca yang menahan pekerjaan di
-          * ketinggian. Keduanya tidak saling menggantikan: kejadian pukul
-          * 14:06 sudah lewat, sedangkan pembatasan 30 ton masih mengikat
-          * petugas di lapangan sampai seseorang mencabutnya.
-          */}
-        <div className="glass card">
-          <div className="row" style={{ justifyContent: 'space-between' }}>
-            <span className="card-kicker">Informasi</span>
-            <button type="button" className="btn btn-sm" onClick={onOpenAsset}>
-              Berkas aset
-            </button>
-          </div>
-          {notices.length > 0 ? (
-            <ul className="stack" style={{ listStyle: 'none', gap: 'var(--space-3)' }}>
-              {notices.map((notice, i) => (
-                <li key={`${notice.kind}-${i}`} className="stack" style={{ gap: 4 }}>
-                  <div className="row" style={{ gap: 'var(--space-2)' }}>
-                    <span className={NOTICE_CLASS[notice.kind]}>{notice.kind}</span>
-                    <span className="text-muted" style={{ fontSize: 11 }}>
-                      {notice.when}
+            <div className="dash-lingkungan">
+              <Ubin label="Angin" value={angin ? angin.value.toFixed(0) : '—'} unit={angin?.unit ?? ''} />
+              <Ubin label="Suhu deck" value={suhu ? suhu.value.toFixed(1) : '—'} unit={suhu?.unit ?? ''} />
+              <Ubin label="Curah hujan" value={env.rain.toFixed(1)} unit="mm/j" />
+              <Ubin
+                label="Getaran RMS"
+                value={getaran ? getaran.value.toFixed(3) : '—'}
+                unit={getaran?.unit ?? ''}
+              />
+            </div>
+
+            <div className="hairline" />
+
+            {/*
+              * Bagian bawah kartu: kondisi **elemen**, bukan kanal.
+              *
+              * Angka di ubin teratas bergerak tiap cuplikan dan turun lagi
+              * begitu truk lewat; batang di bawah ini hampir tidak bergerak
+              * sepanjang hari. Itu bukan kekurangan — keduanya memang menjawab
+              * pertanyaan yang berbeda, dan menaruhnya dalam satu halaman justru
+              * supaya selisihnya terbaca. Karat pada pelat buhul tidak akan
+              * pernah muncul di indeks kesehatan, dan truk yang sedang melintas
+              * tidak akan pernah muncul di batang ini.
+              */}
+            <div className="row" style={{ justifyContent: 'space-between', alignItems: 'baseline' }}>
+              <span className="text-muted" style={{ fontSize: 11.5 }}>
+                Indeks kondisi elemen
+              </span>
+              <span
+                className="tabular"
+                style={{ fontSize: 20, fontWeight: 650, color: CONDITION_COLOR[kondisiStatus] }}
+              >
+                {kondisi.index.toFixed(2)}
+              </span>
+            </div>
+
+            <div className="stack" style={{ gap: 'var(--space-2)' }}>
+              {perSistem.map(({ sistem, skor, terburuk }) => {
+                const status = conditionStatus(skor);
+                return (
+                  <div className="bagian-baris" key={sistem}>
+                    <span className="text-muted" style={{ fontSize: 11.5 }} title={terburuk?.name}>
+                      {sistem}
+                    </span>
+                    <span className="bagian-rel">
+                      <span
+                        className="bagian-isi"
+                        style={{
+                          width: `${Math.round(skor * 100)}%`,
+                          background: CONDITION_COLOR[status],
+                        }}
+                      />
+                      <span
+                        className="bagian-ambang"
+                        style={{ left: `${CONDITION_THRESHOLDS.pantau * 100}%` }}
+                      />
+                      <span
+                        className="bagian-ambang"
+                        style={{ left: `${CONDITION_THRESHOLDS.baik * 100}%` }}
+                      />
+                    </span>
+                    <span className="tabular" style={{ fontSize: 11.5 }}>
+                      {skor.toFixed(2)}
                     </span>
                   </div>
-                  <span style={{ fontSize: 12.5, lineHeight: 1.5 }}>{notice.text}</span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-muted" style={{ fontSize: 13 }}>
-              Tidak ada pembatasan, pekerjaan, atau peringatan cuaca yang berlaku.
+                );
+              })}
+            </div>
+
+            <p className="text-muted" style={{ fontSize: 11, lineHeight: 1.5, margin: 0 }}>
+              Ambang <span className="tabular">0,70</span> · <span className="tabular">0,85</span> ·
+              minimum berbobot
+              {kondisi.driver ? (
+                <>
+                  {' · '}
+                  <strong style={{ fontWeight: 600, color: 'var(--mist-100)' }}>
+                    {kondisi.driver.name}
+                  </strong>{' '}
+                  <span className="tabular">({kondisi.driver.score.toFixed(2)})</span>.
+                </>
+              ) : null}
             </p>
-          )}
+          </div>
+
+          <div className="glass card">
+            <div className="row" style={{ justifyContent: 'space-between' }}>
+              <span className="card-kicker">CCTV</span>
+              <button type="button" className="btn btn-sm" onClick={onOpenCamera}>
+                Ruang monitor
+              </button>
+            </div>
+            {kamera.length > 0 ? (
+              <div className="dash-kamera">
+                {kamera.map((cam) => (
+                  <CameraTile
+                    key={cam.id}
+                    camera={cam}
+                    at={telemetry.at}
+                    detection={
+                      cam.channel === 'wim' && telemetry.traffic.trucks > 0
+                        ? `${telemetry.traffic.trucks} truk`
+                        : null
+                    }
+                  />
+                ))}
+              </div>
+            ) : (
+              <p className="text-muted" style={{ fontSize: 13 }}>
+                Tidak ada kamera daring.
+              </p>
+            )}
+          </div>
+          </div>
+
+        {/* Kolom kanan: apa yang baru saja terjadi, lalu apa yang sedang berlaku. */}
+        <div className="dash-kolom dash-area--kejadian">
+          <div className="glass card">
+            <div className="row" style={{ justifyContent: 'space-between' }}>
+              <span className="card-kicker">Kejadian terbaru</span>
+              <div className="row" style={{ gap: 6 }}>
+                {alarm.baru > 0 ? (
+                  <button
+                    type="button"
+                    className="tag tag-bahaya"
+                    style={{ border: 0, cursor: 'pointer', font: 'inherit' }}
+                    title="alarm yang belum diakui siapa pun — buka daftar kerja"
+                    onClick={onOpenEvents}
+                  >
+                    {alarm.baru} belum diakui
+                  </button>
+                ) : barusan > 0 ? (
+                  <span className="tag tag-brand" title="kejadian dalam satu jam terakhir">
+                    {barusan} baru
+                  </span>
+                ) : null}
+                <button type="button" className="btn btn-sm" onClick={onOpenEvents}>
+                  Semua
+                </button>
+              </div>
+            </div>
+            <EventLog events={alerts} limit={12} />
+          </div>
+          {/*
+            * Papan pengumuman.
+            *
+            * Log peristiwa di kolom kanan mencatat apa yang **berubah**; papan
+            * ini menyatakan apa yang sedang **berlaku** — pembatasan beban,
+            * pekerjaan yang sedang berjalan, cuaca yang menahan pekerjaan di
+            * ketinggian. Keduanya tidak saling menggantikan: kejadian pukul
+            * 14:06 sudah lewat, sedangkan pembatasan 30 ton masih mengikat
+            * petugas di lapangan sampai seseorang mencabutnya.
+            */}
+          <div className="glass card">
+            <div className="row" style={{ justifyContent: 'space-between' }}>
+              <span className="card-kicker">Informasi</span>
+              <button type="button" className="btn btn-sm" onClick={onOpenAsset}>
+                Berkas aset
+              </button>
+            </div>
+            {notices.length > 0 ? (
+              <ul className="stack" style={{ listStyle: 'none', gap: 'var(--space-3)' }}>
+                {notices.map((notice, i) => (
+                  <li key={`${notice.kind}-${i}`} className="stack" style={{ gap: 4 }}>
+                    <div className="row" style={{ gap: 'var(--space-2)' }}>
+                      <span className={NOTICE_CLASS[notice.kind]}>{notice.kind}</span>
+                      <span className="text-muted" style={{ fontSize: 11 }}>
+                        {notice.when}
+                      </span>
+                    </div>
+                    <span style={{ fontSize: 12.5, lineHeight: 1.5 }}>{notice.text}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-muted" style={{ fontSize: 13 }}>
+                Tidak ada pembatasan, pekerjaan, atau peringatan cuaca yang berlaku.
+              </p>
+            )}
+          </div>
         </div>
       </section>
+
     </div>
   );
 }

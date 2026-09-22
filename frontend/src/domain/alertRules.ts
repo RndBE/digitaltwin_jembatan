@@ -48,24 +48,22 @@ export const ALERT_RULES: AlertRule[] = [
   {
     code: 'R-03',
     level: 'KRITIS',
-    criteria: 'Satu kanal atau lebih menyentuh ambang kritisnya.',
-    action:
-      'Pembatasan beban segera, inspeksi darurat, dan pelaporan ke pihak berwenang dalam 24 jam.',
+    criteria: 'Ada kanal di ambang kritis.',
+    action: 'Batasi beban, inspeksi darurat, lapor dalam 24 jam.',
     match: (readings) => readings.filter((reading) => levelOf(reading) === 'KRITIS'),
   },
   {
     code: 'R-02',
     level: 'WASPADA',
-    criteria:
-      'Satu kanal atau lebih menyentuh ambang waspada, dan belum ada satu pun yang menyentuh ambang kritis.',
-    action: 'Inspeksi struktur dijadwalkan dalam 7 hari dan pemantauan dinaikkan menjadi harian.',
+    criteria: 'Ada kanal di ambang waspada, belum ada yang kritis.',
+    action: 'Inspeksi dalam 7 hari, pemantauan jadi harian.',
     match: (readings) => readings.filter((reading) => levelOf(reading) === 'WASPADA'),
   },
   {
     code: 'R-01',
     level: 'AMAN',
-    criteria: 'Seluruh kanal berada di bawah ambang waspadanya.',
-    action: 'Pemantauan rutin dilanjutkan; inspeksi terjadwal berikutnya 30 hari.',
+    criteria: 'Semua kanal di bawah ambang waspada.',
+    action: 'Pemantauan rutin, inspeksi berikutnya 30 hari.',
     // Aturan penutup: ia berlaku justru ketika tidak ada kanal yang melanggar,
     // jadi tidak ada kanal yang dapat ditunjuk sebagai penyebabnya.
     match: () => [],

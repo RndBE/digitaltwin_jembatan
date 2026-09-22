@@ -167,10 +167,7 @@ export function SensorCameraCompare(props: SensorCameraProps) {
 
   if (!camera) {
     return (
-      <p className="text-muted">
-        Tidak ada kamera yang menghadap {spec.node.toLowerCase()}. Perbandingan gambar hanya tersedia
-        untuk titik yang terpasang kamera.
-      </p>
+      <p className="text-muted">Tidak ada kamera yang menghadap {spec.node.toLowerCase()}.</p>
     );
   }
 
@@ -248,13 +245,8 @@ export function SensorCameraCompare(props: SensorCameraProps) {
       </div>
 
       <p className="text-muted banding-catatan">
-        Kedua gambar adalah <strong>peraga</strong>, digambar dari keadaan kanal — bukan cuplikan
-        kamera sungguhan.{' '}
-        {cue
-          ? 'Bentuk kerusakan pada bingkai kanan digambar karena kanal ini sedang di luar rentang amannya.'
-          : 'Kanal ini masih di dalam rentang aman, jadi kedua bingkai memang tidak berbeda selain angkanya.'}{' '}
-        Pada pemasangan sungguhan bingkai kiri diambil dari cuplikan tersimpan pada saat kanal
-        terakhir berstatus AMAN, dan bingkai kanan dari siaran langsung.
+        Kedua gambar <strong>peraga</strong>, digambar dari keadaan kanal.
+        {cue ? ' Kanal sedang di luar rentang aman.' : ' Kanal masih di dalam rentang aman.'}
       </p>
     </div>
   );

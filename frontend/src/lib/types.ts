@@ -154,7 +154,7 @@ export type DataSource = 'api' | 'lokal';
 
 export interface AuthUser {
   id: string;
-  email: string;
+  username: string;
   name: string;
   role: string;
 }

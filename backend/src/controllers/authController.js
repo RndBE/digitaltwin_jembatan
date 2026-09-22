@@ -2,26 +2,29 @@ const store = require('../store/dataStore');
 const { signToken } = require('../middleware/auth');
 
 exports.register = async (req, res) => {
-  const { email, password, name } = req.body || {};
-  if (!email || !password) {
-    return res.status(400).json({ success: false, message: 'Surel dan kata sandi wajib diisi' });
+  const { username, password, name } = req.body || {};
+  if (!username || !password) {
+    return res
+      .status(400)
+      .json({ success: false, message: 'Nama pengguna dan kata sandi wajib diisi' });
   }
   if (String(password).length < 8) {
     return res.status(400).json({ success: false, message: 'Kata sandi minimal 8 karakter' });
   }
-  const user = await store.createUser({ email, password, name });
+  const user = await store.createUser({ username, password, name });
   if (!user) {
-    return res.status(409).json({ success: false, message: 'Surel sudah terdaftar' });
+    return res.status(409).json({ success: false, message: 'Nama pengguna sudah dipakai' });
   }
   res.status(201).json({ success: true, data: { user: store.publicUser(user), token: signToken(user) } });
 };
 
 exports.login = async (req, res) => {
-  const { email, password } = req.body || {};
-  const user = store.findUser(email);
-  // Pesan galat sengaja sama untuk surel salah maupun kata sandi salah,
-  // agar tidak membocorkan surel mana yang terdaftar.
-  const invalid = () => res.status(401).json({ success: false, message: 'Surel atau kata sandi salah' });
+  const { username, password } = req.body || {};
+  const user = store.findUser(username);
+  // Pesan galat sengaja sama untuk nama pengguna salah maupun kata sandi salah,
+  // agar tidak membocorkan nama mana yang terdaftar.
+  const invalid = () =>
+    res.status(401).json({ success: false, message: 'Nama pengguna atau kata sandi salah' });
   if (!user) return invalid();
   const ok = await store.verifyPassword(user, String(password || ''));
   if (!ok) return invalid();

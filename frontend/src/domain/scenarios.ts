@@ -30,12 +30,9 @@ export const FAMILY_LABELS: Record<ScenarioFamily, string> = {
 };
 
 export const FAMILY_NOTES: Record<ScenarioFamily, string> = {
-  'lalu-lintas':
-    'Beban kendaraan yang melintas. Struktur bekerja di rentang elastis: seluruh pembacaan kembali ke nilai dasarnya begitu beban meninggalkan bentang.',
-  lingkungan:
-    'Angin dan suhu. Tidak merusak struktur, tetapi mempersempit sisa jarak menuju ambang — dan pemulihannya mengikuti cuaca, bukan lalu lintas.',
-  kerusakan:
-    'Kerusakan pada elemen struktur. Tidak pulih sendiri: setelah skenario dihentikan, kanal yang terdampak tetap berada di atas nilai dasarnya sampai perbaikan dicatat.',
+  'lalu-lintas': 'Beban kendaraan · pulih sendiri saat beban hilang.',
+  lingkungan: 'Angin dan suhu · pulih mengikuti cuaca.',
+  kerusakan: 'Kerusakan elemen · tidak pulih sampai perbaikan dicatat.',
 };
 
 /** Laju pendekatan menuju kondisi baru, per langkah simulasi. */
@@ -56,7 +53,7 @@ export const SCENARIOS: Record<string, Scenario> = {
     key: 'idle',
     family: 'lalu-lintas',
     name: 'Pemantauan langsung',
-    desc: 'Tidak ada skenario yang dipaksakan. Nilai sensor mengikuti kondisi layan normal, ditambah sisa kerusakan yang belum diperbaiki bila ada.',
+    desc: 'Tanpa skenario. Nilai mengikuti kondisi layan normal, ditambah sisa kerusakan yang belum diperbaiki.',
     traffic: '—',
     impact: 'Tidak ada',
     expected: 'AMAN',
@@ -74,7 +71,7 @@ export const SCENARIOS: Record<string, Scenario> = {
     key: 'normal',
     family: 'lalu-lintas',
     name: 'Arus lalu lintas normal',
-    desc: 'Arus campuran mobil dan truk ringan pada kecepatan rencana. Inilah acuan perilaku struktur sehari-hari, dan deret inilah yang direkam sebagai pembanding di halaman Perbandingan.',
+    desc: 'Arus campuran mobil dan truk ringan pada kecepatan rencana. Deret inilah yang direkam sebagai pembanding.',
     traffic: '10 mobil, 3 truk · 60 km/j',
     impact: 'Tidak ada · seluruh kanal di rentang aman',
     expected: 'AMAN',
@@ -89,7 +86,7 @@ export const SCENARIOS: Record<string, Scenario> = {
     key: 'padat',
     family: 'lalu-lintas',
     name: 'Jam sibuk / kemacetan',
-    desc: 'Kedua lajur terisi penuh kendaraan yang hampir berhenti sepanjang bentang. Beban menjadi statis: getaran justru turun, tetapi lendutan dan regangan naik dan bertahan selama kemacetan berlangsung.',
+    desc: 'Kedua lajur terisi kendaraan hampir berhenti. Getaran turun, lendutan dan regangan naik dan bertahan.',
     traffic: '24 kendaraan · 3 km/j',
     impact: 'Lendutan statis, regangan merata',
     expected: 'WASPADA',
@@ -114,7 +111,7 @@ export const SCENARIOS: Record<string, Scenario> = {
     key: 'overload',
     family: 'lalu-lintas',
     name: 'Truk melebihi batas gandar',
-    desc: 'Iring-iringan truk bermuatan di atas batas gandar melintas beriringan di satu lajur. Regangan dan lendutan tengah bentang melewati ambang kritis bersamaan.',
+    desc: 'Iring-iringan truk di atas batas gandar pada satu lajur. Regangan dan lendutan tengah bentang melewati ambang kritis.',
     traffic: '3 tronton + 3 truk berat · 30 km/j',
     impact: 'Regangan & lendutan tengah bentang',
     expected: 'KRITIS',
@@ -135,7 +132,7 @@ export const SCENARIOS: Record<string, Scenario> = {
     key: 'angin',
     family: 'lingkungan',
     name: 'Angin kencang',
-    desc: 'Angin lateral 45 km/jam dengan hembusan. Lalu lintas tetap berjalan dengan pembatasan kecepatan. Getaran lateral dan kemiringan naik bersama, sementara regangan hampir tidak berubah.',
+    desc: 'Angin lateral 45 km/jam berhembus. Getaran lateral dan kemiringan naik, regangan hampir tidak berubah.',
     traffic: '7 mobil · 40 km/j',
     impact: 'Getaran lateral & kemiringan',
     expected: 'WASPADA',
@@ -150,7 +147,7 @@ export const SCENARIOS: Record<string, Scenario> = {
     key: 'panas',
     family: 'lingkungan',
     name: 'Suhu ekstrem siang hari',
-    desc: 'Suhu permukaan baja mencapai 48 °C. Pemuaian tertahan di tumpuan sehingga muncul regangan termal — regangan naik tanpa ada tambahan beban kendaraan sama sekali.',
+    desc: 'Suhu baja 48 °C. Pemuaian tertahan di tumpuan — regangan naik tanpa tambahan beban kendaraan.',
     traffic: '5 mobil, 2 truk · 60 km/j',
     impact: 'Regangan termal, sambungan siar muai',
     expected: 'WASPADA',
@@ -168,7 +165,7 @@ export const SCENARIOS: Record<string, Scenario> = {
     key: 'retak',
     family: 'kerusakan',
     name: 'Retak lelah pada girder',
-    desc: 'Retak lelah pada batang bawah panel ke-6, tumbuh perlahan seiring beban lalu lintas berulang. Bukaan retak melewati ambang waspada dan tidak menutup kembali setelah beban hilang.',
+    desc: 'Retak lelah pada batang bawah panel ke-6. Bukaan melewati ambang waspada dan tidak menutup lagi.',
     traffic: '10 mobil, 3 truk · 60 km/j',
     impact: 'Bukaan retak, regangan lokal',
     expected: 'WASPADA',
@@ -185,7 +182,7 @@ export const SCENARIOS: Record<string, Scenario> = {
     key: 'bearing',
     family: 'kerusakan',
     name: 'Kegagalan bantalan tumpuan',
-    desc: 'Bantalan tumpuan timur terdeformasi sehingga lantai miring dan beban terdistribusi tidak merata. Kemiringan melewati ambang kritis dan bertahan walau lalu lintas dihentikan.',
+    desc: 'Bantalan tumpuan timur terdeformasi. Kemiringan melewati ambang kritis dan bertahan walau lalu lintas berhenti.',
     traffic: '8 mobil, 2 truk · 60 km/j',
     impact: 'Kemiringan tumpuan, lendutan asimetris',
     expected: 'KRITIS',
@@ -202,7 +199,7 @@ export const SCENARIOS: Record<string, Scenario> = {
     key: 'gerusan',
     family: 'kerusakan',
     name: 'Gerusan pilar pascabanjir',
-    desc: 'Aliran banjir menggerus dasar di sekitar tumpuan barat sehingga pondasi turun. Lendutan dan kemiringan melewati ambang kritis bersamaan, dan lalu lintas berat sudah dialihkan.',
+    desc: 'Banjir menggerus dasar di tumpuan barat. Lendutan dan kemiringan melewati ambang kritis bersamaan.',
     traffic: '5 mobil, 2 truk · 30 km/j',
     impact: 'Penurunan tumpuan, lendutan & kemiringan',
     expected: 'KRITIS',

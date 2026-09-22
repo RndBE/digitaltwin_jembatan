@@ -75,40 +75,23 @@ export function AlertLadder({ readings, since }: AlertLadderProps) {
 
       <div className="hairline" />
 
-      {/*
-        * Kaki kartu menjawab "sejak kapan" dan "oleh apa".
-        *
-        * Tingkat siaga tanpa kedua keterangan itu tidak dapat ditandatangani:
-        * kanal yang melewati ambang dua menit lalu dan kanal yang melewatinya
-        * sejak kemarin sore menuntut tindakan yang berbeda walau tingkatnya
-        * sama.
-        */}
       <p className="text-muted" style={{ fontSize: 11.5, lineHeight: 1.5, margin: 0 }}>
-        Berlaku sejak <span className="tabular">{jamSejak(since)}</span> ({lamaSejak(since)}) menurut
-        aturan <span className="tabular">{berlaku.rule.code}</span>.
-        {berlaku.triggered.length > 0 ? (
-          <>
-            {' '}
-            Kanal pelanggar:{' '}
-            {berlaku.triggered.map((reading, index) => {
-              const spec = SENSOR_BY_ID[reading.id];
-              return (
-                <span key={reading.id}>
-                  {index > 0 ? ', ' : ''}
-                  <strong style={{ fontWeight: 600, color: 'var(--mist-100)' }}>
-                    {spec?.name ?? reading.id}
-                  </strong>{' '}
-                  <span className="tabular">
-                    {spec ? formatValue(spec, reading.value) : reading.value} {spec?.unit ?? ''}
-                  </span>
-                </span>
-              );
-            })}
-            .
-          </>
-        ) : (
-          ' Tidak ada kanal yang melanggar.'
-        )}
+        Sejak <span className="tabular">{jamSejak(since)}</span> · {lamaSejak(since)} ·{' '}
+        <span className="tabular">{berlaku.rule.code}</span>
+        {berlaku.triggered.map((reading) => {
+          const spec = SENSOR_BY_ID[reading.id];
+          return (
+            <span key={reading.id}>
+              {' · '}
+              <strong style={{ fontWeight: 600, color: 'var(--mist-100)' }}>
+                {spec?.name ?? reading.id}
+              </strong>{' '}
+              <span className="tabular">
+                {spec ? formatValue(spec, reading.value) : reading.value} {spec?.unit ?? ''}
+              </span>
+            </span>
+          );
+        })}
       </p>
     </div>
   );

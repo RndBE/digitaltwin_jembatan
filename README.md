@@ -34,16 +34,33 @@ npm run dev
 - Antarmuka: <http://localhost:5174>
 - API: <http://localhost:5175>
 
-Antarmuka tidak punya layar masuk. Titik akhir yang mengubah keadaan di server
-tetap memerlukan token, jadi dalam mode API kendali skenario dijalankan mesin
-lokal disertai keterangannya — lihat `backend/README.md` bila kendali sisi
-server memang diperlukan.
+### Masuk dan sesi
+
+Seluruh layar berada di balik halaman masuk, dengan nama pengguna dan kata
+sandi. Akun bawaannya `admin` / `be_jogja`, disemai server dari
+`SEED_USER_NAME` dan `SEED_USER_PASSWORD`; layar masuk sendiri tidak
+menuliskannya.
+
+| | Mode API | Mode peraga |
+|---|---|---|
+| Yang memeriksa | `POST /api/auth/login`, kata sandi ter-hash bcrypt | kode di peramban |
+| Yang disimpan | JWT terbitan server (masa berlaku `JWT_EXPIRE`, bawaan 7 hari) | penanda pengguna saja |
+| Saat halaman dimuat | token ditanyakan ke `/api/auth/me`; yang ditolak dibuang | dibaca dari peramban |
+| Token ditolak di tengah sesi | sesi ditutup, layar masuk kembali | — |
+
+Pemeriksaan mode peraga **bukan pengamanan**: seluruh kodenya ada di peramban
+dan dapat dilewati siapa pun yang membuka alat pengembang. Ia hanya menjaga
+alur masuk tetap dapat diperagakan tanpa server, di atas data yang memang
+karangan. Jangan memasangnya di atas data sungguhan.
+
+Titik akhir yang mengubah keadaan di server memerlukan token yang sama, jadi
+kendali skenario sisi server baru terbuka setelah masuk lewat mode API — lihat
+`backend/README.md`.
 
 ## Mode peraga dan data dummy
 
 Selama `VITE_API_ENABLED` tidak disetel `true`, antarmuka tidak menghubungi
-server sama sekali — bilah samping menandainya dengan label **Mode demo · data
-dummy**. Dua sumber angkanya:
+server sama sekali. Dua sumber angkanya:
 
 - **Telemetri** dibangkitkan `frontend/src/domain/simulationEngine.ts`, rumus
   yang sama persis dengan mesin di sisi server.

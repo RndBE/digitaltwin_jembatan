@@ -1,15 +1,14 @@
 import { useState } from 'react';
-import type { Bridge, Telemetry } from '../lib/types';
+import type { Telemetry } from '../lib/types';
 import {
   CONDITION_CLASS,
   CONDITION_COLOR,
   CONDITION_LABEL,
   CONDITION_THRESHOLDS,
-  SOURCE_WEIGHTS,
 } from '../domain/condition';
 import { bridgeCondition, type ScoredElement } from '../domain/elements';
 import { Meter } from '../components/Charts';
-import { PageHeader, SectionTitle, Stat } from '../components/Ui';
+import { PageHeader, Stat } from '../components/Ui';
 
 /**
  * Kondisi elemen: satu skor per elemen struktur, dan alasannya.
@@ -26,7 +25,6 @@ import { PageHeader, SectionTitle, Stat } from '../components/Ui';
  */
 
 export interface ConditionPageProps {
-  bridge: Bridge;
   telemetry: Telemetry | null;
   onOpenInspection: () => void;
 }
@@ -34,7 +32,7 @@ export interface ConditionPageProps {
 const persen = (v: number) => `${(v * 100).toFixed(0)} %`;
 const skor = (v: number) => v.toFixed(2);
 
-export function ConditionPage({ bridge, telemetry, onOpenInspection }: ConditionPageProps) {
+export function ConditionPage({ telemetry, onOpenInspection }: ConditionPageProps) {
   const kondisi = bridgeCondition(telemetry?.readings ?? []);
   const [pilih, setPilih] = useState<string | null>(null);
 
@@ -89,7 +87,7 @@ export function ConditionPage({ bridge, telemetry, onOpenInspection }: Condition
         <Stat
           label="Rata-rata polos"
           value={skor(kondisi.mean)}
-          note={`selisih ${(kondisi.mean - kondisi.index).toFixed(2)} — inilah yang disembunyikan rata-rata`}
+          note={`selisih ${(kondisi.mean - kondisi.index).toFixed(2)}`}
         />
         <Stat
           label="Elemen di bawah ambang baik"
@@ -108,26 +106,6 @@ export function ConditionPage({ bridge, telemetry, onOpenInspection }: Condition
           tone="warn"
         />
       </section>
-
-      {/*
-        * Dua indeks yang mirip namanya tetapi bukan hal yang sama akan
-        * tertukar, dan angka yang tertukar lebih buruk daripada angka yang
-        * tidak ada. Bedanya dinyatakan di sini, sekali, dengan jelas.
-        */}
-      <div
-        className="glass card"
-        style={{ padding: 'var(--space-3) var(--space-4)', marginBottom: 'var(--space-6)' }}
-      >
-        <span className="card-kicker">Bedanya dengan indeks kesehatan</span>
-        <p className="card-body" style={{ maxWidth: '86ch' }}>
-          <strong>Indeks kesehatan</strong> di Dashboard dihitung dari telemetri saja dan berubah
-          tiap menit — ia menjawab "sekarang jembatannya sedang bagaimana".{' '}
-          <strong>Indeks kondisi</strong> di halaman ini menggabungkan telemetri dengan inspeksi dan
-          uji diagnostik, dan bergerak dalam hitungan bulan — ia menjawab "elemen mana yang harus
-          dianggarkan". Keduanya boleh berbeda jauh: jembatan yang seluruh sensornya tenang hari ini
-          tetap dapat berkondisi buruk karena korosi yang tercatat inspeksi setengah tahun lalu.
-        </p>
-      </div>
 
       <div
         className="split"
@@ -221,11 +199,6 @@ export function ConditionPage({ bridge, telemetry, onOpenInspection }: Condition
 
           <div className="glass card" style={{ padding: 'var(--space-4)' }}>
             <span className="card-kicker">Dekomposisi skor</span>
-            <p className="text-muted" style={{ fontSize: 12, lineHeight: 1.55 }}>
-              Kalau ahli struktur tidak bisa melihat kenapa skornya {skor(terpilih.score)}, ia tidak
-              akan percaya sistemnya — dan ia benar. Karena itu rinciannya ditampilkan, bukan
-              disembunyikan.
-            </p>
 
             <div className="stack" style={{ gap: 'var(--space-3)', marginTop: 4 }}>
               {terpilih.breakdown.parts.map((part) => (
@@ -264,38 +237,21 @@ export function ConditionPage({ bridge, telemetry, onOpenInspection }: Condition
             </div>
 
             {terpilih.reading ? (
-              <p className="text-muted" style={{ fontSize: 12, lineHeight: 1.55 }}>
-                Suku sensornya dibaca dari kanal{' '}
-                <strong style={{ color: 'var(--mist-100)' }}>{terpilih.reading.name}</strong> —
-                sekarang {terpilih.reading.value.toFixed(2)} {terpilih.reading.unit}, ambang{' '}
-                {terpilih.reading.warn}/{terpilih.reading.crit}. Itulah satu-satunya suku yang
-                berubah tiap menit.
+              <p className="text-muted" style={{ fontSize: 12 }}>
+                Kanal <strong style={{ color: 'var(--mist-100)' }}>{terpilih.reading.name}</strong>{' '}
+                · {terpilih.reading.value.toFixed(2)} {terpilih.reading.unit} · ambang{' '}
+                {terpilih.reading.warn}/{terpilih.reading.crit}
               </p>
             ) : (
-              <p className="text-muted" style={{ fontSize: 12, lineHeight: 1.55 }}>
-                Elemen ini tidak tersensor. Suku sensornya diisi rata-rata kedua sumber lain, bukan
-                nol — nol berarti hancur, dan tidak adanya alat ukur bukan temuan tentang
-                strukturnya.
+              <p className="text-muted" style={{ fontSize: 12 }}>
+                Tidak tersensor · suku sensor diisi rata-rata kedua sumber lain.
               </p>
             )}
           </div>
 
           <div className="glass glass--chip card" style={{ padding: 'var(--space-4)' }}>
             <span className="card-kicker">Asal angkanya</span>
-            <p className="card-body" style={{ maxWidth: '52ch' }}>
-              Suku <strong>sensor</strong> dihitung sungguhan dari telemetri. Suku{' '}
-              <strong>visual</strong> dan <strong>diagnostik</strong> masih data contoh, diturunkan
-              dari kalimat temuan pada catatan inspeksi yang ada — korosi pelat buhul panel 4–6,
-              retak gelagar G-6, deformasi bantalan tumpuan timur. Keduanya baru menjadi data
-              sungguhan setelah form inspeksi mencatat temuan <strong>per elemen</strong>, bukan
-              sebagai satu paragraf per kunjungan.
-            </p>
-            <p className="card-body" style={{ maxWidth: '52ch' }}>
-              Suku sensornya membaca <strong>cuplikan terakhir</strong>, jadi pada hari yang tenang
-              ia mengangkat setiap elemen bersensor mendekati 1,0 — dan elemen tanpa sensor, yang
-              dinilai inspeksi saja, tampak lebih buruk daripada seharusnya bila dibandingkan
-              langsung. Keduanya ditandai supaya tidak tertukar.
-            </p>
+            <p className="card-body">Sensor dari telemetri · visual dan diagnostik data contoh.</p>
             <button type="button" className="btn btn-sm" onClick={onOpenInspection}>
               Buka riwayat inspeksi
             </button>
@@ -303,31 +259,6 @@ export function ConditionPage({ bridge, telemetry, onOpenInspection }: Condition
         </div>
       </div>
 
-      <div style={{ marginTop: 'var(--space-8)' }}>
-        <SectionTitle note="minimum berbobot, severity 0,75">Kenapa bukan rata-rata</SectionTitle>
-        <div className="glass glass--chip card" style={{ padding: 'var(--space-4)' }}>
-          <p className="card-body" style={{ maxWidth: '84ch' }}>
-            Pada {bridge.name} sekarang, rata-rata seluruh elemen keluar{' '}
-            <strong className="tabular">{skor(kondisi.mean)}</strong> sementara indeksnya{' '}
-            <strong className="tabular">{skor(kondisi.index)}</strong> — ditarik turun oleh{' '}
-            <strong>{kondisi.driver?.name}</strong> yang berskor{' '}
-            <span className="tabular">{kondisi.driver ? skor(kondisi.driver.score) : '—'}</span>.
-            Selisih itu bukan kesalahan hitung, melainkan seluruh gunanya: satu elemen buruk di
-            antara {kondisi.structural.length - 1} elemen sehat akan hilang di dalam rata-rata,
-            padahal justru elemen itu yang menentukan pekerjaan bulan depan. Yang dihitung hanya{' '}
-            {kondisi.structural.length} elemen pemikul beban — sandaran dan kerb tetap harus
-            diperbaiki, tetapi tidak menentukan apakah jembatannya boleh dilewati.
-          </p>
-          <p className="card-body" style={{ maxWidth: '84ch' }}>
-            Rumusnya <code>mean × (1 − severity) + min × severity</code> dengan severity 0,75.
-            Severity 0 menghasilkan rata-rata murni, severity 1 menghasilkan skor elemen terburuk
-            saja. Bobot sumber ({SOURCE_WEIGHTS.sensor} / {SOURCE_WEIGHTS.visual} /{' '}
-            {SOURCE_WEIGHTS.diagnostic}) dan severity keduanya <strong>wajib dikalibrasi bersama
-            ahli struktur</strong>; keduanya ada di <code>domain/condition.ts</code> sebagai satu
-            tetapan, bukan tersebar di halaman.
-          </p>
-        </div>
-      </div>
     </div>
   );
 }

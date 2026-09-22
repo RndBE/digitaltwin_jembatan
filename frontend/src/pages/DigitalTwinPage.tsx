@@ -10,8 +10,7 @@ import {
   scenariosOf,
 } from '../domain/scenarios';
 import { Select } from '../components/Select';
-import { LIVE_SHARE } from '../three/proceduralBridge';
-import { SAG_GAIN, sagBand } from '../domain/deflectionScale';
+import { sagBand } from '../domain/deflectionScale';
 import { SENSOR_BY_ID, TAG_CLASS } from '../domain/sensors';
 import { TrussViewer } from '../three/TrussViewer';
 import { GlbViewer, type GlbViewerHandle } from '../three/GlbViewer';
@@ -307,9 +306,6 @@ function LiveTwinView({
                       setSelectedGroup(scene.selectGroup(key));
                     }}
                   />
-                  <p className="text-muted" style={{ fontSize: 11, lineHeight: 1.5, marginTop: 8 }}>
-                    Kotak centang menyembunyikan kelompok; namanya menyorot.
-                  </p>
                 </div>
               ) : null}
             </div>
@@ -332,44 +328,15 @@ function LiveTwinView({
           </Stage>
 
           {deflection && sag && deflSpec ? (
-            <p
-              className="text-muted"
-              style={{ fontSize: 12, lineHeight: 1.55, marginTop: 'var(--space-2)', maxWidth: '86ch' }}
-            >
+            <p className="text-muted" style={{ fontSize: 12, marginTop: 'var(--space-2)' }}>
               <strong style={{ fontWeight: 700, color: 'var(--mist-100)' }}>
                 Lendutan tengah bentang {deflection.value.toFixed(1)} mm
               </strong>{' '}
-              · pita <span className={TAG_CLASS[sag.status]}>{sag.status}</span>, digambar ×{' '}
-              <span className="tabular">{Math.round(sag.effective)}</span>, jadi lengkungan yang
-              terlihat setara <span className="tabular">{sag.drawnMetres.toFixed(2)} m</span> pada
-              bentang {bridge.spanMeters} m.{' '}
-              <strong style={{ fontWeight: 600, color: 'var(--mist-100)' }}>
-                Pengalinya naik bertingkat
-              </strong>{' '}
-              — × {SAG_GAIN.AMAN} untuk milimeter di bawah ambang waspada{' '}
-              {deflSpec.warn.toFixed(0)} mm, × {SAG_GAIN.WASPADA} untuk yang di antara waspada dan
-              kritis {deflSpec.crit.toFixed(0)} mm, × {SAG_GAIN.KRITIS} untuk yang di atasnya —
-              sehingga milimeter yang berbahaya tergambar{' '}
-              {Math.round(SAG_GAIN.KRITIS / SAG_GAIN.AMAN)} kali lebih dalam daripada milimeter
-              yang biasa, sementara keadaan normal tetap tampak hampir lurus. Redamannya ikut turun
-              pada pita yang lebih tinggi: aman turun tenang tanpa ayunan, kritis mengayun dan lama
-              tenangnya — rasio redaman yang menurun memang penanda kerusakan.{' '}
-              {Math.round((1 - LIVE_SHARE) * 100)} % lendutannya berat sendiri — paling dalam di
-              tengah, nol di kedua tumpuan — dan {Math.round(LIVE_SHARE * 100)} % kendaraan yang
-              sedang melintas, jadi cekungannya
-              <strong style={{ fontWeight: 600, color: 'var(--mist-100)' }}> berjalan bersama
-              truk</strong> dan lantainya naik lagi begitu bentangnya kosong.
-              {damagedCount > 0 ? (
-                <>
-                  {' '}
-                  Selama {damagedCount} elemen masih ditandai rusak, cekungannya juga{' '}
-                  <strong style={{ fontWeight: 600, color: 'var(--state-waspada)' }}>
-                    condong ke elemen itu
-                  </strong>{' '}
-                  — bentang yang kehilangan kekakuan melendut paling dalam di dekat kerusakannya,
-                  bukan lagi tepat di tengah.
-                </>
-              ) : null}
+              · pita <span className={TAG_CLASS[sag.status]}>{sag.status}</span> · digambar ×{' '}
+              <span className="tabular">{Math.round(sag.effective)}</span> ={' '}
+              <span className="tabular">{sag.drawnMetres.toFixed(2)} m</span> pada bentang{' '}
+              {bridge.spanMeters} m
+              {damagedCount > 0 ? ` · cekungan condong ke ${damagedCount} elemen rusak` : ''}
             </p>
           ) : null}
 
@@ -395,11 +362,9 @@ function LiveTwinView({
                 className="row"
                 style={{ justifyContent: 'space-between', gap: 'var(--space-3)', flexWrap: 'wrap' }}
               >
-                <span style={{ fontSize: 13, lineHeight: 1.55, maxWidth: '72ch' }}>
+                <span style={{ fontSize: 13 }}>
                   <strong style={{ fontWeight: 700 }}>Sisa kerusakan</strong> · {damagedCount} elemen
-                  tetap disorot merah walaupun skenarionya sudah dihentikan. Kerusakan struktur tidak
-                  pulih sendiri seperti beban lalu lintas: tandanya hilang setelah perbaikan
-                  dikerjakan dan dicatat.
+                  masih disorot sampai perbaikan dicatat.
                 </span>
                 <button type="button" className="btn btn-sm" onClick={onRepair}>
                   Catat perbaikan
@@ -716,9 +681,8 @@ function ReferenceModelView({ bridge }: { bridge: Bridge }) {
                 {selectedMetadata ? (
                   <PartMetadataPanel part={selectedMetadata} doc={doc} />
                 ) : (
-                  <p className="text-muted" style={{ fontSize: 13, lineHeight: 1.5 }}>
-                    Klik satu bagian pada model untuk melihat tingkat kepercayaan, asal-usul geometri,
-                    dan kontrol dimensi yang dipakainya.
+                  <p className="text-muted" style={{ fontSize: 13 }}>
+                    Klik satu bagian pada model untuk melihat metadatanya.
                   </p>
                 )}
               </div>

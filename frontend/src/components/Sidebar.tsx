@@ -1,4 +1,4 @@
-import type { Bridge, DataSource, Status } from '../lib/types';
+import type { AuthUser, Bridge, Status } from '../lib/types';
 import { Icon, type IconName } from './Icon';
 import { Select } from './Select';
 import { StatusTag } from './Ui';
@@ -103,10 +103,11 @@ export interface SidebarProps {
   bridge: Bridge;
   onBridge: (id: string) => void;
   status: Status;
-  source: DataSource;
-  demo: boolean;
   /** Ada sisa kerusakan yang menunggu dicatat perbaikannya. */
   repairNeeded: boolean;
+  /** Pengguna yang sedang masuk; namanya dipakai saat alarm diakui. */
+  user: AuthUser;
+  onLogout: () => void;
   /**
    * Titik penanda per layar, beserta warnanya dan alasannya.
    *
@@ -118,49 +119,6 @@ export interface SidebarProps {
   dots?: Partial<Record<ScreenKey, { color: string; title: string }>>;
 }
 
-/**
- * Tanda platform: lengkungan di atas lantai, seperti rangka jembatan.
- *
- * Tempatnya di puncak rel, bukan di kepala lajur isi. Rel berdiri utuh dari
- * atas ke bawah, dan benda yang menamai seluruh aplikasi wajib berada di
- * puncak benda yang utuh itu — bukan di atas salah satu lajurnya saja.
- */
-function BrandMark() {
-  return (
-    <svg
-      width="38"
-      height="38"
-      viewBox="0 0 40 40"
-      aria-hidden="true"
-      style={{ flex: 'none', borderRadius: 12, boxShadow: '0 12px 26px -14px rgb(2 8 20 / 0.9)' }}
-    >
-      <rect width="40" height="40" rx="12" fill="url(#brand-grad)" />
-      <path
-        d="M7 27c4.2-9 8.4-13.5 13-13.5S29.8 18 34 27"
-        fill="none"
-        stroke="#fff"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-        opacity="0.95"
-      />
-      <path d="M7 27h27" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" opacity="0.6" />
-      <path
-        d="M13 27v-5.4M20 27v-9.6M27 27v-5.4"
-        stroke="#fff"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-        opacity="0.5"
-      />
-      <defs>
-        <linearGradient id="brand-grad" x1="0" y1="0" x2="40" y2="40">
-          <stop stopColor="#47a6ff" />
-          <stop offset="1" stopColor="#1268c9" />
-        </linearGradient>
-      </defs>
-    </svg>
-  );
-}
-
 export function Sidebar({
   screen,
   onScreen,
@@ -168,9 +126,9 @@ export function Sidebar({
   bridge,
   onBridge,
   status,
-  source,
-  demo,
   repairNeeded,
+  user,
+  onLogout,
   dots = {},
 }: SidebarProps) {
   // Satu aset tidak perlu pemilih — namanya saja sudah cukup. Pemilih muncul
@@ -180,31 +138,7 @@ export function Sidebar({
   return (
     <nav className="sidebar glass glass--rail" aria-label="Navigasi utama">
       <div className="sidebar-brand">
-        <BrandMark />
-        <div style={{ lineHeight: 1.2, minWidth: 0 }}>
-          <div
-            style={{
-              fontSize: 12.5,
-              fontWeight: 800,
-              textTransform: 'uppercase',
-              letterSpacing: '-0.01em',
-              color: '#fff',
-            }}
-          >
-            Bridge Digital Twin
-          </div>
-          <div
-            style={{
-              fontSize: 11,
-              fontWeight: 600,
-              letterSpacing: '0.06em',
-              textTransform: 'uppercase',
-              color: 'var(--mist-300)',
-            }}
-          >
-            Pemantauan Struktur
-          </div>
-        </div>
+        <img src="/logo_beacon.png" alt="Beacon Engineering" className="sidebar-logo" />
       </div>
 
       {/*
@@ -294,9 +228,15 @@ export function Sidebar({
           ) : null}
         </div>
 
-        <div className="text-muted" style={{ fontSize: 11 }}>
-          {demo ? 'Mode demo · data dummy' : 'Data lapangan'} ·{' '}
-          {source === 'api' ? 'API server' : 'mesin lokal'}
+        {/* Siapa yang sedang membukanya, dan jalan keluarnya. */}
+        <div className="sidebar-akun">
+          <div className="stack" style={{ gap: 1, minWidth: 0 }}>
+            <span className="sidebar-akun-nama">{user.name}</span>
+            <span className="text-muted sidebar-akun-peran">{user.role}</span>
+          </div>
+          <button type="button" className="btn btn-sm" onClick={onLogout}>
+            Keluar
+          </button>
         </div>
       </div>
     </nav>

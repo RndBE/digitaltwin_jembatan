@@ -64,7 +64,7 @@ store
   .then(() => {
     app.listen(config.PORT, () => {
       console.log(`API Digital Twin Jembatan berjalan di http://localhost:${config.PORT}`);
-      console.log(`Akun demo: ${config.SEED_USER_EMAIL}`);
+      console.log(`Akun demo: ${config.SEED_USER_NAME}`);
     });
   })
   .catch((err) => {

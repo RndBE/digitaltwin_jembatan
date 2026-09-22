@@ -90,13 +90,13 @@ function stopTicker() {
 
 // ----------------------------------------------------------------- pengguna
 
-async function createUser({ email, password, name, role = 'operator' }) {
-  const key = email.toLowerCase();
+async function createUser({ username, password, name, role = 'operator' }) {
+  const key = String(username).toLowerCase();
   if (users.has(key)) return null;
   const user = {
     id: `usr-${users.size + 1}`,
-    email: key,
-    name: name || key.split('@')[0],
+    username: key,
+    name: name || key,
     role,
     passwordHash: await bcrypt.hash(password, 10),
     createdAt: new Date().toISOString(),
@@ -105,8 +105,8 @@ async function createUser({ email, password, name, role = 'operator' }) {
   return user;
 }
 
-function findUser(email) {
-  return users.get(String(email || '').toLowerCase()) || null;
+function findUser(username) {
+  return users.get(String(username || '').toLowerCase()) || null;
 }
 
 function verifyPassword(user, password) {
@@ -115,16 +115,16 @@ function verifyPassword(user, password) {
 
 /** Bentuk pengguna yang aman dikirim ke klien. */
 function publicUser(user) {
-  return { id: user.id, email: user.email, name: user.name, role: user.role };
+  return { id: user.id, username: user.username, name: user.name, role: user.role };
 }
 
 async function seedDemoUser() {
-  if (findUser(config.SEED_USER_EMAIL)) return;
+  if (findUser(config.SEED_USER_NAME)) return;
   await createUser({
-    email: config.SEED_USER_EMAIL,
+    username: config.SEED_USER_NAME,
     password: config.SEED_USER_PASSWORD,
-    name: 'Operator Jembatan',
-    role: 'operator',
+    name: 'Administrator',
+    role: 'admin',
   });
 }
 

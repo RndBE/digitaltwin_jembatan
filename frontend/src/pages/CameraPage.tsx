@@ -105,8 +105,7 @@ export function CameraPage({ bridge, telemetry }: CameraPageProps) {
             {bermasalah.length} kamera tidak menyiarkan penuh
           </strong>{' '}
           ·{' '}
-          {bermasalah.map((c) => `${c.id} (${c.status})`).join(', ')}. Titik yang tidak terpantau
-          kamera tetap terpantau sensornya, tetapi tanpa gambar penyebabnya harus disimpulkan.
+          {bermasalah.map((c) => `${c.id} (${c.status})`).join(', ')}
         </div>
       ) : null}
 
@@ -126,29 +125,6 @@ export function CameraPage({ bridge, telemetry }: CameraPageProps) {
             detection={camera.channel === 'wim' ? deteksi : null}
           />
         ))}
-      </div>
-
-      <div className="glass glass--chip card" style={{ padding: 'var(--space-4)', marginTop: 'var(--space-6)' }}>
-        <span className="card-kicker">Menyambung ke kamera sungguhan</span>
-        <p className="card-body" style={{ maxWidth: '82ch' }}>
-          Gambar di atas peraga, dan tiap ubin mengatakannya lewat lencana <strong>PERAGA</strong> —
-          bukan <strong>LIVE</strong>. Ubin yang menggambar jalan lalu diberi lencana siaran
-          langsung adalah kebohongan kecil yang mahal: operator yang mengiranya sungguhan akan
-          mengambil keputusan dari gambar yang tidak pernah melihat apa pun.
-        </p>
-        <p className="card-body" style={{ maxWidth: '82ch' }}>
-          Yang sudah berbentuk akhir justru lapisan di atasnya — penanda keadaan, jam, nama kamera,
-          resolusi, dan kotak deteksi — dan lapisan itu HTML, bukan bagian dari gambarnya.
-          Menyambungkannya berarti mengganti satu <code>&lt;svg&gt;</code> dengan satu{' '}
-          <code>&lt;video&gt;</code> di <code>components/CameraTile.tsx</code>; sisanya tetap.
-        </p>
-        <p className="card-body" style={{ maxWidth: '82ch' }}>
-          Kamera lapangan berbicara RTSP, dan peramban tidak. Dua jalur yang biasa dipakai:{' '}
-          <strong>RTSP → HLS</strong> lewat MediaMTX atau go2rtc lalu dimainkan <code>hls.js</code>{' '}
-          — paling mudah dipasang, latensi 3–10 detik; atau <strong>WebRTC lewat go2rtc</strong> —
-          latensi di bawah satu detik. Pilih yang kedua bila operatornya harus bereaksi terhadap apa
-          yang dilihatnya; sepuluh detik terlalu lama untuk menutup lajur.
-        </p>
       </div>
     </div>
   );

@@ -204,12 +204,8 @@ export function ComparePage({
             height={200}
           />
 
-          <p className="text-muted" style={{ fontSize: 12, lineHeight: 1.55, marginTop: 'var(--space-2)', maxWidth: '86ch' }}>
-            Garis putus abu adalah rekaman kondisi normal, garis penuh berwarna adalah kondisi
-            sekarang, dan daerah di antaranya adalah selisihnya — yang justru itulah yang dicari.
-            Keduanya berbagi satu sumbu tegak, jadi tinggi garis benar-benar berarti nilai yang
-            lebih besar. Sumbu datarnya lama pengamatan yang sama, bukan jam yang sama: rekaman
-            pembandingnya memang berhenti lebih dulu.
+          <p className="text-muted" style={{ fontSize: 12, marginTop: 'var(--space-2)' }}>
+            Putus abu = rekaman normal · penuh berwarna = sekarang · satu sumbu tegak.
           </p>
         </div>
       </section>
@@ -277,25 +273,6 @@ export function ComparePage({
             </div>
           </div>
         ))}
-      </div>
-
-      <div className="glass glass--chip card" style={{ padding: 'var(--space-4)' }}>
-        <span className="card-kicker">Cara membaca</span>
-        <p className="card-body" style={{ maxWidth: '78ch' }}>
-          Tiap kanal digambar sebagai satu bagan, bukan sepasang. Dua bagan berdampingan menuntut
-          mata mengurangkan dua gambar, dan mata tidak bisa melakukannya; ditumpuk pada satu sumbu,
-          selisihnya menjadi satu bentuk yang langsung terlihat besar-kecilnya. Sumbu tegaknya
-          tunggal dan selalu memuat ambang kritis, jadi garis yang lebih tinggi memang bernilai
-          lebih besar — dan garis ambang waspada (kuning) serta kritis (merah) berlaku untuk kedua
-          deret sekaligus.
-        </p>
-        <p className="card-body" style={{ maxWidth: '78ch' }}>
-          Rekaman pembanding sengaja diputus-putus, bukan dibedakan warnanya saja: data yang
-          dibekukan dan nilai yang sedang berjalan tidak boleh terlihat sama, dan bentuk garis tetap
-          terbaca oleh orang yang tidak membedakan warna. Selisih persen dihitung dari rata-rata
-          sepertiga data terakhir, bukan dari satu nilai sesaat, supaya satu lonjakan tidak
-          menggeser angkanya.
-        </p>
       </div>
     </div>
   );

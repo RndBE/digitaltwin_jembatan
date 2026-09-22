@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { Bridge, DataSource, Telemetry } from '../lib/types';
 import type { Series } from '../hooks/useTelemetry';
-import { SENSORS, SENSOR_BY_ID } from '../domain/sensors';
+import { SENSORS } from '../domain/sensors';
 import { ThresholdChart } from '../components/Charts';
 import { PageHeader, StatusTag } from '../components/Ui';
 import { RANGES, muatRiwayat, ringkas, type HistoryResult } from '../domain/history';
@@ -390,28 +390,15 @@ export function AnalysisPage({ bridge, telemetry, series, source }: AnalysisPage
         })}
       </div>
 
-      <p
-        className="text-muted"
-        style={{ fontSize: 12, marginTop: 'var(--space-6)', maxWidth: '78ch', lineHeight: 1.6 }}
-      >
+      <p className="text-muted" style={{ fontSize: 12, marginTop: 'var(--space-6)' }}>
         {opsi ? (
           <>
-            Tiap titik adalah <strong style={{ fontWeight: 600 }}>nilai tertinggi</strong> di dalam
-            keranjang selebar {opsi.note.replace('keranjang ', '')}; rerata dan nilai terendahnya
-            disebut di bawah tiap bagan. Garis dasar tidak digambar pada tampilan rentang — ia
-            perilaku kanal pada kondisi layan normal, dan pada skala hari yang dibandingkan bukan
-            lagi cuplikan melainkan pola.{' '}
-            {riwayat?.source === 'api'
-              ? 'Angkanya dibaca dari cuplikan yang tersimpan di server, satu cuplikan tiap menit.'
-              : 'Server belum menyimpan rentang ini, jadi angkanya dibangkitkan model peraga di peramban: pola harian dan mingguan yang ditentukan oleh jamnya, bukan bilangan acak — rentang yang sama selalu menghasilkan grafik yang sama.'}
+            Tiap titik = nilai tertinggi per {opsi.note.replace('keranjang ', '')} ·{' '}
+            {riwayat?.source === 'api' ? 'cuplikan server' : 'model peraga'}
           </>
         ) : (
           <>
-            Jendela pemantauan menyimpan {series[SENSORS[0].id]?.values.length ?? 0} nilai terakhir
-            per kanal, masing-masing rerata satu menit, dan hilang saat halaman disegarkan. Untuk
-            yang lebih panjang daripada itu, pilih salah satu rentang di atas. Ambang yang dipakai
-            adalah ambang pada katalog sensor ({SENSOR_BY_ID.strain.warn} µm/m waspada,{' '}
-            {SENSOR_BY_ID.strain.crit} µm/m kritis untuk regangan).
+            {series[SENSORS[0].id]?.values.length ?? 0} nilai terakhir per kanal · rerata 1 menit
           </>
         )}
       </p>

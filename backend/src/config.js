@@ -16,8 +16,8 @@ const config = {
   JWT_SECRET: process.env.JWT_SECRET || 'rahasia-pengembangan-jangan-dipakai-di-produksi',
   JWT_EXPIRE: process.env.JWT_EXPIRE || '7d',
 
-  SEED_USER_EMAIL: process.env.SEED_USER_EMAIL || 'operator@jembatan.id',
-  SEED_USER_PASSWORD: process.env.SEED_USER_PASSWORD || 'jembatan123',
+  SEED_USER_NAME: process.env.SEED_USER_NAME || 'admin',
+  SEED_USER_PASSWORD: process.env.SEED_USER_PASSWORD || 'be_jogja',
 
   // Mesin simulasi memajukan waktu setiap TICK_INTERVAL_MS milidetik.
   TICK_INTERVAL_MS: Number(process.env.TICK_INTERVAL_MS) || 200,

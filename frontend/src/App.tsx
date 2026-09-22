@@ -9,6 +9,8 @@ import { Backdrop } from './components/Ui';
 import { activeRule } from './domain/alertRules';
 import { STATUS_COLOR } from './domain/sensors';
 import { DEFAULT_SCREEN, pathForScreen, screenFromPath } from './lib/routes';
+import { keluar, langganSesi, pulihkanSesi, sesiKini } from './lib/session';
+import { LoginPage } from './pages/LoginPage';
 import { langganAlarm, ringkasAlarm, versiAlarm } from './domain/alarms';
 import { DashboardPage } from './pages/DashboardPage';
 import { DigitalTwinPage } from './pages/DigitalTwinPage';
@@ -34,6 +36,17 @@ const API_ENABLED = import.meta.env.VITE_API_ENABLED === 'true';
 export default function App() {
   const [apiAvailable, setApiAvailable] = useState(false);
   const [probed, setProbed] = useState(!API_ENABLED);
+  /*
+   * Sesi pengguna.
+   *
+   * `sesiSiap` dan `probed` dua hal berbeda dan urutannya penting: cara sesi
+   * dipulihkan bergantung pada ada tidaknya server, jadi pemulihannya baru
+   * dijalankan setelah pemeriksaan API selesai. Selama keduanya belum selesai
+   * layar dibiarkan kosong — layar masuk yang berkedip sesaat pada pengguna
+   * yang sebenarnya masih punya sesi lebih buruk daripada satu jenak diam.
+   */
+  const sesi = useSyncExternalStore(langganSesi, sesiKini);
+  const [sesiSiap, setSesiSiap] = useState(false);
   const [bridges, setBridges] = useState<Bridge[]>(LOCAL_BRIDGES);
   const [bridgeId, setBridgeId] = useState(DEFAULT_BRIDGE_ID);
   /*
@@ -110,7 +123,6 @@ export default function App() {
   if (!bridge) return <p style={{ padding: 40 }}>Katalog jembatan kosong.</p>;
 
   const status = controller.telemetry?.assessment.status ?? 'AMAN';
-  const demo = !apiAvailable;
 
   /*
    * Titik penanda pada rel.
@@ -168,6 +180,20 @@ export default function App() {
     const mengoreksi = screenFromPath(window.location.pathname) === null;
     window.history[mengoreksi ? 'replaceState' : 'pushState']({ screen }, '', target);
   }, [screen]);
+
+  // Sesi dipulihkan sekali, setelah jelas ada atau tidaknya server: di mode
+  // API token yang tersimpan ditanyakan ke /auth/me, di mode peraga cukup
+  // dibaca dari peramban.
+  useEffect(() => {
+    if (!probed) return;
+    let cancelled = false;
+    pulihkanSesi(!apiAvailable).finally(() => {
+      if (!cancelled) setSesiSiap(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [probed, apiAvailable]);
 
   // Tombol maju dan mundur peramban: alamatnya sudah berpindah, layarnya yang
   // menyusul. Perpindahan lewat rel navigasi tidak lewat sini.
@@ -245,7 +271,6 @@ export default function App() {
       case 'kondisi':
         return (
           <ConditionPage
-            bridge={bridge}
             telemetry={controller.telemetry}
             onOpenInspection={() => setScreen('inspection')}
           />
@@ -293,6 +318,24 @@ export default function App() {
     }
   };
 
+  // Belum jelas siapa yang membuka: jangan gambar apa pun dulu.
+  if (!probed || !sesiSiap) {
+    return (
+      <div className="app-shell">
+        <Backdrop />
+      </div>
+    );
+  }
+
+  if (!sesi) {
+    return (
+      <>
+        <Backdrop />
+        <LoginPage modePeraga={!apiAvailable} />
+      </>
+    );
+  }
+
   return (
     <div className="app-shell">
       {/*
@@ -314,10 +357,10 @@ export default function App() {
           bridge={bridge}
           onBridge={setBridgeId}
           status={isReference ? 'AMAN' : status}
-          source={controller.source}
-          demo={demo}
           repairNeeded={Object.keys(controller.residual).length > 0}
           dots={dots}
+          user={sesi}
+          onLogout={keluar}
         />
 
         <div className="app-column">

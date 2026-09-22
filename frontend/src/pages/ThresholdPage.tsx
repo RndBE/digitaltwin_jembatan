@@ -215,11 +215,7 @@ export function ThresholdPage({ bridge, telemetry, source, alertSince }: Thresho
         <Stat
           label="Status dihitung di"
           value={source === 'api' ? 'Server API' : 'Peramban ini'}
-          note={
-            source === 'api'
-              ? 'ambang server yang menentukan status'
-              : 'ambang di tabel ini yang menentukan status'
-          }
+          note={source === 'api' ? 'ambang server' : 'ambang tabel ini'}
         />
       </section>
 
@@ -234,11 +230,8 @@ export function ThresholdPage({ bridge, telemetry, source, alertSince }: Thresho
           }}
         >
           <span className="card-kicker">Catatan mode API</span>
-          <p className="text-muted" style={{ maxWidth: '86ch' }}>
-            Status tiap pembacaan sedang dihitung server dengan ambangnya sendiri. Perubahan di
-            halaman ini berlaku untuk penilaian yang dilakukan peramban — warna sel pada halaman
-            Data, garis ambang pada bagan, dan mesin simulasi lokal bila sambungan terputus. Untuk
-            mengubah ambang yang dipakai server, ubah katalog sensornya di{' '}
+          <p className="text-muted">
+            Perubahan di sini hanya berlaku bagi penilaian di peramban. Ambang server ada di{' '}
             <code>backend/src/domain/sensors.js</code>.
           </p>
         </div>
@@ -315,7 +308,7 @@ export function ThresholdPage({ bridge, telemetry, source, alertSince }: Thresho
         <div className="card-head">
           <span className="card-kicker">Ambang batas parameter</span>
           <span className="text-muted" style={{ fontSize: 11 }}>
-            pita ditulis dalam satuan tiap parameter · perubahan tersimpan di peramban ini
+            tersimpan di peramban ini
           </span>
         </div>
         <div style={{ overflowX: 'auto' }}>
@@ -411,14 +404,8 @@ export function ThresholdPage({ bridge, telemetry, source, alertSince }: Thresho
         </div>
       </div>
 
-      <p className="text-muted" style={{ fontSize: 12, marginTop: 'var(--space-4)', maxWidth: '78ch' }}>
-        Ambang waspada harus lebih kecil daripada ambang kritis. Pasangan yang terbalik ditolak, bukan
-        diurutkan diam-diam: kanal seperti itu tidak akan pernah berstatus waspada — ia melompat dari
-        aman langsung ke kritis, dan orang yang membacanya tidak akan tahu mengapa.
-      </p>
-
       <div style={{ marginTop: 'var(--space-8)' }}>
-        <SectionTitle note={`${ALERT_RULES.length} aturan · yang pertama cocok itulah yang berlaku`}>
+        <SectionTitle note={`${ALERT_RULES.length} aturan`}>
           Aturan tingkat siaga
         </SectionTitle>
 
@@ -467,15 +454,7 @@ export function ThresholdPage({ bridge, telemetry, source, alertSince }: Thresho
           </div>
         </div>
 
-        <p className="text-muted" style={{ fontSize: 12, marginTop: 'var(--space-3)', maxWidth: '78ch' }}>
-          Aturan diperiksa berurutan dari yang paling berat, dan yang pertama cocok itulah yang
-          menentukan tingkatnya — setara persis dengan cara status dihitung di{' '}
-          <code>domain/risk.ts</code>. Kriterianya ditulis sebagai data di{' '}
-          <code>domain/alertRules.ts</code>, bukan sebagai percabangan yang tersebar di halaman,
-          supaya kalimat yang dibaca operator dan syarat yang dijalankan mesin memang satu hal yang
-          sama.
-        </p>
-      </div>
+     </div>
 
       {/*
         * Penyuntingan ambang pindah ke jendela bertumpuk.
@@ -590,10 +569,8 @@ export function ThresholdPage({ bridge, telemetry, source, alertSince }: Thresho
               </p>
             ) : null}
 
-            <p className="text-muted" style={{ fontSize: 11.5, lineHeight: 1.55, margin: 0 }}>
-              Perubahan berlaku seketika dan tersimpan di peramban ini saja — ia tidak dikirim ke
-              server dan tidak berlaku bagi operator lain. Ambang kritis wajib lebih besar daripada
-              ambang waspada.
+            <p className="text-muted" style={{ fontSize: 11.5, margin: 0 }}>
+              Tersimpan di peramban ini saja · kritis wajib lebih besar daripada waspada.
             </p>
           </>
         ) : null}

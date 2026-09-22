@@ -23,7 +23,6 @@ import {
   perluTindakan,
   petugas,
   ringkasAlarm,
-  setPetugas,
   tugaskan,
   tutup,
   versiAlarm,
@@ -123,9 +122,9 @@ function ringkas(values: number[]) {
  */
 function Legenda() {
   const butir: Array<{ warna: string; label: string }> = [
-    { warna: 'var(--mist-200)', label: 'di bawah ambang waspada' },
-    { warna: 'var(--state-waspada)', label: 'melewati ambang waspada' },
-    { warna: 'var(--state-bahaya)', label: 'melewati ambang kritis' },
+    { warna: 'var(--mist-200)', label: 'aman' },
+    { warna: 'var(--state-waspada)', label: 'waspada' },
+    { warna: 'var(--state-bahaya)', label: 'kritis' },
   ];
   return (
     <span className="row" style={{ gap: 'var(--space-3)', fontSize: 11 }}>
@@ -163,7 +162,7 @@ export function DataPage({ bridge, telemetry, series, alerts, source, intervalMs
   /** Alarm yang barisnya sedang dibuka untuk melihat jejak dan menutupnya. */
   const [dibuka, setDibuka] = useState<string | null>(null);
   const [catatan, setCatatan] = useState('');
-  const [nama, setNama] = useState(() => petugas());
+  const nama = petugas();
 
   // Ambang dapat diubah di halaman Tingkat siaga. Tanpa langganan ini, warna
   // sel tabel baru ikut berubah pada cuplikan berikutnya — satu menit
@@ -421,9 +420,8 @@ export function DataPage({ bridge, telemetry, series, alerts, source, intervalMs
               className="text-muted"
               style={{ fontSize: 12, marginTop: 'calc(var(--space-4) * -1 + 4px)', marginBottom: 'var(--space-4)' }}
             >
-              Jendela riwayat hanya menyimpan {semuaBaris.length} cuplikan terakhir, dan seluruhnya
-              berumur {lamaRentang(lama)} — lebih pendek daripada {rentang.label.toLowerCase()}. Yang
-              ditampilkan sudah seluruh isi jendela.
+              Jendela hanya memuat {semuaBaris.length} cuplikan · {lamaRentang(lama)}, lebih
+              pendek daripada {rentang.label.toLowerCase()}.
             </p>
           ) : null}
 
@@ -476,7 +474,7 @@ export function DataPage({ bridge, telemetry, series, alerts, source, intervalMs
             <div className="card-head">
               <span className="card-kicker">Ringkasan per kanal</span>
               <span className="text-muted" style={{ fontSize: 11 }}>
-                min, rerata, dan maks dihitung dari {tersaring.length} cuplikan pada rentang di atas
+                {tersaring.length} cuplikan
               </span>
             </div>
             <div style={{ overflowX: 'auto' }}>
@@ -627,14 +625,8 @@ export function DataPage({ bridge, telemetry, series, alerts, source, intervalMs
             ) : null}
           </div>
 
-          <p
-            className="text-muted"
-            style={{ fontSize: 12, marginTop: 'var(--space-4)', maxWidth: '78ch' }}
-          >
-            Berkas CSV memakai titik koma sebagai pemisah lajur dan koma sebagai tanda desimal,
-            mengikuti setelan wilayah Indonesia — berkasnya terbuka langsung di Excel tanpa langkah
-            impor. Jendela riwayat menyimpan {semuaBaris.length} cuplikan terakhir; yang lebih lama
-            dari itu tidak disimpan peramban.
+          <p className="text-muted" style={{ fontSize: 12, marginTop: 'var(--space-4)' }}>
+            CSV: pemisah titik koma, desimal koma · jendela {semuaBaris.length} cuplikan terakhir.
           </p>
         </>
       ) : (
@@ -681,27 +673,9 @@ export function DataPage({ bridge, telemetry, series, alerts, source, intervalMs
               />
             </div>
 
-            {/*
-              * Nama petugas, diketik sendiri.
-              *
-              * Sampai ada layar masuk, inilah nama yang tercatat pada tiap
-              * pengakuan — dan karena ia dapat diketik siapa saja, layar ini
-              * menyebutnya apa adanya alih-alih memasangnya seolah identitas
-              * yang terverifikasi.
-              */}
-            <div className="field" style={{ minWidth: 170 }}>
-              <label htmlFor="nama-petugas">Petugas jaga</label>
-              <input
-                id="nama-petugas"
-                className="input"
-                value={nama}
-                onChange={(event) => setNama(event.target.value)}
-                onBlur={() => setPetugas(nama)}
-                placeholder="Operator"
-              />
-            </div>
-
+            {/* Nama yang tercatat pada tiap pengakuan: pengguna yang sedang masuk. */}
             <span className="text-muted" style={{ fontSize: 12, marginLeft: 'auto' }}>
+              Petugas jaga <strong style={{ color: 'var(--mist-100)' }}>{nama}</strong> ·{' '}
               {kejadian.length} kejadian tercatat
             </span>
           </div>
@@ -932,8 +906,7 @@ export function DataPage({ bridge, telemetry, series, alerts, source, intervalMs
             className="text-muted"
             style={{ fontSize: 12, marginTop: 'var(--space-4)', maxWidth: '78ch' }}
           >
-            Log menyimpan 40 kejadian terakhir. Barisnya lahir saat sebuah kanal berpindah status,
-            saat skenario dijalankan atau dihentikan, dan saat perbaikan dicatat.
+            40 kejadian terakhir · perpindahan status kanal, skenario, dan perbaikan.
           </p>
         </>
       )}

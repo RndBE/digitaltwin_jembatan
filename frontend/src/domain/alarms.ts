@@ -1,4 +1,5 @@
 import type { AlertEvent } from '../lib/types';
+import { sesiKini } from '../lib/session';
 
 /**
  * Siklus hidup alarm.
@@ -65,7 +66,6 @@ export interface AlarmState {
 }
 
 const KUNCI = 'jdt.alarm';
-const KUNCI_PETUGAS = 'jdt.petugas';
 
 /** Kejadian bertingkat AMAN adalah kabar, bukan alarm; ia tidak perlu ditutup. */
 export function perluTindakan(event: AlertEvent): boolean {
@@ -144,29 +144,15 @@ function tulis(isi: Record<string, AlarmState>): void {
 }
 
 /**
- * Nama petugas yang sedang bertugas.
+ * Nama petugas yang sedang bertugas: pengguna yang sedang masuk.
  *
- * Sampai ada layar masuk, nama ini diketik sendiri dan disimpan di peramban.
- * Ia **bukan identitas terverifikasi**, dan layar yang menampilkannya harus
- * mengatakan begitu — sebuah nama yang dapat diketik siapa saja tidak boleh
- * dibaca sebagai bukti siapa yang mengakui. Begitu autentikasi ada, fungsi
- * inilah yang membaca pengguna yang masuk.
+ * Dibaca dari sesi, bukan dari isian yang dapat diketik siapa saja — nama pada
+ * sebuah pengakuan baru berarti sesuatu bila ia nama yang dibuktikan kata
+ * sandi. Di mode peraga sesinya sendiri hanya peragaan (lihat `lib/session`),
+ * jadi namanya pun sekadar ikut.
  */
 export function petugas(): string {
-  try {
-    return localStorage.getItem(KUNCI_PETUGAS) || 'Operator';
-  } catch {
-    return 'Operator';
-  }
-}
-
-export function setPetugas(nama: string): void {
-  try {
-    localStorage.setItem(KUNCI_PETUGAS, nama.trim() || 'Operator');
-  } catch {
-    /* diabaikan */
-  }
-  umumkan();
+  return sesiKini()?.name || 'Operator';
 }
 
 const BARU: AlarmState = { status: 'baru', jejak: [] };

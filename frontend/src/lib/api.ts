@@ -30,6 +30,20 @@ export function setToken(token: string | null): void {
   }
 }
 
+/**
+ * Yang dipanggil ketika server menolak token yang dipakai.
+ *
+ * Token dapat kedaluwarsa kapan saja — masa berlakunya tujuh hari, dan halaman
+ * yang dibiarkan terbuka semalam akan menemukannya mati di tengah jalan.
+ * Ditangani sekali di sini, bukan di tiap pemanggil yang kebetulan menerima
+ * 401, supaya tidak ada jalur yang lupa membersihkan sesinya.
+ */
+let saatTakBerwenang: (() => void) | null = null;
+
+export function setOnUnauthorized(fn: (() => void) | null): void {
+  saatTakBerwenang = fn;
+}
+
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const token = getToken();
   const response = await fetch(`${BASE}/api${path}`, {
@@ -43,6 +57,9 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 
   const payload = await response.json().catch(() => null);
   if (!response.ok || !payload?.success) {
+    // Token yang ditolak hanya berarti sesi habis bila memang ada token yang
+    // dibawa; 401 dari layar masuk itu sendiri cuma kata sandi yang salah.
+    if (response.status === 401 && token) saatTakBerwenang?.();
     throw new Error(payload?.message || `Permintaan gagal (${response.status})`);
   }
   return payload.data as T;
@@ -122,15 +139,15 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ paused }),
     }),
-  login: (email: string, password: string) =>
+  login: (username: string, password: string) =>
     request<{ user: AuthUser; token: string }>('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ username, password }),
     }),
-  register: (email: string, password: string, name: string) =>
+  register: (username: string, password: string, name: string) =>
     request<{ user: AuthUser; token: string }>('/auth/register', {
       method: 'POST',
-      body: JSON.stringify({ email, password, name }),
+      body: JSON.stringify({ username, password, name }),
     }),
   me: () => request<AuthUser>('/auth/me'),
 };
