@@ -53,6 +53,14 @@ export interface Scenario {
   residual?: Record<string, number>;
   cars: number;
   trucks: number;
+  /**
+   * Truk tronton — kendaraan bersumbu banyak yang bobotnya jauh di atas truk
+   * biasa. Dipisahkan dari `trucks` karena yang membedakannya bukan jumlah
+   * melainkan bentuk dan bobotnya, dan keduanya harus terlihat di model:
+   * skenario yang berjudul "melebihi batas gandar" tetapi menggambar truk
+   * boks biasa tidak memperlihatkan apa pun yang melebihi batas gandar.
+   */
+  tronton?: number;
   speed: number;
   damaged?: string[];
   /**

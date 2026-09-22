@@ -90,14 +90,24 @@ export const SCENARIOS: Record<string, Scenario> = {
     family: 'lalu-lintas',
     name: 'Jam sibuk / kemacetan',
     desc: 'Kedua lajur terisi penuh kendaraan yang hampir berhenti sepanjang bentang. Beban menjadi statis: getaran justru turun, tetapi lendutan dan regangan naik dan bertahan selama kemacetan berlangsung.',
-    traffic: '19 kendaraan · 3 km/j',
+    traffic: '24 kendaraan · 3 km/j',
     impact: 'Lendutan statis, regangan merata',
     expected: 'WASPADA',
     onset: 'cepat',
     reversible: true,
     mult: { vib: 0.6, strain: 1.75, defl: 1.7, wim: 1.75 },
-    cars: 14,
-    trucks: 5,
+    /*
+     * Seluruh armada diminta, bukan sebagiannya.
+     *
+     * Lintasannya empat kali lebih panjang daripada bentangnya — jalan
+     * pendekat ikut digambar — jadi kendaraan yang disebar merata hanya
+     * menaruh seperempatnya di atas jembatan. Sembilan belas kendaraan lalu
+     * terbaca sebagai lima di bentang, dan lima kendaraan yang merayap bukan
+     * kemacetan melainkan jalan lengang. Pada laju macet mereka dipadatkan ke
+     * bentang, dan jumlah inilah yang mengisinya penuh.
+     */
+    cars: 16,
+    trucks: 8,
     speed: 0.06,
   },
   overload: {
@@ -105,14 +115,17 @@ export const SCENARIOS: Record<string, Scenario> = {
     family: 'lalu-lintas',
     name: 'Truk melebihi batas gandar',
     desc: 'Iring-iringan truk bermuatan di atas batas gandar melintas beriringan di satu lajur. Regangan dan lendutan tengah bentang melewati ambang kritis bersamaan.',
-    traffic: '6 truk berat · 30 km/j',
+    traffic: '3 tronton + 3 truk berat · 30 km/j',
     impact: 'Regangan & lendutan tengah bentang',
     expected: 'KRITIS',
     onset: 'cepat',
     reversible: true,
     mult: { vib: 1.6, strain: 2.4, defl: 2.1, wim: 3.1, crack: 1.4 },
     cars: 2,
-    trucks: 6,
+    trucks: 3,
+    // Tiga tronton di tengah iring-iringan: bobotnya dua kali truk boks, dan
+    // cekungan yang berjalan bersamanya itulah isi skenario ini.
+    tronton: 3,
     speed: 0.45,
   },
 

@@ -951,11 +951,11 @@ apa-apa: halaman **Kondisi elemen**.
 Lendutannya dibagi dua bagian, dan pembagian itu yang membuat lantainya
 **bernapas**:
 
-- **Setengahnya beban tetap** — berat sendiri dan perkerasan. Bentuknya tidak
+- **Tiga perempatnya beban tetap** — berat sendiri dan perkerasan. Bentuknya tidak
   berubah: `(1 − u²)(5 − u²)/5`, bentuk lendutan balok di atas dua tumpuan
   sederhana dengan beban merata, dinormalkan terhadap lendutan tengah
   bentangnya.
-- **Setengahnya kendaraan yang sedang melintas.** Tiap kendaraan yang berada di
+- **Seperempatnya kendaraan yang sedang melintas** (`LIVE_SHARE`). Tiap kendaraan yang berada di
   atas bentang menyumbang lewat **garis pengaruh** lendutan balok tumpuan
   sederhana — beban titik di absis `a` melendutkan titik `x` sebesar
   `b·x(L² − b² − x²)·48 / 6L⁴` dengan `b = L − a`. Truk dihitung tiga kali

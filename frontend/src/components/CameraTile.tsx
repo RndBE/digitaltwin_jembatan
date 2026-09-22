@@ -1,4 +1,5 @@
 import type { Camera } from '../domain/demoData';
+import type { DamageCue } from '../domain/cameras';
 import { clockOf } from './EventLog';
 
 /**
@@ -33,6 +34,21 @@ export interface CameraTileProps {
   at: string;
   /** Kendaraan berat yang sedang terdeteksi lewat; menyalakan kotak deteksi. */
   detection?: string | null;
+}
+
+export interface CameraFrameProps extends CameraTileProps {
+  /** Petak yang sedang diawasi sensor, dalam satuan `viewBox` 320 × 180. */
+  focus?: { x: number; y: number; w: number; h: number } | null;
+  /** Keterangan pada kotak sorot — biasanya nama kanal beserta nilainya. */
+  focusLabel?: string | null;
+  /** Warna kotak sorot; mengikuti status kanalnya. */
+  focusColor?: string;
+  /** Bentuk kerusakan yang digambar pada bingkai ini, bila ada. */
+  cue?: DamageCue | null;
+  /** Cap di sudut kiri atas menggantikan lencana keadaan: "ACUAN" atau "SEKARANG". */
+  stamp?: string | null;
+  /** Tinggi tetap bingkai; dipakai pratinjau kecil pada label penanda. */
+  width?: number | string;
 }
 
 const STATUS_TONE: Record<Camera['status'], { dot: string; label: string }> = {
@@ -714,98 +730,320 @@ function Scene({ view, uid, seed }: { view: Camera['view']; uid: string; seed: n
   return <Tumpuan uid={uid} seed={seed} />;
 }
 
-export function CameraTile({ camera, at, detection = null }: CameraTileProps) {
+/* ------------------------------------------------------------- kerusakan */
+
+/**
+ * Bentuk kerusakan yang digambar di atas adegan.
+ *
+ * Isyarat ini **hanya boleh muncul pada bingkai "sekarang"**, dan hanya
+ * ketika kanal yang bersangkutan memang keluar rentang. Ia bukan hiasan
+ * dramatis: dua bingkai yang digambar dari kode yang sama akan sama persis,
+ * dan perbandingan yang kedua sisinya sama persis mengajarkan hal yang keliru
+ * — bahwa tidak ada yang berubah. Yang berubah memang ada; gambarnyalah yang
+ * perlu diberi tahu.
+ *
+ * Tiap bentuk hanya dikenali pada pandangan yang memang memperlihatkannya:
+ * retak lantai pada pandangan bentang, tumpukan miring dan gerusan pada
+ * pandangan tumpuan, beban berlebih pada pandangan oprit. Menggambar retak
+ * pada kamera yang menghadap tumpuan hanya akan membuat gambarnya berbohong.
+ */
+function Kerusakan({ cue, view }: { cue: DamageCue; view: Camera['view'] }) {
+  const tanda = 'var(--state-bahaya)';
+
+  if (cue === 'retak' && view === 'bentang') {
+    const jalur = 'M142 180 L148 162 L143 150 L150 136 L146 126 L152 116 L149 108';
+    return (
+      <g>
+        {/* Retak memanjang pada perkerasan, menyempit mengikuti perspektif. */}
+        <path d={jalur} stroke="#0b0d0f" strokeWidth="2.4" fill="none" strokeLinejoin="round" />
+        <path d={jalur} stroke="#cbd5e1" strokeWidth="0.7" fill="none" opacity="0.5" />
+        {/* Pecahan di tepi retak. */}
+        <g fill="#0b0d0f" opacity="0.75">
+          <ellipse cx="146" cy="168" rx="5" ry="2.2" />
+          <ellipse cx="147" cy="142" rx="3.6" ry="1.6" />
+          <ellipse cx="150" cy="121" rx="2.4" ry="1.1" />
+        </g>
+        <g stroke={tanda} strokeWidth="1.2" fill="none">
+          <path d="M120 176 L136 170" />
+          <circle cx="118" cy="177" r="2.4" fill={tanda} stroke="none" />
+        </g>
+      </g>
+    );
+  }
+
+  if (cue === 'lendut' && view === 'bentang') {
+    return (
+      <g>
+        {/* Garis acuan: tepi lantai yang semestinya lurus ke titik lenyap. */}
+        <path
+          d="M40 178 L156 97"
+          stroke="#cbd5e1"
+          strokeWidth="1"
+          strokeDasharray="5 4"
+          opacity="0.7"
+          fill="none"
+        />
+        {/* Tepi lantai yang terukur: melengkung turun di tengah bentang. */}
+        <path d="M40 178 Q104 150 156 97" stroke={tanda} strokeWidth="1.8" fill="none" />
+        <g stroke={tanda} strokeWidth="1" fill="none">
+          <path d="M100 133 L100 152" />
+          <path d="M97 148 L100 153 L103 148" />
+        </g>
+      </g>
+    );
+  }
+
+  if (cue === 'miring' && view === 'tumpuan') {
+    return (
+      <g>
+        {/* Ujung gelagar berputar pada bantalan: satu sisi terangkat, sisi
+            lain menekan. */}
+        <g transform="rotate(-4 160 78)">
+          <rect x="126" y="52" width="68" height="22" fill="#2a3036" />
+          <rect x="118" y="46" width="84" height="7" fill="#3a4148" />
+        </g>
+        {/* Celah yang terbuka di tepi pelat landas. */}
+        <polygon points="110,74 152,74 110,82" fill="#05070a" />
+        <g stroke={tanda} strokeWidth="1.3" fill="none">
+          <path d="M104 88 L104 74" />
+          <path d="M101 77 L104 72 L107 77" />
+          <path d="M96 92 H150" strokeDasharray="4 3" opacity="0.8" />
+        </g>
+      </g>
+    );
+  }
+
+  if (cue === 'gerusan' && view === 'tumpuan') {
+    return (
+      <g>
+        {/* Air keruh yang naik menutupi kaki tumpuan. */}
+        <rect x="0" y="150" width="320" height="30" fill="#6b5433" opacity="0.72" />
+        <g stroke="#8d6f42" strokeWidth="1.4" opacity="0.9">
+          <path d="M8 156 H92" />
+          <path d="M132 162 H236" />
+          <path d="M248 154 H312" />
+        </g>
+        {/* Lubang gerusan yang menganga di bawah telapak. */}
+        <path d="M96 180 Q120 156 152 162 Q188 168 214 180 Z" fill="#100c07" opacity="0.9" />
+        <g stroke={tanda} strokeWidth="1.3" fill="none">
+          <path d="M150 148 L150 166" />
+          <path d="M147 161 L150 167 L153 161" />
+        </g>
+      </g>
+    );
+  }
+
+  if (cue === 'beban' && view === 'oprit') {
+    return (
+      <g>
+        <rect x="88" y="98" width="66" height="52" fill="none" stroke={tanda} strokeWidth="1.8" />
+        <rect x="88" y="87" width="66" height="11" fill={tanda} />
+        <text
+          x="92"
+          y="95.5"
+          fontSize="7.5"
+          fill="#1a0a12"
+          fontFamily="var(--font-sans)"
+          fontWeight="700"
+        >
+          GANDAR LEBIH
+        </text>
+      </g>
+    );
+  }
+
+  return null;
+}
+
+/* ---------------------------------------------------------------- bingkai */
+
+/**
+ * Satu bingkai kamera, tanpa keterangan di bawahnya.
+ *
+ * Dipisahkan dari `CameraTile` karena bingkai yang sama dipakai di tiga
+ * tempat dengan kebutuhan berbeda: ubin penuh di halaman Kamera, pratinjau
+ * kecil pada label penanda sensor di Digital Twin, dan dua bingkai
+ * berdampingan pada panel perbandingan. Yang berbeda hanya lapisan di
+ * atasnya — sorotan, cap, dan isyarat kerusakan — sedangkan adegannya satu
+ * dan sama.
+ */
+export function CameraFrame({
+  camera,
+  at,
+  detection = null,
+  focus = null,
+  focusLabel = null,
+  focusColor = 'var(--state-bahaya)',
+  cue = null,
+  stamp = null,
+}: CameraFrameProps) {
   const tone = STATUS_TONE[camera.status];
   const offline = camera.status === 'luring';
-  const uid = `cam-${camera.id.toLowerCase()}`;
+  /*
+   * Pengenal gradien wajib ikut membedakan cap bingkainya.
+   *
+   * Panel perbandingan memasang dua bingkai dari kamera yang sama dalam satu
+   * halaman. Kalau keduanya memakai pengenal yang sama, gradien yang
+   * didaftarkan belakangan menimpa yang pertama — dan kedua bingkai memakai
+   * langit milik bingkai terakhir.
+   */
+  const uid = `cam-${camera.id.toLowerCase()}${stamp ? `-${stamp.toLowerCase().replace(/[^a-z0-9]+/g, '')}` : ''}`;
   const seed = benih(camera.id);
   // Dua kamera oprit saling berhadapan. Yang menghadap barat dicerminkan,
   // supaya keduanya tidak terbaca sebagai satu gambar yang diulang.
   const cermin = camera.place.toLowerCase().includes('menghadap barat');
 
   return (
-    <figure className="glass card cam" style={{ margin: 0, padding: 0, overflow: 'hidden', gap: 0 }}>
-      <div style={{ position: 'relative', lineHeight: 0 }}>
-        <svg
-          viewBox="0 0 320 180"
-          width="100%"
-          role="img"
-          aria-label={`Peraga siaran ${camera.id}, ${camera.place}`}
-          style={{ display: 'block', filter: offline ? 'grayscale(1) brightness(0.45)' : undefined }}
-        >
-          <Defs uid={uid} seed={seed} />
+    <div style={{ position: 'relative', lineHeight: 0 }}>
+      <svg
+        viewBox="0 0 320 180"
+        width="100%"
+        role="img"
+        aria-label={`Peraga siaran ${camera.id}, ${camera.place}`}
+        style={{ display: 'block', filter: offline ? 'grayscale(1) brightness(0.45)' : undefined }}
+      >
+        <Defs uid={uid} seed={seed} />
 
-          <g transform={cermin ? 'translate(320 0) scale(-1 1)' : undefined}>
-            <Scene view={camera.view} uid={uid} seed={seed} />
-          </g>
+        <g transform={cermin ? 'translate(320 0) scale(-1 1)' : undefined}>
+          <Scene view={camera.view} uid={uid} seed={seed} />
+        </g>
 
-          {detection && !offline ? (
-            <>
-              {/* Letaknya mengikuti kendaraan dekat di lajur yang menjauh —
-                  kotak deteksi yang melayang di ruang kosong justru
-                  memberitahu pembacanya bahwa kotak itu tidak berasal dari
-                  gambarnya. */}
-              <rect x="93" y="105" width="56" height="42" fill="none" stroke="var(--state-waspada)" strokeWidth="1.6" />
-              <rect x="93" y="94" width="56" height="11" fill="var(--state-waspada)" />
-              <text x="97" y="102.5" fontSize="7.5" fill="#10233a" fontFamily="var(--font-sans)" fontWeight="700">
-                {detection}
-              </text>
-            </>
-          ) : null}
+        {cue && !offline ? <Kerusakan cue={cue} view={camera.view} /> : null}
 
-          {/*
-            * Tiga lapis terakhir yang mengubah gambar vektor menjadi cuplikan
-            * kamera, dan urutannya menentukan: bintik dulu, lalu vignet. Kalau
-            * dibalik, bintiknya akan tampak menempel di atas lensa alih-alih
-            * berada di dalam gambarnya.
-            */}
-          <rect x="0" y="0" width="320" height="180" filter={`url(#${uid}-bintik)`} opacity="0.085" />
-          <rect x="0" y="0" width="320" height="180" fill={`url(#${uid}-vignet)`} />
-
-          {/*
-            * Cap air peraga.
-            *
-            * Sengaja terbaca, bukan sekadar formalitas: semakin gambarnya
-            * menyerupai siaran sungguhan, semakin mahal harga salah membacanya.
-            */}
-          <text
-            x="160"
-            y="98"
-            textAnchor="middle"
-            fontSize="19"
-            fontFamily="var(--font-sans)"
-            fontWeight="700"
-            fill="#ffffff"
-            opacity="0.035"
-            letterSpacing="5"
-            transform="rotate(-11 160 98)"
-          >
-            PERAGA
-          </text>
-        </svg>
+        {detection && !offline ? (
+          <>
+            {/* Letaknya mengikuti kendaraan dekat di lajur yang menjauh —
+                kotak deteksi yang melayang di ruang kosong justru
+                memberitahu pembacanya bahwa kotak itu tidak berasal dari
+                gambarnya. */}
+            <rect
+              x="93"
+              y="105"
+              width="56"
+              height="42"
+              fill="none"
+              stroke="var(--state-waspada)"
+              strokeWidth="1.6"
+            />
+            <rect x="93" y="94" width="56" height="11" fill="var(--state-waspada)" />
+            <text
+              x="97"
+              y="102.5"
+              fontSize="7.5"
+              fill="#10233a"
+              fontFamily="var(--font-sans)"
+              fontWeight="700"
+            >
+              {detection}
+            </text>
+          </>
+        ) : null}
 
         {/*
-          * HUD sebagai lapisan HTML di atas gambar, bukan digambar ke dalam
-          * SVG-nya: begitu `<svg>` diganti `<video>`, lapisan ini tinggal tetap
-          * di tempatnya tanpa disentuh.
+          * Sorotan petak yang diawasi sensor.
+          *
+          * Digambar sebagai empat sudut, bukan kotak penuh: kotak utuh
+          * menutupi persis bagian yang ingin dilihat orang, sedangkan empat
+          * sudut menunjuk tanpa menghalangi.
           */}
-        <div className="cam-hud">
-          <span className="cam-badge">
-            <span className="tag-dot" style={{ background: tone.dot }} aria-hidden="true" />
-            {offline ? 'LURING' : 'PERAGA'}
-          </span>
-          <span className="cam-badge" style={{ marginLeft: 'auto' }}>
-            {camera.id}
-          </span>
-        </div>
+        {focus && !offline ? (
+          <g stroke={focusColor} strokeWidth="1.6" fill="none">
+            {[
+              `M${focus.x} ${focus.y + 9}V${focus.y}H${focus.x + 9}`,
+              `M${focus.x + focus.w - 9} ${focus.y}H${focus.x + focus.w}V${focus.y + 9}`,
+              `M${focus.x + focus.w} ${focus.y + focus.h - 9}V${focus.y + focus.h}H${focus.x + focus.w - 9}`,
+              `M${focus.x + 9} ${focus.y + focus.h}H${focus.x}V${focus.y + focus.h - 9}`,
+            ].map((d) => (
+              <path key={d} d={d} />
+            ))}
+            {focusLabel ? (
+              <>
+                <rect
+                  x={focus.x}
+                  y={focus.y - 12}
+                  width={Math.max(46, focusLabel.length * 4.4 + 8)}
+                  height="11"
+                  fill={focusColor}
+                  stroke="none"
+                />
+                <text
+                  x={focus.x + 4}
+                  y={focus.y - 3.6}
+                  fontSize="7.5"
+                  fill="#0b1522"
+                  fontFamily="var(--font-sans)"
+                  fontWeight="700"
+                  stroke="none"
+                >
+                  {focusLabel}
+                </text>
+              </>
+            ) : null}
+          </g>
+        ) : null}
 
-        <div className="cam-hud cam-hud--bawah">
-          <span className="cam-badge tabular">{offline ? '—' : clockOf(at)}</span>
-          <span className="cam-badge tabular" style={{ marginLeft: 'auto' }}>
-            {camera.resolution} · {camera.fps} fps
-          </span>
-        </div>
+        {/*
+          * Tiga lapis terakhir yang mengubah gambar vektor menjadi cuplikan
+          * kamera, dan urutannya menentukan: bintik dulu, lalu vignet. Kalau
+          * dibalik, bintiknya akan tampak menempel di atas lensa alih-alih
+          * berada di dalam gambarnya.
+          */}
+        <rect x="0" y="0" width="320" height="180" filter={`url(#${uid}-bintik)`} opacity="0.085" />
+        <rect x="0" y="0" width="320" height="180" fill={`url(#${uid}-vignet)`} />
+
+        {/*
+          * Cap air peraga.
+          *
+          * Sengaja terbaca, bukan sekadar formalitas: semakin gambarnya
+          * menyerupai siaran sungguhan, semakin mahal harga salah membacanya.
+          */}
+        <text
+          x="160"
+          y="98"
+          textAnchor="middle"
+          fontSize="19"
+          fontFamily="var(--font-sans)"
+          fontWeight="700"
+          fill="#ffffff"
+          opacity="0.035"
+          letterSpacing="5"
+          transform="rotate(-11 160 98)"
+        >
+          PERAGA
+        </text>
+      </svg>
+
+      {/*
+        * HUD sebagai lapisan HTML di atas gambar, bukan digambar ke dalam
+        * SVG-nya: begitu `<svg>` diganti `<video>`, lapisan ini tinggal tetap
+        * di tempatnya tanpa disentuh.
+        */}
+      <div className="cam-hud">
+        <span className="cam-badge">
+          <span className="tag-dot" style={{ background: tone.dot }} aria-hidden="true" />
+          {stamp ?? (offline ? 'LURING' : 'PERAGA')}
+        </span>
+        <span className="cam-badge" style={{ marginLeft: 'auto' }}>
+          {camera.id}
+        </span>
       </div>
+
+      <div className="cam-hud cam-hud--bawah">
+        <span className="cam-badge tabular">{offline ? '—' : clockOf(at)}</span>
+        <span className="cam-badge tabular" style={{ marginLeft: 'auto' }}>
+          {camera.resolution} · {camera.fps} fps
+        </span>
+      </div>
+    </div>
+  );
+}
+
+export function CameraTile({ camera, at, detection = null }: CameraTileProps) {
+  const tone = STATUS_TONE[camera.status];
+
+  return (
+    <figure className="glass card cam" style={{ margin: 0, padding: 0, overflow: 'hidden', gap: 0 }}>
+      <CameraFrame camera={camera} at={at} detection={detection} />
 
       <figcaption
         className="row"

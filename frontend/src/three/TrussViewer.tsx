@@ -1,6 +1,9 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { Bridge, Telemetry } from '../lib/types';
-import { SENSOR_BY_ID, excessRatio, statusOf } from '../domain/sensors';
+import type { Series } from '../hooks/useTelemetry';
+import { SensorLabelCard } from '../components/SensorCamera';
+import { SENSOR_BY_ID, excessRatio } from '../domain/sensors';
 import { SCENARIOS } from '../domain/scenarios';
 import { buildTwinScene, type TwinScene } from './proceduralBridge';
 import { loadSpots, saveSpot } from '../lib/sensorSpots';
@@ -21,41 +24,40 @@ export interface TrussViewerProps {
   autoRotate: boolean;
   /** Penanda boleh digeser; bila mati, penanda hanya dapat diklik untuk dibaca. */
   editSpots: boolean;
+  /** Deret nilai per kanal; label memakainya sebagai acuan kondisi aman. */
+  series: Record<string, Series>;
   onPick: (sensorId: string | null) => void;
   onScale: (metres: number) => void;
+  /** Membuka panel perbandingan kamera untuk kanal ini. */
+  onCompare?: (sensorId: string) => void;
   onReady: (scene: TwinScene | null) => void;
   /** Sebuah penanda selesai dipindahkan dan letak barunya sudah disimpan. */
   onSpotMove?: () => void;
 }
 
-/** Isi label melayang di samping penanda sensor yang sedang dipilih. */
-function labelHtml(sensorId: string, telemetry: Telemetry | null): string {
-  const spec = SENSOR_BY_ID[sensorId];
-  if (!spec) return '';
-  const reading = telemetry?.readings.find((r) => r.id === sensorId);
-  const value = reading?.value ?? spec.base;
-  const status = statusOf(spec, value);
-  const color = status === 'AMAN' ? '#006786' : '#aa0b56';
-  return (
-    `<b style="font-weight:600">${spec.name}</b> · ${value.toFixed(spec.dec)} ${spec.unit} ` +
-    `<span style="color:${color}">${status}</span><br>` +
-    `<span style="opacity:.65">${spec.node} · ambang ${spec.warn.toFixed(spec.dec)} ${spec.unit}</span>`
-  );
-}
-
 export function TrussViewer({
   bridge,
   telemetry,
+  series,
   pickedSensor,
   autoRotate,
   editSpots,
   onPick,
   onScale,
+  onCompare,
   onReady,
   onSpotMove,
 }: TrussViewerProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<TwinScene | null>(null);
+  /*
+   * Wadah label disimpan sebagai keadaan, bukan hanya di dalam `ref`.
+   *
+   * Portal React perlu menggambar ulang begitu wadahnya ada; `ref` berubah
+   * tanpa memicu render, jadi labelnya akan tetap kosong sampai ada yang
+   * kebetulan menggambar ulang komponen ini.
+   */
+  const [labelHost, setLabelHost] = useState<HTMLElement | null>(null);
   // Nilai terbaru disimpan di ref supaya panggilan balik yang diserahkan ke
   // three.js tidak perlu dibuat ulang tiap render.
   const telemetryRef = useRef<Telemetry | null>(telemetry);
@@ -84,15 +86,16 @@ export function TrussViewer({
           saveSpot(bridge.id, id, spot);
           spotMoveRef.current?.();
         },
-        labelFor: (id) => labelHtml(id, telemetryRef.current),
       },
     });
 
     sceneRef.current = scene;
+    setLabelHost(scene.labelHost);
     onReady(scene);
 
     return () => {
       onReady(null);
+      setLabelHost(null);
       sceneRef.current = null;
       scene.dispose();
     };
@@ -167,6 +170,10 @@ export function TrussViewer({
       damaged: telemetry?.damagedParts ?? [],
       cars: telemetry?.traffic.cars ?? 0,
       trucks: telemetry?.traffic.trucks ?? 0,
+      // Tronton tidak ikut dalam cuplikan telemetri — ia keterangan skenario,
+      // bukan hasil pengukuran. Dibaca dari katalog skenario yang sama yang
+      // dipakai halaman lain.
+      tronton: telemetry ? (SCENARIOS[telemetry.scenario]?.tronton ?? 0) : 0,
       speed: telemetry?.traffic.speedFactor ?? 0,
       sensorStatus,
       windRatio,
@@ -206,6 +213,26 @@ export function TrussViewer({
         boxShadow: '0 24px 60px -22px rgb(2 8 20 / 0.72)',
         position: 'relative',
       }}
-    />
+    >
+      {/*
+        * Isi label digambar React ke dalam wadah milik adegan.
+        *
+        * Letaknya tetap dihitung adegan tiap bingkai — ia yang tahu di mana
+        * penanda jatuh pada layar — sedangkan apa yang tertulis di dalamnya
+        * urusan React sepenuhnya, termasuk bingkai kamera dan tombolnya.
+        */}
+      {labelHost && pickedSensor
+        ? createPortal(
+            <SensorLabelCard
+              bridgeId={bridge.id}
+              sensorId={pickedSensor}
+              telemetry={telemetry}
+              series={series}
+              onCompare={onCompare}
+            />,
+            labelHost,
+          )
+        : null}
+    </div>
   );
 }

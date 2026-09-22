@@ -26,6 +26,16 @@ import { useEffect, useRef, type ReactNode } from 'react';
 export interface ModalProps {
   open: boolean;
   title: string;
+  /**
+   * Lebar kartunya.
+   *
+   * `normal` cukup untuk formulir dan keterangan — satu lajur teks yang
+   * barisnya tidak melebar sampai sulit dilacak mata. `lebar` untuk isi yang
+   * memang perlu berdampingan, seperti dua bingkai kamera yang justru
+   * dibandingkan; menumpuknya ke bawah pada lebar sempit membuat pembacanya
+   * menggulir bolak-balik untuk membandingkan dua hal yang sengaja disandingkan.
+   */
+  size?: 'normal' | 'lebar';
   /** Keterangan pendek di bawah judul; sering berisi acuan yang sedang diubah. */
   subtitle?: ReactNode;
   onClose: () => void;
@@ -33,7 +43,7 @@ export interface ModalProps {
   footer?: ReactNode;
 }
 
-export function Modal({ open, title, subtitle, onClose, children, footer }: ModalProps) {
+export function Modal({ open, title, size = 'normal', subtitle, onClose, children, footer }: ModalProps) {
   const ref = useRef<HTMLDialogElement>(null);
 
   /*
@@ -92,7 +102,10 @@ export function Modal({ open, title, subtitle, onClose, children, footer }: Moda
           if (event.target === event.currentTarget) onClose();
         }}
       >
-        <div className="modal-kartu glass" role="document">
+        <div
+          className={size === 'lebar' ? 'modal-kartu modal-kartu--lebar glass' : 'modal-kartu glass'}
+          role="document"
+        >
           <div className="modal-kepala">
             <div style={{ minWidth: 0 }}>
               <h2 id="modal-judul" className="modal-judul">

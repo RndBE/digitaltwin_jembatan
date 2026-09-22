@@ -10,6 +10,7 @@ import {
   scenariosOf,
 } from '../domain/scenarios';
 import { Select } from '../components/Select';
+import { LIVE_SHARE } from '../three/proceduralBridge';
 import { SAG_GAIN, sagBand } from '../domain/deflectionScale';
 import { SENSOR_BY_ID, TAG_CLASS } from '../domain/sensors';
 import { TrussViewer } from '../three/TrussViewer';
@@ -23,6 +24,9 @@ import {
   ProceduralPartTree,
 } from '../components/PartTree';
 import { SensorCard } from '../components/SensorCard';
+import { Modal } from '../components/Modal';
+import { SensorCameraCompare } from '../components/SensorCamera';
+import { cameraForSensor } from '../domain/cameras';
 import { PageHeader, Stage } from '../components/Ui';
 import { clearSpots, hasCustomSpots } from '../lib/sensorSpots';
 
@@ -71,6 +75,15 @@ function LiveTwinView({
   const [hidden, setHidden] = useState<string[]>([]);
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
   const [picked, setPicked] = useState<string | null>(null);
+  /*
+   * Kanal yang panel perbandingan kameranya sedang terbuka.
+   *
+   * Dipisahkan dari `picked`: penanda yang dipilih menentukan apa yang dibaca
+   * di atas model, sedangkan jendela perbandingan berdiri sendiri — ia tetap
+   * terbuka pada kanal yang sedang ditelaah walau penanda lain kemudian
+   * diklik di belakangnya.
+   */
+  const [cameraSensor, setCameraSensor] = useState<string | null>(null);
   /*
    * Putaran kamera mati secara bawaan.
    *
@@ -199,6 +212,8 @@ function LiveTwinView({
             <TrussViewer
               bridge={bridge}
               telemetry={telemetry}
+              series={series}
+              onCompare={setCameraSensor}
               pickedSensor={picked}
               autoRotate={autoRotate}
               editSpots={editSpots}
@@ -236,7 +251,8 @@ function LiveTwinView({
 
               {running ? (
                 <span className="stage-chip" style={{ position: 'static' }}>
-                  {scenario.cars} mobil · {scenario.trucks} truk ·{' '}
+                  {scenario.cars} mobil · {scenario.trucks} truk
+                  {scenario.tronton ? ` · ${scenario.tronton} tronton` : ''} ·{' '}
                   {SPEED_LABEL[String(scenario.speed)] ?? '—'}
                 </span>
               ) : null}
@@ -338,8 +354,9 @@ function LiveTwinView({
               yang biasa, sementara keadaan normal tetap tampak hampir lurus. Redamannya ikut turun
               pada pita yang lebih tinggi: aman turun tenang tanpa ayunan, kritis mengayun dan lama
               tenangnya — rasio redaman yang menurun memang penanda kerusakan.{' '}
-              Setengah lendutannya berat sendiri — paling dalam di tengah, nol di kedua tumpuan —
-              dan setengahnya kendaraan yang sedang melintas, jadi cekungannya
+              {Math.round((1 - LIVE_SHARE) * 100)} % lendutannya berat sendiri — paling dalam di
+              tengah, nol di kedua tumpuan — dan {Math.round(LIVE_SHARE * 100)} % kendaraan yang
+              sedang melintas, jadi cekungannya
               <strong style={{ fontWeight: 600, color: 'var(--mist-100)' }}> berjalan bersama
               truk</strong> dan lantainya naik lagi begitu bentangnya kosong.
               {damagedCount > 0 ? (
@@ -465,6 +482,42 @@ function LiveTwinView({
           </div>
         </aside>
       </section>
+
+      {/*
+        * Perbandingan kamera dibuka sebagai jendela, bukan disisipkan di
+        * bawah panggung.
+        *
+        * Dua bingkai 16 : 9 berdampingan memerlukan lebar yang tidak ada di
+        * lajur kiri, dan menaruhnya di sana akan mendorong model tiga dimensi
+        * ke luar layar tiap kali sebuah penanda diklik — persis pada saat
+        * orang sedang melihat model itu.
+        */}
+      <Modal
+        open={cameraSensor !== null}
+        size="lebar"
+        title={
+          cameraSensor
+            ? `${SENSOR_BY_ID[cameraSensor]?.name ?? cameraSensor} · perbandingan kamera`
+            : 'Perbandingan kamera'
+        }
+        subtitle={
+          cameraSensor
+            ? `${SENSOR_BY_ID[cameraSensor]?.node ?? ''} · ${
+                cameraForSensor(bridge.id, cameraSensor)?.place ?? 'tanpa kamera'
+              }`
+            : undefined
+        }
+        onClose={() => setCameraSensor(null)}
+      >
+        {cameraSensor ? (
+          <SensorCameraCompare
+            bridgeId={bridge.id}
+            sensorId={cameraSensor}
+            telemetry={telemetry}
+            series={series}
+          />
+        ) : null}
+      </Modal>
     </div>
   );
 }

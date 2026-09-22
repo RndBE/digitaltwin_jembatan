@@ -93,7 +93,7 @@ export const ELEMENTS: ElementSpec[] = [
   { id: 'DIA', name: 'Batang diagonal', group: 'diagonal', system: 'Rangka utama', channel: 'strain', location: 'Sepuluh panel, kedua rangka' },
   { id: 'VER', name: 'Batang vertikal', group: 'vertikal', system: 'Rangka utama', channel: 'strain', location: 'Buhul 0–10, kedua rangka' },
 
-  { id: 'IKT', name: 'Gelagar melintang & ikatan angin', group: 'bracing', system: 'Sambungan & ikatan', channel: 'vib', location: 'Bidang lantai; ikatan angin atas tidak digambar pada model' },
+  { id: 'IKT', name: 'Ikatan angin & gelagar melintang', group: 'bracing', system: 'Sambungan & ikatan', channel: 'vib', location: 'Bidang atas dan bidang lantai' },
   { id: 'BUH', name: 'Pelat buhul & sambungan', group: 'bawah', system: 'Sambungan & ikatan', channel: 'crack', location: 'Empat puluh empat buhul, kedua rangka' },
 
   { id: 'TMP-B', name: 'Tumpuan barat', group: 'tumpuan', system: 'Tumpuan', channel: 'tilt', location: 'Abutmen barat, dua bantalan' },

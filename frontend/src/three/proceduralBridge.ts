@@ -30,13 +30,32 @@ export const PART_GROUPS: PartGroup[] = [
   { key: 'bawah', name: 'Rangka bawah', test: /^bc/ },
   { key: 'diagonal', name: 'Diagonal', test: /^d\d/ },
   { key: 'vertikal', name: 'Vertikal', test: /^v-?\d/ },
-  { key: 'bracing', name: 'Gelagar melintang', test: /^fb/ },
+  { key: 'bracing', name: 'Bracing & gelagar', test: /^(tb|lb|fb)/ },
   { key: 'tumpuan', name: 'Tumpuan', test: /^bear/ },
   { key: 'sensor', name: 'Titik sensor', test: /^sensor/ },
 ];
 
 /** Kelompok bawaan untuk elemen yang tidak cocok pola mana pun (lantai jalan, pagar, tiang lampu). */
 export const FALLBACK_GROUP = { key: 'lantai', name: 'Lantai jalan' };
+
+/**
+ * Berapa bagian lendutan yang dibawa kendaraan yang sedang melintas.
+ *
+ * Sisanya dibawa berat sendiri dan beban tetap, yang bentuknya tidak berubah.
+ * Pembagian ini yang membuat lantai "bernapas": saat bentang kosong ia naik ke
+ * bagian tetapnya saja, saat konvoi berada di tengah ia turun penuh.
+ *
+ * Seperempat, bukan setengah. Gerak adalah isyarat terkuat di layar, dan
+ * cekungan yang berjalan bersama tiap truk memakai isyarat itu untuk
+ * mengabarkan hal yang paling biasa terjadi sepanjang hari — kendaraan
+ * lewat. Yang tersisa pada seperempat masih terbaca sebagai lantai yang
+ * bernapas, tetapi tidak lagi menarik mata setiap kali ada truk di bentang;
+ * yang menarik mata kembali menjadi perpindahan pita ambang, yang memang
+ * pantas.
+ *
+ * Angkanya perkiraan peraga, bukan hasil hitungan struktur.
+ */
+export const LIVE_SHARE = 0.25;
 
 /*
  * Satu pandangan baku: isometri.
@@ -78,6 +97,8 @@ export interface SceneState {
   damaged: string[];
   cars: number;
   trucks: number;
+  /** Truk tronton yang sedang diminta skenario; bobotnya dua kali truk boks. */
+  tronton: number;
   speed: number;
   /** Status tiap kanal, dipakai mewarnai penanda sensor di model. */
   sensorStatus: Record<string, MarkerStatus>;
@@ -105,12 +126,20 @@ export interface SceneCallbacks {
   onSpotMove: (sensorId: string, spot: [number, number, number]) => void;
   /** Panjang batang ukur dalam meter, diperbarui saat kamera bergerak. */
   onScale: (metres: number) => void;
-  /** Isi label melayang untuk sensor yang dipilih; HTML dirakit oleh React. */
-  labelFor: (sensorId: string) => string;
 }
 
 export interface TwinScene {
   counts: Record<string, number>;
+  /**
+   * Wadah label melayang di atas penanda terpilih.
+   *
+   * Adegan hanya menempatkannya — kiri, atas, dan tampil atau tidak — sedangkan
+   * isinya digambar React lewat portal ke elemen ini. Sebelumnya isinya dirakit
+   * sebagai untaian HTML lalu dipasang dengan `innerHTML`, dan itu menutup
+   * pintu bagi apa pun yang lebih dari teks: bingkai kamera, tombol, dan
+   * keadaan React tidak dapat hidup di dalam untaian.
+   */
+  labelHost: HTMLElement;
   setState(patch: Partial<SceneState>): void;
   /** Kembalikan seluruh penanda ke titik bawaannya. */
   resetSpots(): void;
@@ -161,6 +190,7 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
     damaged: [],
     cars: 0,
     trucks: 0,
+    tronton: 0,
     speed: 0,
     sensorStatus: {},
     windRatio: 0,
@@ -363,15 +393,6 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
     return (b * near * (L * L - b * b - near * near) * 48) / (6 * L * L * L * L);
   };
 
-  /**
-   * Berapa bagian lendutan yang dibawa kendaraan yang sedang melintas.
-   *
-   * Sisanya dibawa berat sendiri dan beban tetap, yang bentuknya tidak
-   * berubah. Pembagian ini yang membuat lantai "bernapas": saat bentang kosong
-   * ia naik ke bagian tetapnya saja, saat konvoi berada di tengah ia turun
-   * penuh. Angkanya perkiraan peraga, bukan hasil hitungan struktur.
-   */
-  const LIVE_SHARE = 0.5;
 
   /**
    * Seberapa jauh kerusakan mencondongkan bentuk lendutan ke arahnya.
@@ -572,24 +593,16 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
     addMember(V(-L / 2, 0, z), V(-L / 2, H, z), `v-1z${zi}`);
   });
 
-  /*
-   * Ikatan angin di bidang atas tidak digambar.
-   *
-   * Pada jembatan sungguhan ia ada — batang melintang dan silang yang
-   * menahan kedua rangka tetap sejajar terhadap tekanan angin. Yang tidak ada
-   * di layar adalah tempatnya: dari sudut pandang isometri bawaan, jala di
-   * bidang atas menutupi seluruh rangka di belakangnya, dan yang paling
-   * banyak dipandang orang justru rangka itu — batang tepi, diagonal, dan
-   * pelat buhulnya, yang semuanya membawa warna status. Jala yang tidak
-   * membawa keterangan apa pun tidak pantas menutupi yang membawanya.
-   *
-   * Gelagar melintang di bawah lantai tetap digambar: ia memikul lantai, dan
-   * lantai yang mengambang tanpa penopang adalah gambar yang salah, bukan
-   * gambar yang bersih.
-   */
   for (let i = 0; i <= P; i++) {
     const x = -L / 2 + i * panelLength;
+    addMember(V(x, H, -W), V(x, H, W), `tb${i}`, 0.06); // ikatan angin atas
     addMember(V(x, -0.08, -W), V(x, -0.08, W), `fb${i}`, 0.12); // gelagar melintang
+  }
+  for (let i = 0; i < P; i++) {
+    const x0 = -L / 2 + i * panelLength;
+    const x1 = x0 + panelLength;
+    addMember(V(x0, H, -W), V(x1, H, W), `lb${i}a`, 0.04);
+    addMember(V(x0, H, W), V(x1, H, -W), `lb${i}b`, 0.04);
   }
 
   // Pelat buhul di tiap titik simpul.
@@ -1618,6 +1631,10 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
      * arah tiap lajur: yang di depan selalu yang `p`-nya lebih besar.
      */
     p: number;
+    /** Tronton: bersumbu banyak, bobotnya dua kali truk boks. */
+    isTronton: boolean;
+    /** Lajur bawaannya; konvoi memindahkan lajur, dan ini yang dikembalikan. */
+    laneAsal: number;
     /** Panjang bodi; menentukan jarak aman ke kendaraan di depannya. */
     len: number;
     isTruck: boolean;
@@ -1644,6 +1661,19 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
   /** Jarak bemper ke bemper yang dijaga saat beriringan. */
   const JARAK_AMAN = 0.55;
 
+  /**
+   * Di bawah laju ini arus dianggap macet.
+   *
+   * Dua hal berubah sekaligus, dan keduanya perlu: kendaraan **dipadatkan ke
+   * bentang** alih-alih disebar merata sepanjang lintasan, dan majunya
+   * menjadi **bergelombang** alih-alih merayap rata. Kemacetan yang
+   * digambar sebagai arus lambat yang rata tidak terbaca sebagai kemacetan —
+   * ia terbaca sebagai animasi yang tersendat. Yang membuat mata mengenali
+   * macet adalah barisan rapat yang maju sebentar lalu berhenti, dan
+   * berhentinya menjalar ke belakang.
+   */
+  const LAJU_MACET = 0.15;
+
   /*
    * Armada: 16 mobil lalu 8 truk, bukan 16 kendaraan yang jenisnya ditentukan
    * `i % 3`.
@@ -1660,10 +1690,18 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
    */
   const MOBIL_TERSEDIA = 16;
   const TRUK_TERSEDIA = 8;
+  const TRONTON_TERSEDIA = 4;
 
-  for (let i = 0; i < MOBIL_TERSEDIA + TRUK_TERSEDIA; i++) {
+  for (let i = 0; i < MOBIL_TERSEDIA + TRUK_TERSEDIA + TRONTON_TERSEDIA; i++) {
+    const isTronton = i >= MOBIL_TERSEDIA + TRUK_TERSEDIA;
+    // Tronton memakai seluruh badan truk sebagai dasarnya lalu ditambah bak
+    // dan sumbu belakang, jadi ia tetap "truk" bagi pembangun bentuknya.
     const isTruck = i >= MOBIL_TERSEDIA;
-    const kindIndex = isTruck ? i - MOBIL_TERSEDIA : i;
+    const kindIndex = isTronton
+      ? i - MOBIL_TERSEDIA - TRUK_TERSEDIA
+      : isTruck
+        ? i - MOBIL_TERSEDIA
+        : i;
     // Lajur dibagi di dalam tiap jenis, bukan pada nomor urut keseluruhan —
     // kalau tidak, permintaan yang berat sebelah menumpuk di satu lajur.
     const lane = kindIndex % 2;
@@ -1742,7 +1780,7 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
         group.add(head);
 
         const tail = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.1, 0.12), tailMaterial);
-        tail.position.set(-1.06, 0.46, sideZ * 0.24);
+        tail.position.set(isTronton ? -2.34 : -1.06, 0.46, sideZ * 0.24);
         group.add(tail);
       });
       [-0.2, 0, 0.2].forEach((z) => {
@@ -1750,6 +1788,52 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
         marker.position.set(1.04, 1.01, z);
         group.add(marker);
       });
+
+      /*
+       * Tronton: badan truk yang sama, ditambah bak kedua dan dua sumbu
+       * belakang.
+       *
+       * Yang membedakannya dari truk boks bukan warnanya melainkan
+       * **panjangnya dan jumlah sumbunya** — dua hal yang dikenali orang dari
+       * jauh, dan dua hal yang memang menentukan beban gandar. Bobotnya dua
+       * kali truk boks, jadi cekungan yang berjalan bersamanya juga dua kali
+       * lebih dalam; itulah yang sebenarnya diperagakan skenario "melebihi
+       * batas gandar".
+       */
+      if (isTronton) {
+        const rangka = new THREE.Mesh(new THREE.BoxGeometry(1.42, 0.08, 0.42), trimMaterial);
+        rangka.position.set(-1.72, 0.29, 0);
+        group.add(rangka);
+
+        const bak = new THREE.Mesh(new THREE.BoxGeometry(1.28, 0.78, 0.6), boxMaterial);
+        bak.position.set(-1.74, 0.72, 0);
+        bak.castShadow = true;
+        group.add(bak);
+        for (let rib = 0; rib < 4; rib++) {
+          const bar = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.76, 0.615), trimMaterial);
+          bar.position.set(-2.28 + rib * 0.36, 0.72, 0);
+          group.add(bar);
+        }
+        const sill2 = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.06, 0.63), trimMaterial);
+        sill2.position.set(-1.74, 0.36, 0);
+        group.add(sill2);
+
+        // Dua sumbu tambahan, keduanya beroda ganda — inilah yang membuat
+        // siluetnya terbaca sebagai kendaraan bersumbu banyak.
+        [-1.34, -2.02].forEach((x) =>
+          [-0.335, -0.245, 0.245, 0.335].forEach((z) => addWheel(x, z, TRUCK_TIRE)),
+        );
+
+        // Lampu putar kuning di atas kabin: penanda angkutan berat yang
+        // dipakai di jalan nasional, dan penanda visual yang paling cepat
+        // membedakannya dari truk biasa pada pandangan jauh.
+        const beacon = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.045, 0.05, 0.07, 8),
+          markerMaterial,
+        );
+        beacon.position.set(0.45, 1.12, 0);
+        group.add(beacon);
+      }
     } else {
       const body = new THREE.Mesh(carBodyGeometry, bodyMaterial);
       body.castShadow = true;
@@ -1791,6 +1875,7 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
     vehicles.push({
       group,
       lane,
+      laneAsal: lane,
       wheels,
       tire: isTruck ? TRUCK_TIRE : CAR_TIRE,
       speedJitter: 0.9 + Math.random() * 0.2,
@@ -1798,8 +1883,9 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
       p: 0,
       // Panjang bodi diukur dari geometrinya, bukan dikira-kira: truk
       // membentang −1,06…1,12 dan mobil −0,6…0,6.
-      len: isTruck ? 2.25 : 1.3,
+      len: isTronton ? 3.5 : isTruck ? 2.25 : 1.3,
       isTruck,
+      isTronton,
       kindIndex,
       wanted: false,
       // Ketinggian rodanya di atas lantai yang belum melendut. Kendaraan
@@ -1808,7 +1894,7 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
       // Truk sumbu ganda dihitung tiga kali mobil penumpang. Ini perbandingan
       // kasar untuk peraga, bukan beban gandar sungguhan — yang penting truk
       // meninggalkan cekungan yang jelas lebih dalam saat melintas.
-      weight: isTruck ? 3 : 1,
+      weight: isTronton ? 6 : isTruck ? 3 : 1,
     });
   }
 
@@ -2056,13 +2142,17 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
   };
 
   const label = document.createElement('div');
+  /*
+   * Label menerima peristiwa tetikus, sedangkan sebelumnya tidak.
+   *
+   * Isinya kini memuat tombol, jadi ia harus dapat diklik. Ongkosnya: seretan
+   * yang dimulai persis di atas label tidak memutar kamera. Itu pertukaran yang
+   * benar — label hanya muncul untuk satu penanda yang memang sedang dibaca,
+   * dan sisa panggungnya tetap dapat diseret dari mana saja.
+   */
   label.style.cssText =
-    'position:absolute;pointer-events:none;display:none;transform:translate(-50%,-125%);' +
-    'background:rgba(10,24,38,0.86);color:#e4eefb;padding:7px 11px;border-radius:14px;' +
-    'box-shadow:inset 0 0 0 1px rgba(255,255,255,0.12),0 12px 28px -14px rgba(2,8,20,0.9);' +
-    'backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);' +
-    'font-family:"Plus Jakarta Sans",system-ui,sans-serif;font-weight:600;' +
-    'font-size:12px;line-height:1.45;white-space:nowrap;z-index:3';
+    'position:absolute;display:none;transform:translate(-50%,-112%);z-index:3;' +
+    'font-family:"Plus Jakarta Sans",system-ui,sans-serif;z-index:3';
   host.appendChild(label);
 
   let pressed: { x: number; y: number } | null = null;
@@ -2219,8 +2309,10 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
    */
   let lastCars = -1;
   let lastTrucks = -1;
+  let lastTronton = -1;
+  /** Apakah bingkai sebelumnya sudah dalam keadaan macet. */
+  let lastMacet = false;
   let lastScaleAt = -9;
-  let lastLabelAt = -9;
   let reportedScale = -1;
   const projected = new THREE.Vector3();
 
@@ -2248,7 +2340,13 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
   const render = () => {
     frame = requestAnimationFrame(render);
     const now = performance.now() / 1000;
-    const dimintaBerubah = state.cars !== lastCars || state.trucks !== lastTrucks;
+    const dimintaBerubah =
+      state.cars !== lastCars || state.trucks !== lastTrucks || state.tronton !== lastTronton;
+    /*
+     * Arus yang merayap di bawah `LAJU_MACET` diperlakukan sebagai kemacetan,
+     * bukan sebagai arus biasa yang kebetulan pelan.
+     */
+    const macet = state.speed > 0 && state.speed < LAJU_MACET;
     const speedScale = state.paused ? 0 : 1;
 
     /*
@@ -2271,8 +2369,11 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
     if (dimintaBerubah) {
       lastCars = state.cars;
       lastTrucks = state.trucks;
+      lastTronton = state.tronton;
       vehicles.forEach((v) => {
-        v.wanted = v.kindIndex < (v.isTruck ? state.trucks : state.cars);
+        v.wanted =
+          v.kindIndex <
+          (v.isTronton ? state.tronton : v.isTruck ? state.trucks : state.cars);
       });
 
       /*
@@ -2317,9 +2418,77 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
         v.p = tempat;
         v.group.visible = true;
       });
+      /*
+       * Kendaraan berat berjalan **beriringan di satu lajur**, bukan tersebar
+       * di kedua lajur.
+       *
+       * Begitu bunyi skenarionya, dan bedanya bukan sekadar susunan: enam
+       * kendaraan berat yang dibagi dua lajur dan disebar sepanjang lintasan
+       * menaruh satu-dua di atas bentang pada satu saat, dan satu truk
+       * melintas bukan iring-iringan. Ditaruh berurutan di satu lajur,
+       * seluruh bobotnya berada di atas bentang bersamaan — dan itulah
+       * keadaan yang menjadikan lendutan tengah bentang melewati ambang
+       * kritis, yaitu isi skenarionya.
+       *
+       * Lajur aslinya disimpan supaya arus kembali memakai kedua lajur
+       * begitu skenarionya berhenti.
+       */
+      if (state.tronton > 0) {
+        let p = TRACK_HALF - L / 2;
+        vehicles
+          .filter((v) => v.wanted && v.isTruck)
+          .forEach((v) => {
+            v.lane = 1;
+            v.group.position.z = 0.85;
+            v.group.rotation.y = 0;
+            v.p = p < 0 ? p + TRACK_LEN : p;
+            v.group.visible = true;
+            p -= v.len + JARAK_AMAN;
+          });
+      } else {
+        vehicles.forEach((v) => {
+          if (v.lane === v.laneAsal) return;
+          v.lane = v.laneAsal;
+          v.group.position.z = v.laneAsal ? 0.85 : -0.85;
+          v.group.rotation.y = v.laneAsal ? 0 : Math.PI;
+        });
+      }
+
       // Yang tidak diminta lagi tidak dihilangkan seketika — ia menghabiskan
       // lintasannya lalu keluar sendiri di ujung, seperti kendaraan yang
       // memang sedang lewat.
+    }
+
+    /*
+     * Begitu arus berubah menjadi macet, seluruh armada dipadatkan ke bentang.
+     *
+     * Ini satu-satunya tempat kendaraan yang sedang berjalan dipindahkan
+     * serentak, dan alasannya justru yang membuat aturan umumnya ada:
+     * memindahkan arus yang mengalir membuatnya melompat tanpa sebab, tetapi
+     * **perpindahan ke keadaan macet memang sebuah sebab**. Tanpa pemadatan
+     * ini, dua puluh empat kendaraan yang tersebar merata di lintasan
+     * sepanjang 48 satuan hanya menaruh enam di atas bentang yang panjangnya
+     * 12 — dan enam kendaraan merayap bukan gambar kemacetan.
+     *
+     * Barisnya disusun dari mulut keluar bentang ke belakang, rapat pada
+     * jarak aman, lalu mengular ke oprit bila armadanya lebih panjang
+     * daripada bentangnya. Itu pula bentuk kemacetan yang sebenarnya: ekornya
+     * berada di luar jembatan.
+     */
+    if (macet !== lastMacet) {
+      lastMacet = macet;
+      if (macet) {
+        [0, 1].forEach((lane) => {
+          let p = TRACK_HALF + L / 2 - 0.4;
+          vehicles
+            .filter((v) => v.lane === lane && v.wanted)
+            .forEach((v) => {
+              v.p = p < 0 ? p + TRACK_LEN : p;
+              v.group.visible = true;
+              p -= v.len + JARAK_AMAN;
+            });
+        });
+      }
     }
 
     const langkah = state.speed * speedScale * 0.05;
@@ -2333,7 +2502,19 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
         .sort((a, b) => b.p - a.p);
 
       antre.forEach((v, urut) => {
-        let maju = langkah * v.speedJitter;
+        /*
+         * Pada kemacetan, majunya berdenyut dan denyutnya menjalar ke
+         * belakang.
+         *
+         * Laju rata-ratanya tidak berubah — pengali 3,2 menggantikan rata-rata
+         * `max(0, sin)` yang besarnya 1/π — yang berubah bentuk geraknya:
+         * kendaraan maju setengah bodi lalu berhenti, dan yang di belakangnya
+         * baru bergerak sesaat kemudian. Inilah yang dikenali mata sebagai
+         * macet; arus lambat yang rata hanya terbaca sebagai animasi yang
+         * tersendat.
+         */
+        const denyut = macet ? 3.2 * Math.max(0, Math.sin(now * 1.3 - urut * 0.8)) : 1;
+        let maju = langkah * v.speedJitter * denyut;
         if (urut > 0) {
           const depan = antre[urut - 1];
           const batas = depan.p - (depan.len + v.len) / 2 - JARAK_AMAN;
@@ -2577,10 +2758,6 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
         const lh = label.offsetHeight || 40;
         label.style.left = `${Math.min(w - lw / 2 - 6, Math.max(lw / 2 + 6, ((projected.x + 1) / 2) * w)).toFixed(0)}px`;
         label.style.top = `${Math.min(h - 6, Math.max(lh * 1.3 + 4, ((1 - projected.y) / 2) * h)).toFixed(0)}px`;
-        if (now - lastLabelAt > 0.25) {
-          lastLabelAt = now;
-          label.innerHTML = callbacks.labelFor(picked);
-        }
       } else {
         label.style.display = 'none';
       }
@@ -2596,6 +2773,7 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
 
   return {
     counts,
+    labelHost: label,
     setState(patch) {
       Object.assign(state, patch);
     },
