@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { SENSOR_SPOTS } from '../domain/sensors';
 import { SAG_DYNAMICS } from '../domain/deflectionScale';
+import { createConnection, createConnectionGeometry, type InspectionView, type StructuralPart } from './structuralDetails';
 
 /**
  * Kembaran digital jembatan rangka baja yang dibangkitkan secara prosedural.
@@ -30,7 +31,8 @@ export const PART_GROUPS: PartGroup[] = [
   { key: 'bawah', name: 'Rangka bawah', test: /^bc/ },
   { key: 'diagonal', name: 'Diagonal', test: /^d\d/ },
   { key: 'vertikal', name: 'Vertikal', test: /^v-?\d/ },
-  { key: 'bracing', name: 'Bracing & gelagar', test: /^(tb|lb|fb)/ },
+  { key: 'bracing', name: 'Bracing & gelagar', test: /^(tb|lb|fb|ub|st)/ },
+  { key: 'sambungan', name: 'Pelat & baut sambungan', test: /^joint/ },
   { key: 'tumpuan', name: 'Tumpuan', test: /^bear/ },
   { key: 'sensor', name: 'Titik sensor', test: /^sensor/ },
 ];
@@ -57,15 +59,6 @@ export const FALLBACK_GROUP = { key: 'lantai', name: 'Lantai jalan' };
  */
 export const LIVE_SHARE = 0.25;
 
-/*
- * Satu pandangan baku: isometri.
- *
- * Pandangan ortogonal — rencana, elevasi, potongan — adalah alat gambar teknik,
- * dan yang membuatnya berguna di sana justru tidak ada di sini: tidak ada garis
- * ukur, tidak ada kop, tidak ada skala yang dapat dicetak. Yang tersisa hanya
- * empat tombol yang mengubah sudut kamera, sementara menyeret tetikus sudah
- * melakukan hal yang sama dengan lebih leluasa.
- */
 const ISO_VIEW: [number, number, number] = [0.75, 0.36, 16];
 
 export type MarkerStatus = 'AMAN' | 'WASPADA' | 'KRITIS';
@@ -122,6 +115,7 @@ export interface SceneState {
 
 export interface SceneCallbacks {
   onPick: (sensorId: string | null) => void;
+  onPartPick?: (partId: string | null) => void;
   /** Penanda selesai diseret ke letak baru, dalam satuan adegan. */
   onSpotMove: (sensorId: string, spot: [number, number, number]) => void;
   /** Panjang batang ukur dalam meter, diperbarui saat kamera bergerak. */
@@ -130,6 +124,9 @@ export interface SceneCallbacks {
 
 export interface TwinScene {
   counts: Record<string, number>;
+  parts: StructuralPart[];
+  selectPart(id: string | null, focus?: boolean): void;
+  setView(view: InspectionView): void;
   /**
    * Wadah label melayang di atas penanda terpilih.
    *
@@ -329,9 +326,9 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
 
   // ------------------------------------------------------------- bahan dasar
   const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
-  const steelColor = new THREE.Color(0xa8a49c);
+  const steelColor = new THREE.Color(0x899dac);
   const hotColor = new THREE.Color(0xf87171);
-  const selectColor = new THREE.Color(0x47a6ff);
+  const selectColor = new THREE.Color(0xf5a623);
   const steelRough = noiseTexture(128, 140, 90, 2);
   const steel = new THREE.MeshStandardMaterial({
     color: steelColor,
@@ -351,6 +348,8 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
   const H = 1.7; // tinggi rangka
   const W = 2.2; // setengah lebar antar rangka
   const members: THREE.Mesh[] = [];
+  const parts: StructuralPart[] = [];
+  const partObjects = new Map<string, THREE.Object3D>();
 
   /*
    * Lendutan.
@@ -581,150 +580,93 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
       const x0 = -L / 2 + i * panelLength;
       const x1 = x0 + panelLength;
       addMember(V(x0, 0, z), V(x1, 0, z), `bc${i}z${zi}`, 0.1);
-      addMember(V(x0, H, z), V(x1, H, z), `tc${i}z${zi}`, 0.1);
-      addMember(V(x1, 0, z), V(x1, H, z), `v${i}z${zi}`);
-      // Diagonal berselang-seling arah — susunan rangka tipe Warren.
+      // Ujung rangka mengikuti diagonal dari tumpuan ke simpul atas pertama.
+      // Tidak ada batang atas atau tiang vertikal di luar kedua simpul itu.
+      if (i > 0 && i < P - 1) {
+        addMember(V(x0, H, z), V(x1, H, z), `tc${i}z${zi}`, 0.1);
+      }
+      if (i < P - 1) addMember(V(x1, 0, z), V(x1, H, z), `v${i}z${zi}`);
+      // Diagonal ujung terakhir selalu turun ke tumpuan, juga untuk panel ganjil.
+      const descending = i === P - 1 || (i > 0 && i % 2 === 1);
       addMember(
-        i % 2 ? V(x0, H, z) : V(x0, 0, z),
-        i % 2 ? V(x1, 0, z) : V(x1, H, z),
+        descending ? V(x0, H, z) : V(x0, 0, z),
+        descending ? V(x1, 0, z) : V(x1, H, z),
         `d${i}z${zi}`,
       );
     }
-    addMember(V(-L / 2, 0, z), V(-L / 2, H, z), `v-1z${zi}`);
   });
 
   for (let i = 0; i <= P; i++) {
     const x = -L / 2 + i * panelLength;
-    addMember(V(x, H, -W), V(x, H, W), `tb${i}`, 0.06); // ikatan angin atas
+    if (i > 0 && i < P) {
+      addMember(V(x, H, -W), V(x, H, W), `tb${i}`, 0.06); // ikatan angin atas
+    }
     addMember(V(x, -0.08, -W), V(x, -0.08, W), `fb${i}`, 0.12); // gelagar melintang
   }
-  for (let i = 0; i < P; i++) {
+  for (let i = 1; i < P - 1; i++) {
     const x0 = -L / 2 + i * panelLength;
     const x1 = x0 + panelLength;
     addMember(V(x0, H, -W), V(x1, H, W), `lb${i}a`, 0.04);
     addMember(V(x0, H, W), V(x1, H, -W), `lb${i}b`, 0.04);
   }
 
-  // Pelat buhul di tiap titik simpul.
-  const gussetMaterial = new THREE.MeshStandardMaterial({
-    color: 0x847f79,
-    metalness: 0.4,
-    roughness: 0.6,
-    roughnessMap: steelRough,
-  });
-  /*
-   * Paku keling pada pelat buhul.
-   *
-   * Kepala paku yang berderet di tepi pelat adalah satu-satunya detail yang
-   * membuat sambungan rangka baja terbaca sebagai sambungan dan bukan sebagai
-   * dua pelat yang saling menempel. Jumlahnya ratusan, jadi dipakai satu
-   * geometri yang digambar berulang dalam sekali perintah — bukan ratusan objek
-   * yang masing-masing minta gilirannya sendiri.
-   */
-  const rivetRing = Array.from({ length: 8 }, (_, i) => {
-    const angle = (i / 8) * Math.PI * 2 + Math.PI / 8;
-    return [Math.cos(angle) * 0.108, Math.sin(angle) * 0.108] as const;
-  });
-  const rivetGeometry = new THREE.CylinderGeometry(0.015, 0.017, 0.018, 8);
-  rivetGeometry.rotateX(Math.PI / 2);
-  const rivetMaterial = new THREE.MeshStandardMaterial({
-    color: 0x767068,
-    metalness: 0.5,
-    roughness: 0.52,
-  });
-  /*
-   * Bentuk pelat buhul: segi delapan, bukan bujur sangkar.
-   *
-   * Pelat buhul sungguhan dipotong mengikuti batang yang bertemu padanya —
-   * tidak ada yang membiarkan sudut sembilan puluh derajat menonjol ke udara,
-   * karena sudut itu tidak memikul apa-apa dan hanya menambah berat. Di layar
-   * akibatnya persis sama: sudut lancip yang mencuat keluar dari siluet batang
-   * membuat sambungannya terbaca sebagai ubin yang ditempelkan, bukan sebagai
-   * pelat yang menyatukan.
-   *
-   * Tepinya ditumpulkan dengan alasan yang sama seperti pada batang: sudut
-   * yang benar-benar tajam menangkap cahaya sebagai garis putih sempurna, dan
-   * garis seperti itu tidak ada pada baja yang sudah dicat.
-   *
-   * Satu geometri untuk keempat puluh empat pelatnya. Bentuknya sama semua,
-   * dan membuat geometri baru tiap simpul hanya menambah kerja unggah ke kartu
-   * grafis tanpa menambah satu piksel pun yang berbeda.
-   */
-  const PLATE_HALF = 0.17;
-  const PLATE_CUT = 0.055;
-  const PLATE_THICK = 0.03;
-  const gussetGeometry = (() => {
-    const bevel = 0.006;
-    const shape = new THREE.Shape();
-    shape.moveTo(-PLATE_HALF + PLATE_CUT, -PLATE_HALF);
-    shape.lineTo(PLATE_HALF - PLATE_CUT, -PLATE_HALF);
-    shape.lineTo(PLATE_HALF, -PLATE_HALF + PLATE_CUT);
-    shape.lineTo(PLATE_HALF, PLATE_HALF - PLATE_CUT);
-    shape.lineTo(PLATE_HALF - PLATE_CUT, PLATE_HALF);
-    shape.lineTo(-PLATE_HALF + PLATE_CUT, PLATE_HALF);
-    shape.lineTo(-PLATE_HALF, PLATE_HALF - PLATE_CUT);
-    shape.lineTo(-PLATE_HALF, -PLATE_HALF + PLATE_CUT);
-    shape.closePath();
-
-    const depth = PLATE_THICK - bevel * 2;
-    const geometry = new THREE.ExtrudeGeometry(shape, {
-      depth,
-      bevelEnabled: true,
-      bevelThickness: bevel,
-      bevelSize: bevel,
-      bevelSegments: 1,
-      steps: 1,
-    });
-    // Diekstrusi dari z = 0 ke depan; digeser supaya tebalnya terbagi rata di
-    // kedua sisi titik pasangnya.
-    geometry.translate(0, 0, -depth / 2);
-    geometry.computeVertexNormals();
-    return geometry;
-  })();
-
-  /*
-   * Letak pelat: menempel pada muka luar batang tepi, bukan menembusnya.
-   *
-   * Batang tepi berpenampang I selebar 0,15 m, jadi muka luarnya berada 0,075 m
-   * dari bidang rangka. Pelat yang dipasang 0,07 m dari bidang itu tertanam
-   * separuh di dalam batangnya: yang tersisa di layar tinggal keempat sudutnya
-   * yang mencuat, dan dua permukaan yang nyaris sebidang saling berebut
-   * kedalaman sehingga tepinya berkedip saat kamera bergerak. Angka di bawah
-   * ini menaruh muka dalam pelat dua milimeter di luar muka batang — menempel,
-   * tanpa sebidang.
-   */
-  const CHORD_FACE = 0.075;
-  const PLATE_Z = CHORD_FACE + PLATE_THICK / 2 + 0.002;
-
-  const rivets = new THREE.InstancedMesh(
-    rivetGeometry,
-    rivetMaterial,
-    (P + 1) * 4 * rivetRing.length,
-  );
-  rivets.castShadow = true;
-  rivets.userData.proxy = true;
-  const rivetMatrix = new THREE.Matrix4();
-  let rivetIndex = 0;
-
-  for (let i = 0; i <= P; i++) {
-    [-W, W].forEach((z) =>
-      [0, H].forEach((y) => {
-        const plate = new THREE.Mesh(gussetGeometry, gussetMaterial);
-        plate.position.set(-L / 2 + i * panelLength, y, z + Math.sign(z) * PLATE_Z);
-        plate.castShadow = true;
-        bridge.add(plate);
-
-        const faceZ = plate.position.z + Math.sign(z) * (PLATE_THICK / 2 + 0.006);
-        rivetRing.forEach(([rx, ry]) => {
-          rivetMatrix.makeTranslation(plate.position.x + rx, y + ry, faceZ);
-          rivets.setMatrixAt(rivetIndex++, rivetMatrix);
-        });
-      }),
+  // Sistem bawah lantai: gelagar memanjang dan ikatan silang per panel.
+  for (let i = 0; i < P; i++) {
+    const x0 = -L / 2 + i * panelLength;
+    const x1 = x0 + panelLength;
+    [-.66, -.22, .22, .66].forEach((lane, j) =>
+      addMember(V(x0, -.20, W * lane), V(x1, -.20, W * lane), `st${i}-${j}`, .11),
     );
+    addMember(V(x0, -.31, -W), V(x1, -.31, W), `ub${i}a`, .045);
+    addMember(V(x0, -.31, W), V(x1, -.31, -W), `ub${i}b`, .045);
   }
-  rivets.count = rivetIndex;
-  rivets.instanceMatrix.needsUpdate = true;
-  bridge.add(rivets);
+
+  // Pelat pengaku pada badan gelagar melintang; mengikuti transformasi induk.
+  const stiffenerGeometry = new THREE.BoxGeometry(.018, .09, .13);
+  members.filter((mesh) => /^fb/.test(mesh.userData.tag)).forEach((mesh) => {
+    [-.7, -.35, 0, .35, .7].forEach((fraction) => {
+      const rib = new THREE.Mesh(stiffenerGeometry, mesh.material);
+      rib.position.set(0, fraction * W, 0);
+      rib.castShadow = true;
+      mesh.add(rib);
+    });
+  });
+
+  const connectionGeometries = {
+    lower: createConnectionGeometry('lower'),
+    upper: createConnectionGeometry('upper'),
+    start: createConnectionGeometry('upper-start'),
+    end: createConnectionGeometry('upper-end'),
+  };
+  for (let i = 0; i <= P; i++) {
+    [-W, W].forEach((z, side) => {
+      [0, H].forEach((y, level) => {
+        // Pelat atas hanya berada pada simpul yang masih memiliki batang.
+        if (level && (i === 0 || i === P)) return;
+        const id = `joint-${i}-${side}-${level}`;
+        const connectionGeometry = !level ? connectionGeometries.lower
+          : i === 1 ? connectionGeometries.start
+          : i === P - 1 ? connectionGeometries.end
+          : connectionGeometries.upper;
+        const connection = createConnection(connectionGeometry, steel, id);
+        connection.position.set(-L / 2 + i * panelLength, y, z);
+        bridge.add(connection);
+        partObjects.set(id, connection);
+        parts.push({
+          id, name: `Sambungan ${String(i + 1).padStart(2, '0')} · ${level ? 'atas' : 'bawah'} · sisi ${side + 1}`,
+          group: 'sambungan', location: `Simpul ${i + 1} dari ${P + 1} · sisi ${side + 1}`,
+          description: 'Pelat buhul menghubungkan batang horizontal, vertikal, dan diagonal pada satu titik rangka.',
+          details: [
+            level ? '2 pelat apit dengan tepi atas rata sayap profil' : '2 pelat apit bertepi potong',
+            ...(level && (i === 1 || i === P - 1) ? ['Tepi luar mengikuti diagonal ujung'] : []),
+            `${connectionGeometry.boltPoints.length * 2} kepala baut segi enam`,
+            `${connectionGeometry.boltPoints.length * 2} ring pada muka pelat`,
+          ],
+          checks: 'Periksa kelonggaran baut, korosi di sela pelat, dan retak di sekitar lubang sambungan.',
+        });
+      });
+    });
+  }
 
   // ------------------------------------------------------------ lantai jalan
   const asphalt = new THREE.MeshStandardMaterial({
@@ -836,11 +778,30 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
     [L / 2, 'bearE'],
   ] as Array<[number, string]>).forEach(([x, tag]) =>
     [-W, W].forEach((z, zi) => {
-      const bearing = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.3, 0.42), steel.clone());
+      const bearing = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.16, 0.36), steel.clone());
       bearing.position.set(x, -0.3, z);
       bearing.castShadow = true;
       bearing.receiveShadow = true;
       bearing.userData.tag = `${tag}${zi}`;
+      const plateGeometry = new THREE.BoxGeometry(.54, .035, .50);
+      [-.115, .115].forEach((y) => {
+        const plate = new THREE.Mesh(plateGeometry, bearing.material);
+        plate.position.y = y;
+        plate.castShadow = true;
+        bearing.add(plate);
+      });
+      const rubber = new THREE.MeshStandardMaterial({ color: 0x303942, roughness: .92 });
+      [-.05, 0, .05].forEach((y) => {
+        const layer = new THREE.Mesh(new THREE.BoxGeometry(.375, .017, .375), rubber);
+        layer.position.y = y;
+        bearing.add(layer);
+      });
+      const anchorGeometry = new THREE.CylinderGeometry(.022, .022, .065, 6);
+      [-.22, .22].forEach((bx) => [-.19, .19].forEach((bz) => {
+        const bolt = new THREE.Mesh(anchorGeometry, bearing.material);
+        bolt.position.set(bx, -.075, bz);
+        bearing.add(bolt);
+      }));
       scene.add(bearing);
       bearings.push(bearing);
     }),
@@ -1913,7 +1874,6 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
   const bendables = bridge.children
     .filter(
       (child) =>
-        child !== rivets &&
         child.userData.tag !== 'sensor' &&
         child.userData.member !== true &&
         child.userData.spanMesh !== true,
@@ -1929,12 +1889,6 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
       ),
     }));
 
-  // Paku keling hidup sebagai matriks contoh, jadi yang disimpan absis dan
-  // ordinat bawaannya — elemen ke-12 dan ke-13 tiap matriks.
-  const rivetArray = rivets.instanceMatrix.array as Float32Array;
-  const rivetBaseY = new Float32Array(rivets.count);
-  for (let i = 0; i < rivets.count; i++) rivetBaseY[i] = rivetArray[i * 16 + 13];
-
   /*
    * Benda yang melendut dikeluarkan dari pemangkasan kerucut pandang.
    *
@@ -1946,7 +1900,7 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
   spanMeshes.forEach(({ mesh }) => {
     mesh.frustumCulled = false;
   });
-  rivets.frustumCulled = false;
+
 
   const sagA = new THREE.Vector3();
   const sagB = new THREE.Vector3();
@@ -2083,11 +2037,6 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
       mesh.scale.y = length / len;
     });
 
-    for (let i = 0; i < rivets.count; i++) {
-      rivetArray[i * 16 + 13] = rivetBaseY[i] - sagAt(rivetArray[i * 16 + 12]);
-    }
-    rivets.instanceMatrix.needsUpdate = true;
-
     spotMeshes.forEach((sprite) =>
       placeMarker(
         sprite.userData.sensorId as string,
@@ -2104,6 +2053,30 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
     object.userData.grp = group ? group.key : FALLBACK_GROUP.key;
   });
 
+  [...members, ...bearings].forEach((mesh) => {
+    const id = mesh.userData.tag as string;
+    const group = mesh.userData.grp as string;
+    const name = PART_GROUPS.find((item) => item.key === group)?.name ?? 'Elemen struktur';
+    partObjects.set(id, mesh);
+    parts.push({
+      id, name: `${name} · ${id}`, group,
+      location: group === 'tumpuan' ? `${id.startsWith('bearW') ? 'Ujung awal' : 'Ujung akhir'} bentang` : `Kelompok ${name.toLowerCase()}`,
+      description: group === 'tumpuan'
+        ? 'Perletakan meneruskan reaksi rangka ke abutmen, dengan pelat dudukan dan lapisan bantalan.'
+        : group === 'bracing'
+          ? 'Gelagar dan ikatan silang mendukung lantai serta menjaga kestabilan antar sisi rangka.'
+          : 'Profil baja bersayap menyusun jalur gaya pada rangka utama jembatan.',
+      details: group === 'tumpuan'
+        ? ['Pelat atas dan pelat dasar', 'Lapisan bantalan', '4 baut angkur']
+        : group === 'bracing'
+          ? ['Gelagar melintang dan memanjang', 'Ikatan silang atas dan bawah', 'Pelat pengaku pada gelagar melintang']
+          : ['Sayap dan badan profil', 'Tepi profil dengan bevel', 'Sambungan pelat buhul pada simpul'],
+      checks: group === 'tumpuan'
+        ? 'Periksa pergeseran, kondisi bantalan, angkur, dan kontak pelat dudukan.'
+        : 'Periksa korosi, perubahan bentuk, retak, dan kondisi sambungan pada inspeksi lapangan.',
+    });
+  });
+
   const counts: Record<string, number> = {};
   tagged.forEach((object) => {
     if (object.userData.proxy) return;
@@ -2113,6 +2086,19 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
 
   const hiddenGroups = new Set<string>();
   let selectedGroup: string | null = null;
+  let selectedPart: string | null = null;
+  const connectionMaterials: { material: THREE.MeshStandardMaterial; base: THREE.Color; id: string }[] = [];
+  partObjects.forEach((object, id) => {
+    if (!id.startsWith('joint')) return;
+    const unique = new Set<THREE.MeshStandardMaterial>();
+    object.traverse((child) => {
+      const material = (child as THREE.Mesh).material as THREE.MeshStandardMaterial | undefined;
+      if (material && !unique.has(material)) {
+        unique.add(material);
+        connectionMaterials.push({ material, base: material.color.clone(), id });
+      }
+    });
+  });
   const applyVisibility = () =>
     tagged.forEach((object) => {
       object.visible = !hiddenGroups.has(object.userData.grp as string);
@@ -2121,10 +2107,18 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
   // ------------------------------------------------------- kamera & interaksi
   let theta = ISO_VIEW[0];
   let phi = ISO_VIEW[1];
-  let radius = ISO_VIEW[2];
+  const overviewRadius = () => {
+    const aspect = Math.max(.4, host.clientWidth / (host.clientHeight || 1));
+    return Math.max(ISO_VIEW[2], L * 1.12 / (2 * Math.tan(camera.fov * Math.PI / 360) * aspect));
+  };
+  let radius = overviewRadius();
+  const cameraTarget = V(0, .5, 0);
+  let focusedObject: THREE.Object3D | null = null;
+  const focusPoint = new THREE.Vector3();
   let drag: { x: number; y: number } | null = null;
 
   const element = renderer.domElement;
+  element.style.touchAction = 'none';
   const raycaster = new THREE.Raycaster();
   const pointer = new THREE.Vector2();
 
@@ -2170,7 +2164,7 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
    */
   const dropTargets = [...bridge.children, ...bearings].filter(
     (object): object is THREE.Mesh =>
-      (object as THREE.Mesh).isMesh === true &&
+      ((object as THREE.Mesh).isMesh === true || object.userData.grp === 'sambungan') &&
       object.userData.proxy !== true &&
       object.userData.tag !== 'sensor',
   );
@@ -2184,7 +2178,7 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
     raycaster.setFromCamera(pointer, camera);
     const hit = raycaster.intersectObjects(
       dropTargets.filter((mesh) => mesh.visible),
-      false,
+      true,
     )[0];
     return hit ? hit.point : null;
   };
@@ -2229,12 +2223,12 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
     if (!drag) {
       // Bentuk kursor menyatakan apa yang akan terjadi: salib empat arah berarti
       // penanda dapat dipindahkan, telunjuk berarti hanya dapat dibaca.
-      const overMarker = hitAt(event) !== null;
+      const overMarker = !!hitAt(event);
       element.style.cursor = overMarker ? (state.editSpots ? 'move' : 'pointer') : 'grab';
       return;
     }
     theta -= (event.clientX - drag.x) * 0.006;
-    phi = Math.min(1.25, Math.max(0.06, phi + (event.clientY - drag.y) * 0.004));
+    phi = Math.min(1.48, Math.max(-0.8, phi + (event.clientY - drag.y) * 0.004));
     drag = { x: event.clientX, y: event.clientY };
   };
 
@@ -2266,12 +2260,20 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
       const hit = hitAt(event);
       const sensorId = hit ? (hit.object.userData.sensorId as string) : null;
       callbacks.onPick(sensorId && sensorId !== state.pickedSensor ? sensorId : null);
+      if (!sensorId && !state.editSpots) {
+        // hitAt telah menempatkan sinar; kelompok tersembunyi tidak ikut dipilih.
+        const targets = dropTargets.filter((object) => object.visible);
+        let object: THREE.Object3D | null = raycaster.intersectObjects(targets, true)[0]?.object ?? null;
+        while (object && !partObjects.has(object.userData.tag as string)) object = object.parent;
+        selectedPart = object ? object.userData.tag as string : null;
+        callbacks.onPartPick?.(selectedPart);
+      }
     }
     pressed = null;
   };
   const onWheel = (event: WheelEvent) => {
     event.preventDefault();
-    radius = Math.min(32, Math.max(7, radius + event.deltaY * 0.01));
+    radius = Math.min(32, Math.max(.8, radius * Math.exp(event.deltaY * .001)));
   };
 
   element.addEventListener('pointerdown', onPointerDown);
@@ -2325,7 +2327,7 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
       material.emissiveIntensity = pulse * 0.6;
       return;
     }
-    if (selectedGroup && mesh.userData.grp === selectedGroup) {
+    if (tag === selectedPart || (selectedGroup && mesh.userData.grp === selectedGroup)) {
       material.color.copy(selectColor);
       material.emissive.copy(selectColor);
       material.emissiveIntensity = 0.25;
@@ -2565,6 +2567,12 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
     const pulse = 0.55 + 0.45 * Math.sin(now * 4);
     members.forEach((mesh) => paintMember(mesh, pulse));
     bearings.forEach((mesh) => paintMember(mesh, pulse));
+    connectionMaterials.forEach(({ material, base, id }) => {
+      const selected = id === selectedPart || selectedGroup === 'sambungan';
+      material.color.copy(selected ? selectColor : base);
+      material.emissive.copy(selectColor);
+      material.emissiveIntensity = selected ? .2 : 0;
+    });
 
     // Batang ukur: setengah tinggi layar dalam meter, dibulatkan ke angka yang
     // enak dibaca. Diperbarui paling cepat tiap 0,6 detik agar tidak berkedip.
@@ -2731,20 +2739,32 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
     waterNormal.needsUpdate = true;
 
     if (!drag && state.autoRotate) theta += 0.0012;
+    if (focusedObject) {
+      bridge.updateMatrixWorld(true);
+      focusedObject.getWorldPosition(focusPoint);
+      cameraTarget.copy(focusPoint);
+    }
     camera.position.set(
-      Math.sin(theta) * radius * Math.cos(phi),
-      radius * Math.sin(phi) + 1.2,
-      Math.cos(theta) * radius * Math.cos(phi),
+      cameraTarget.x + Math.sin(theta) * radius * Math.cos(phi),
+      cameraTarget.y + radius * Math.sin(phi),
+      cameraTarget.z + Math.cos(theta) * radius * Math.cos(phi),
     );
-    camera.lookAt(0, 0.5, 0);
+    camera.lookAt(cameraTarget);
 
     const picked = state.pickedSensor;
-    spotMeshes.forEach((sprite) => {
+    spotMeshes.forEach((sprite, index) => {
       const sensorId = sprite.userData.sensorId as string;
       sprite.material = markerMaterials[state.sensorStatus[sensorId] ?? 'AMAN'];
       const isPicked = sensorId === picked;
-      const size = MARKER_SIZE * (isPicked ? 1.34 + 0.08 * Math.sin(now * 5) : 1);
+      // Batasi ukuran penanda ketika mendekat agar detail pelat tetap terbaca.
+      sprite.getWorldPosition(projected);
+      const zoomScale = Math.min(1, camera.position.distanceTo(projected) / 12);
+      const size = MARKER_SIZE * zoomScale * (isPicked ? 1.34 + 0.08 * Math.sin(now * 5) : 1);
       sprite.scale.set(size, size, 1);
+      const spot = sprite.userData.spot as [number, number, number];
+      sprite.position.y = spot[1] + size * .45 - sagAt(spot[0]);
+      pickProxies[index].position.copy(sprite.position);
+      pickProxies[index].scale.setScalar(zoomScale);
     });
 
     if (picked) {
@@ -2773,6 +2793,28 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
 
   return {
     counts,
+    parts,
+    selectPart(id, focus = false) {
+      selectedPart = id;
+      const object = id ? partObjects.get(id) : undefined;
+      if (focus && object) {
+        hiddenGroups.delete(object.userData.grp as string);
+        applyVisibility();
+        focusedObject = object;
+        theta = .35;
+        phi = .12;
+        radius = id?.startsWith('joint') ? 2.5 : id?.startsWith('bear') ? 2.8 : 6;
+        // Kamera mendekati kedua sisi dari luar rangka.
+        if (object.position.z < 0) theta += Math.PI;
+      }
+    },
+    setView(view) {
+      focusedObject = null;
+      cameraTarget.set(0, .5, 0);
+      theta = view === 'overview' ? ISO_VIEW[0] : view === 'under' ? .55 : .12;
+      phi = view === 'deck' ? 1.42 : view === 'under' ? -.10 : view === 'side' ? .08 : ISO_VIEW[1];
+      radius = overviewRadius();
+    },
     labelHost: label,
     setState(patch) {
       Object.assign(state, patch);
@@ -2793,9 +2835,12 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
     reset() {
       theta = ISO_VIEW[0];
       phi = ISO_VIEW[1];
-      radius = ISO_VIEW[2];
+      radius = overviewRadius();
       hiddenGroups.clear();
       selectedGroup = null;
+      selectedPart = null;
+      focusedObject = null;
+      cameraTarget.set(0, .5, 0);
       applyVisibility();
     },
     dispose() {
@@ -2810,13 +2855,25 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
       environmentTarget.dispose();
       skyTexture.dispose();
       renderer.domElement.remove();
+      const geometries = new Set<THREE.BufferGeometry>();
+      const materials = new Set<THREE.Material>([steel, ...Object.values(markerMaterials)]);
+      const textures = new Set<THREE.Texture>();
       scene.traverse((object) => {
         const mesh = object as THREE.Mesh;
-        if (mesh.geometry) mesh.geometry.dispose();
+        if ((mesh as THREE.InstancedMesh).isInstancedMesh) (mesh as THREE.InstancedMesh).dispose();
+        if (mesh.geometry) geometries.add(mesh.geometry);
         const material = mesh.material as THREE.Material | THREE.Material[] | undefined;
-        if (Array.isArray(material)) material.forEach((m) => m.dispose());
-        else material?.dispose();
+        if (Array.isArray(material)) material.forEach((m) => materials.add(m));
+        else if (material) materials.add(material);
       });
+      geometries.forEach((geometry) => geometry.dispose());
+      materials.forEach((material) => {
+        Object.values(material).forEach((value) => {
+          if (value instanceof THREE.Texture) textures.add(value);
+        });
+        material.dispose();
+      });
+      textures.forEach((texture) => texture.dispose());
     },
   };
 }

@@ -27,6 +27,7 @@ export interface TrussViewerProps {
   /** Deret nilai per kanal; label memakainya sebagai acuan kondisi aman. */
   series: Record<string, Series>;
   onPick: (sensorId: string | null) => void;
+  onPartPick?: (partId: string | null) => void;
   onScale: (metres: number) => void;
   /** Membuka panel perbandingan kamera untuk kanal ini. */
   onCompare?: (sensorId: string) => void;
@@ -43,6 +44,7 @@ export function TrussViewer({
   autoRotate,
   editSpots,
   onPick,
+  onPartPick,
   onScale,
   onCompare,
   onReady,
@@ -64,6 +66,8 @@ export function TrussViewer({
   telemetryRef.current = telemetry;
   const pickRef = useRef(onPick);
   pickRef.current = onPick;
+  const partPickRef = useRef(onPartPick);
+  partPickRef.current = onPartPick;
   const scaleRef = useRef(onScale);
   scaleRef.current = onScale;
   const spotMoveRef = useRef(onSpotMove);
@@ -81,6 +85,7 @@ export function TrussViewer({
       spots: loadSpots(bridge.id),
       callbacks: {
         onPick: (id) => pickRef.current(id),
+        onPartPick: (id) => partPickRef.current?.(id),
         onScale: (metres) => scaleRef.current(metres),
         onSpotMove: (id, spot) => {
           saveSpot(bridge.id, id, spot);
@@ -200,7 +205,7 @@ export function TrussViewer({
       role="img"
       aria-label={
         `Model tiga dimensi ${bridge.name}. Seret untuk memutar, gulir untuk memperbesar, ` +
-        `klik penanda sensor untuk melihat nilainya.` +
+        `klik komponen untuk memeriksa detail atau penanda sensor untuk melihat nilainya.` +
         (editSpots ? ' Mode geser penanda menyala: seret penanda untuk memindahkan letaknya.' : '')
       }
       style={{

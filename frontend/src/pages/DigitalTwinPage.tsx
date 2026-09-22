@@ -15,6 +15,8 @@ import { SENSOR_BY_ID, TAG_CLASS } from '../domain/sensors';
 import { TrussViewer } from '../three/TrussViewer';
 import { GlbViewer, type GlbViewerHandle } from '../three/GlbViewer';
 import type { TwinScene } from '../three/proceduralBridge';
+import { INSPECTION_VIEWS } from '../three/structuralDetails';
+import { StructureInspector } from '../components/StructureInspector';
 import { GLB_VIEW_ORDER, GLB_VIEW_PRESETS, type GlbViewMode, type PartsDocument } from '../three/mb3dModel';
 import {
   ConfidenceLegend,
@@ -74,6 +76,7 @@ function LiveTwinView({
   const [hidden, setHidden] = useState<string[]>([]);
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
   const [picked, setPicked] = useState<string | null>(null);
+  const [selectedPart, setSelectedPart] = useState<string | null>(null);
   /*
    * Kanal yang panel perbandingan kameranya sedang terbuka.
    *
@@ -141,7 +144,21 @@ function LiveTwinView({
     setHidden([]);
     setSelectedGroup(null);
     setPicked(null);
-    setAutoRotate(true);
+    setAutoRotate(false);
+    setSelectedPart(null);
+  };
+
+  const inspectPart = (id: string | null, focus = false) => {
+    setSelectedPart(id);
+    setSelectedGroup(null);
+    setPicked(null);
+    setAutoRotate(false);
+    scene?.selectGroup(null);
+    scene?.selectPart(id, focus);
+    if (focus && id) {
+      const group = scene?.parts.find((part) => part.id === id)?.group;
+      setHidden((previous) => previous.filter((key) => key !== group));
+    }
   };
 
   const scenario = telemetry ? SCENARIOS[telemetry.scenario] : SCENARIOS.idle;
@@ -167,7 +184,7 @@ function LiveTwinView({
       <PageHeader
         kicker="Digital Twin"
         title={bridge.name}
-        lede="Seret untuk memutar, gulir untuk memperbesar, klik penanda sensor untuk membaca nilainya di tempat. Warna batang mengikuti regangan yang terukur, warna penanda mengikuti status kanalnya. Letak penanda hanya dapat diubah setelah tombol Geser penanda dinyalakan — di luar mode itu penanda sekadar dibaca."
+        lede="Jelajahi rangka, sambungan baut, gelagar, dan tumpuan. Klik komponen untuk memeriksa detailnya, atau pilih penanda sensor untuk membaca pengukuran."
         leading={
           <>
             <button
@@ -207,6 +224,20 @@ function LiveTwinView({
 
       <section className="split" style={PANEL_GRID}>
         <div>
+          <div className="twin-view-toolbar" aria-label="Pandangan model">
+            <div className="twin-view-buttons">
+              {INSPECTION_VIEWS.map((view) => (
+                <button key={view.key} type="button" className="btn btn-secondary btn-sm" disabled={!scene}
+                  onClick={() => { scene?.setView(view.key); setAutoRotate(false); }}>
+                  {view.label}
+                </button>
+              ))}
+            </div>
+            <button type="button" className="btn btn-secondary btn-sm" disabled={!scene}
+              onClick={() => inspectPart(`joint-${Math.floor((bridge.model.panels ?? 10) / 2)}-1-0`, true)}>
+              Detail sambungan
+            </button>
+          </div>
           <Stage>
             <TrussViewer
               bridge={bridge}
@@ -217,6 +248,7 @@ function LiveTwinView({
               autoRotate={autoRotate}
               editSpots={editSpots}
               onPick={setPicked}
+              onPartPick={(id) => inspectPart(id)}
               onScale={setScaleMetres}
               onReady={handleReady}
               onSpotMove={() => setSpotsMoved(true)}
@@ -268,6 +300,13 @@ function LiveTwinView({
               ) : null}
             </div>
 
+            {selectedPart ? (
+              <div className="stage-chip twin-selection-chip">
+                <span className="twin-selection-swatch" aria-hidden="true" />
+                {selectedPart} · dipilih
+              </div>
+            ) : null}
+
             <div className="stage-tools" ref={toolsRef}>
               <button
                 type="button"
@@ -303,6 +342,8 @@ function LiveTwinView({
                     }}
                     onSelect={(key) => {
                       if (!scene) return;
+                      setSelectedPart(null);
+                      scene.selectPart(null);
                       setSelectedGroup(scene.selectGroup(key));
                     }}
                   />
@@ -326,6 +367,11 @@ function LiveTwinView({
               </div>
             ) : null}
           </Stage>
+
+          <div className="twin-model-caption">
+            <span>{bridge.type} · {bridge.model.panels ?? 10} panel</span>
+            <span>Seret untuk orbit · gulir untuk zoom</span>
+          </div>
 
           {deflection && sag && deflSpec ? (
             <p className="text-muted" style={{ fontSize: 12, marginTop: 'var(--space-2)' }}>
@@ -390,6 +436,9 @@ function LiveTwinView({
         </div>
 
         <aside className="stack" style={{ gap: 'var(--space-3)' }}>
+          <StructureInspector parts={scene?.parts ?? []} selectedId={selectedPart}
+            damaged={telemetry?.damagedParts ?? []} onSelect={inspectPart}
+            onFocus={() => inspectPart(selectedPart, true)} />
           <div className="glass card" style={{ padding: 'var(--space-4)' }}>
             <span className="card-kicker">Kendali simulasi</span>
             <div className="stack" style={{ gap: 'var(--space-2)' }}>

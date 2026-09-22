@@ -150,7 +150,7 @@ const SCENARIOS = {
     mult: { defl: 2.2, tilt: 3.1, strain: 1.8, crack: 1.6 },
     residual: { defl: 1.75, tilt: 2.3, strain: 1.25 },
     cars: 3, trucks: 1, speed: 0.45,
-    damaged: ['bearW0', 'bearW1', 'bc0z0', 'bc0z1', 'v-1z0', 'v-1z1'],
+    damaged: ['bearW0', 'bearW1', 'bc0z0', 'bc0z1', 'd0z0', 'd0z1'],
     environment: { flood: 1 },
   },
 };

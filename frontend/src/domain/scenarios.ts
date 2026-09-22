@@ -223,7 +223,7 @@ export const SCENARIOS: Record<string, Scenario> = {
     trucks: 2,
     speed: 0.45,
     environment: { flood: 1 },
-    damaged: ['bearW0', 'bearW1', 'bc0z0', 'bc0z1', 'v-1z0', 'v-1z1'],
+    damaged: ['bearW0', 'bearW1', 'bc0z0', 'bc0z1', 'd0z0', 'd0z1'],
   },
 };
 

@@ -1612,3 +1612,35 @@
       'kejadian';
   }
 }
+.twin-view-toolbar,
+.twin-view-buttons,
+.twin-model-caption,
+.structure-inspector-heading,
+.structure-inspector-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.twin-view-toolbar { justify-content: space-between; margin-bottom: 12px; }
+.twin-model-caption { justify-content: space-between; color: var(--mist-300); font-size: 11px; margin: 10px 0 16px; }
+.twin-selection-chip { bottom: 48px; left: 14px; max-width: calc(100% - 28px); }
+.twin-selection-swatch { width: 9px; height: 9px; border-radius: 2px; background: #f5a623; }
+.structure-inspector { padding: var(--space-4); }
+.structure-inspector-heading { justify-content: space-between; margin-bottom: 14px; }
+.structure-inspector-heading h2 { margin: 0; font-size: 15px; }
+.structure-inspector-heading > span { font-size: 11px; }
+.structure-inspector .field { font-size: 12px; }
+.structure-inspector select { width: 100%; min-width: 0; text-overflow: ellipsis; }
+.structure-inspector select option,
+.structure-inspector select optgroup { background: var(--ink-900); color: var(--mist-100); }
+.structure-inspector p { font-size: 12px; line-height: 1.7; margin: 10px 0; }
+.structure-inspector-detail { margin-top: 18px; }
+.structure-inspector-detail h3 { margin: 5px 0; font-size: 16px; }
+.structure-part-id { color: #f5b851; font-size: 11px; font-family: monospace; }
+.structure-inspector-detail ul { padding-left: 18px; font-size: 12px; line-height: 1.9; }
+.structure-inspector-actions { margin-top: 14px; }
+.structure-inspector-check { border-left: 2px solid var(--brand-400); padding-left: 12px; margin-top: 16px; font-size: 12px; }
+.structure-inspector-check p { color: var(--mist-300); margin: 4px 0; }
+.structure-inspector .structure-model-note { border-top: 1px solid rgb(255 255 255 / .1); padding-top: 12px; margin-bottom: 0; color: var(--mist-300); font-size: 11px; }
+.structure-damage { color: var(--state-bahaya); }
