@@ -6,7 +6,8 @@ import {
   CONDITION_LABEL,
   CONDITION_THRESHOLDS,
 } from '../domain/condition';
-import { bridgeCondition, type ScoredElement } from '../domain/elements';
+import { KODE_PEDOMAN, bridgeCondition, type ScoredElement } from '../domain/elements';
+import { labelElemen } from '../domain/pedoman';
 import { Meter } from '../components/Charts';
 import { PageHeader, Stat } from '../components/Ui';
 
@@ -27,12 +28,13 @@ import { PageHeader, Stat } from '../components/Ui';
 export interface ConditionPageProps {
   telemetry: Telemetry | null;
   onOpenInspection: () => void;
+  onOpenPemeriksaan: () => void;
 }
 
 const persen = (v: number) => `${(v * 100).toFixed(0)} %`;
 const skor = (v: number) => v.toFixed(2);
 
-export function ConditionPage({ telemetry, onOpenInspection }: ConditionPageProps) {
+export function ConditionPage({ telemetry, onOpenInspection, onOpenPemeriksaan }: ConditionPageProps) {
   const kondisi = bridgeCondition(telemetry?.readings ?? []);
   const [pilih, setPilih] = useState<string | null>(null);
 
@@ -189,6 +191,10 @@ export function ConditionPage({ telemetry, onOpenInspection }: ConditionPageProp
             <div className="text-muted" style={{ fontSize: 12 }}>
               {terpilih.location}
             </div>
+            <div className="text-muted" style={{ fontSize: 11.5 }}>
+              Kode pedoman:{' '}
+              {(KODE_PEDOMAN[terpilih.id] ?? []).map((kode) => labelElemen(kode)).join(' · ') || '—'}
+            </div>
             <div
               className="tabular"
               style={{ fontSize: 40, fontWeight: 800, color: CONDITION_COLOR[terpilih.status], lineHeight: 1.1 }}
@@ -251,10 +257,17 @@ export function ConditionPage({ telemetry, onOpenInspection }: ConditionPageProp
 
           <div className="glass glass--chip card" style={{ padding: 'var(--space-4)' }}>
             <span className="card-kicker">Asal angkanya</span>
-            <p className="card-body">Sensor dari telemetri · visual dan diagnostik data contoh.</p>
-            <button type="button" className="btn btn-sm" onClick={onOpenInspection}>
-              Buka riwayat inspeksi
-            </button>
+            <p className="card-body">
+              Indikator pemantauan, <strong>bukan Nilai Kondisi Bina Marga</strong>.
+            </p>
+            <div className="row">
+              <button type="button" className="btn btn-sm" onClick={onOpenPemeriksaan}>
+                Buka pemeriksaan detail
+              </button>
+              <button type="button" className="btn btn-sm" onClick={onOpenInspection}>
+                Buka riwayat inspeksi
+              </button>
+            </div>
           </div>
         </div>
       </div>

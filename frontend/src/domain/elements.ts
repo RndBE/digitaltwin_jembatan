@@ -102,6 +102,34 @@ export const ELEMENTS: ElementSpec[] = [
   { id: 'SDR', name: 'Sandaran, kerb & perlengkapan', group: 'lantai', system: 'Perlengkapan', location: 'Kedua sisi, seluruh bentang' },
 ];
 
+/**
+ * Padanan tiap elemen dengan kode elemen Level 4 Pedoman Pemeriksaan Jembatan
+ * No. 01/P/BM/2022, Lampiran B (katalognya di `pedoman.ts`).
+ *
+ * Satu elemen di sini dapat menjadi beberapa elemen pedoman, karena pembagian
+ * di atas mengikuti cara model 3D dan sensor dipasang, bukan cara pedoman
+ * memecah elemen: "Pelat buhul & sambungan" adalah pelat buhul (4.455a),
+ * sambungan baut (4.455g), dan sambungan las (4.455i) sekaligus. Pencatatan
+ * kerusakan resmi dilakukan per kode pedoman di halaman Pemeriksaan detail.
+ */
+export const KODE_PEDOMAN: Record<string, string[]> = {
+  'LNT-1': ['4.511a'],
+  'LNT-2': ['4.511a'],
+  'LNT-3': ['4.511a'],
+  'LNT-4': ['4.511a'],
+  'RB-U': ['4.453b'],
+  'RB-S': ['4.453b'],
+  'RA-U': ['4.453a'],
+  'RA-S': ['4.453a'],
+  DIA: ['4.453c'],
+  VER: ['4.453d'],
+  IKT: ['4.454a', '4.454b', '4.453g'],
+  BUH: ['4.455a', '4.455g', '4.455i'],
+  'TMP-B': ['4.611b', '4.614d', '4.614e'],
+  'TMP-T': ['4.611b', '4.614d', '4.614e'],
+  SDR: ['4.621a', '4.621b', '4.513b'],
+};
+
 export interface ScoredElement extends ElementSpec {
   raw: RawCondition;
   score: number;

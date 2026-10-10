@@ -1,15 +1,22 @@
 import type { StructuralPart } from '../three/structuralDetails';
 import { PART_GROUPS } from '../three/proceduralBridge';
+import { lokasiLabel } from '../domain/pedoman';
+import { padankanBagian, ringkasPadanan, type PadananBagian } from '../domain/lokasiModel';
 
-export function StructureInspector({ parts, selectedId, damaged, onSelect, onFocus }: {
+export function StructureInspector({ parts, selectedId, damaged, panels, onSelect, onFocus, onRecord }: {
   parts: StructuralPart[];
   selectedId: string | null;
   damaged: string[];
+  /** Banyak panel rangka; dipakai menerjemahkan bagian model ke kode dan lokasi pedoman. */
+  panels: number;
   onSelect: (id: string | null) => void;
   onFocus: () => void;
+  /** Dipanggil dengan padanan pedomannya untuk mencatat kerusakan pada bagian ini. */
+  onRecord: (padanan: PadananBagian) => void;
 }) {
   const part = parts.find((item) => item.id === selectedId);
   const damagedPart = part && damaged.includes(part.id);
+  const padanan = part ? padankanBagian(part.id, panels) : null;
   return (
     <section className="glass card structure-inspector" aria-label="Inspeksi komponen">
       <div className="structure-inspector-heading">
@@ -45,6 +52,23 @@ export function StructureInspector({ parts, selectedId, damaged, onSelect, onFoc
             {damagedPart ? 'Ditandai rusak oleh skenario aktif.' : 'Pilihan oranye menunjukkan elemen yang sedang diperiksa.'}
           </p>
           <div className="structure-inspector-check"><strong>Titik pemeriksaan</strong><p>{part.checks}</p></div>
+          <div className="structure-inspector-check">
+            <strong>Kode pedoman</strong>
+            {padanan ? (
+              <>
+                <p>
+                  {ringkasPadanan(padanan)}
+                  <br />
+                  <span className="tabular">{lokasiLabel(padanan)}</span>
+                </p>
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => onRecord(padanan)}>
+                  Catat kerusakan di sini
+                </button>
+              </>
+            ) : (
+              <p className="text-muted">Bagian ini tidak punya padanan elemen di Lampiran B.</p>
+            )}
+          </div>
         </div>
       ) : (
         <p className="text-muted">Pilih sambungan untuk melihat pelat dan bautnya, atau periksa rangka, gelagar, dan tumpuan. Gunakan Fokus dekat untuk memperbesar elemen.</p>

@@ -18,8 +18,15 @@ import { CONDITION_COLOR, CONDITION_LABEL, conditionStatus, rollUp } from '../do
  *     tepat di atas landasan, dengan bantalan tergambar di antaranya. Rangka
  *     yang berhenti di udara di sebelah pangkal — seperti gambar ini
  *     sebelumnya — terbaca sebagai dua benda yang kebetulan bersebelahan.
- *   - **Tiang ujung tegak** menutup kedua ujung rangka, jadi tepi atas tidak
- *     lagi melayang dengan ujung terbuka.
+ *   - **Ujung rangka sama dengan model tiga dimensi.** Panel ujung hanya
+ *     diagonal miring dari landasan ke simpul atas pertama: tidak ada tiang
+ *     tegak di ujung dan tidak ada batang atas di luar simpul 1 dan simpul
+ *     terakhir. Siluetnya karena itu trapesium, bukan persegi panjang. Aturan
+ *     ini diambil dari `three/proceduralBridge.ts` (batang atas hanya untuk
+ *     panel 1 sampai P−2, tiang vertikal hanya di simpul dalam); bila model
+ *     itu berubah, gambar ini harus ikut.
+ *   - **Tinggi rangka sama dengan model**: 1,7 pada bentang 12 satuan, jadi
+ *     rangkanya selangsing yang terlihat di halaman Digital Twin.
  *   - **Lantai duduk pada tepi bawah**, satu bidang dengan ketebalan, lalu
  *     berlanjut sebagai oprit di atas timbunan yang melandai ke tebing —
  *     bukan garis tipis yang menembus gambar dari tepi ke tepi.
@@ -101,8 +108,11 @@ const XR = 536;
  * adalah yang membuat gambar ini terbaca sebagai jembatan, karena itulah
  * urutan yang dilihat orang ketika berdiri di tepi sungai.
  */
-const Y_ATAS = 52;
 const Y_BAWAH = 126;
+/** Tinggi rangka 1,7 pada bentang 12 satuan, sama dengan `H` dan `spanUnits` di model 3D. */
+const Y_ATAS = Y_BAWAH - Math.round(((XR - XL) * 1.7) / 12);
+/** Tepi atas gambar: sedikit di atas nomor panel, sisanya dibuang. */
+const Y_POTONG = Y_ATAS - 36;
 const Y_LANTAI = 129;
 const TEBAL_LANTAI = 6;
 const Y_LANDASAN = Y_LANTAI + TEBAL_LANTAI + 5;
@@ -230,7 +240,7 @@ export function BridgeElevation({
     // berbohong tentang apa yang sedang dibaca.
     <div className="elevasi" onMouseLeave={() => setSorot(null)}>
       <svg
-        viewBox={`0 0 ${W} ${H}`}
+        viewBox={`0 ${Y_POTONG} ${W} ${H - Y_POTONG}`}
         width="100%"
         role="img"
         aria-label={
@@ -375,9 +385,9 @@ export function BridgeElevation({
           style={{ pointerEvents: 'none' }}
           aria-hidden="true"
         >
-          <line x1={XL} y1={Y_ATAS} x2={XR} y2={Y_ATAS} />
+          <line x1={simpul[1]} y1={Y_ATAS} x2={simpul[panels - 1]} y2={Y_ATAS} />
           <line x1={XL} y1={Y_BAWAH} x2={XR} y2={Y_BAWAH} />
-          {simpul.map((x, i) => (
+          {simpul.slice(1, -1).map((x, i) => (
             <line key={`gv${i}`} x1={x} y1={Y_ATAS} x2={x} y2={Y_BAWAH} />
           ))}
           {simpul.slice(0, -1).map((x, i) => {
@@ -423,26 +433,17 @@ export function BridgeElevation({
           strokeLinecap="round"
         >
           <title>{judul('vertikal')}</title>
-          {/* Batang vertikal dalam bentang. */}
+          {/* Batang vertikal hanya di simpul dalam; di kedua ujung tidak ada
+              tiang tegak, seperti di model 3D. */}
           {simpul.slice(1, -1).map((x, i) => (
             <line key={`v${i}`} x1={x} y1={Y_ATAS} x2={x} y2={Y_BAWAH} strokeWidth="2.1" />
           ))}
-          {/* Tiang ujung: lebih tebal, karena memang memikul seluruh ujung
-              rangka — sekaligus menutup bentang supaya tepi atas tidak
-              tergambar menggantung. */}
-          <line x1={XL} y1={Y_ATAS} x2={XL} y2={Y_BAWAH} strokeWidth="4" />
-          <line x1={XR} y1={Y_ATAS} x2={XR} y2={Y_BAWAH} strokeWidth="4" />
         </g>
 
         <g {...kelompok('atas')} stroke={warna('atas')} strokeLinecap="round">
           <title>{judul('atas')}</title>
-          <line x1={XL} y1={Y_ATAS} x2={XR} y2={Y_ATAS} strokeWidth="4.5" />
-          {/* Ikatan angin portal di kedua ujung: sudut kecil di bawah tepi
-              atas, tanda bahwa kedua rangka terikat satu sama lain. */}
-          <g strokeWidth="1.6" opacity="0.75">
-            <line x1={XL} y1={Y_ATAS + 13} x2={XL + 15} y2={Y_ATAS} />
-            <line x1={XR} y1={Y_ATAS + 13} x2={XR - 15} y2={Y_ATAS} />
-          </g>
+          {/* Dari simpul 1 sampai simpul terakhir; panel ujung tidak punya batang atas. */}
+          <line x1={simpul[1]} y1={Y_ATAS} x2={simpul[panels - 1]} y2={Y_ATAS} strokeWidth="4.5" />
         </g>
 
         <g {...kelompok('bawah')} stroke={warna('bawah')} strokeLinecap="round">
@@ -453,7 +454,7 @@ export function BridgeElevation({
         {/* Buhul: titik tempat batang bertemu — juga tempat pelat sambungan
             diperiksa, jadi ia pantas terlihat. */}
         <g fill="var(--ink-900)" stroke={warna('vertikal')} strokeWidth="1.2" opacity="0.85">
-          {simpul.map((x, i) => (
+          {simpul.slice(1, -1).map((x, i) => (
             <circle key={`na${i}`} cx={x} cy={Y_ATAS} r="2.2" />
           ))}
           {simpul.map((x, i) => (

@@ -12,12 +12,20 @@ import { DEFAULT_SCREEN, pathForScreen, screenFromPath } from './lib/routes';
 import { keluar, langganSesi, pulihkanSesi, sesiKini } from './lib/session';
 import { LoginPage } from './pages/LoginPage';
 import { langganAlarm, ringkasAlarm, versiAlarm } from './domain/alarms';
+import { penandaRutin } from './domain/rutin';
+import { titipkanPadanan } from './domain/lokasiModel';
+import { langganTemuan, versiTemuan } from './domain/temuan';
 import { DashboardPage } from './pages/DashboardPage';
 import { DigitalTwinPage } from './pages/DigitalTwinPage';
 import { DataPage } from './pages/DataPage';
 import { CameraPage } from './pages/CameraPage';
 import { ConditionPage } from './pages/ConditionPage';
-import { InfoPage, InspectionPage, RepairPage, SensorPage } from './pages/AssetPages';
+import { PemeriksaanPage } from './pages/PemeriksaanPage';
+import { RutinPage } from './pages/RutinPage';
+import { KesesuaianPage } from './pages/KesesuaianPage';
+import { RutePage } from './pages/RutePage';
+import { LaporanPage } from './pages/LaporanPage';
+import { AsetPage, RepairPage, type AsetTab } from './pages/AssetPages';
 import { ThresholdPage } from './pages/ThresholdPage';
 import { AnalysisPage } from './pages/AnalysisPage';
 import { ComparePage } from './pages/ComparePage';
@@ -60,6 +68,8 @@ export default function App() {
   const [screen, setScreen] = useState<ScreenKey>(
     () => screenFromPath(window.location.pathname) ?? DEFAULT_SCREEN,
   );
+  // Tab halaman Informasi; di sini supaya tautan dari halaman lain dapat memilihnya.
+  const [asetTab, setAsetTab] = useState<AsetTab>('data');
 
   // Satu pemeriksaan saat mulai; hasilnya menentukan mode untuk sesi ini.
   useEffect(() => {
@@ -109,6 +119,8 @@ export default function App() {
   // Menekan "Akui" di halaman Data harus memadamkan titik pada rel seketika,
   // bukan pada cuplikan berikutnya.
   useSyncExternalStore(langganAlarm, versiAlarm);
+  // Mencatat atau menghapus temuan harus menyalakan atau memadamkan titik Pemeriksaan rutin seketika.
+  useSyncExternalStore(langganTemuan, versiTemuan);
 
   const newestAlert = controller.alerts[0]?.at ?? '';
   const [seenAlertAt, setSeenAlertAt] = useState('');
@@ -139,6 +151,18 @@ export default function App() {
     dots.ambang = {
       color: STATUS_COLOR[berlaku.rule.level],
       title: `tingkat siaga ${berlaku.rule.level}, aturan ${berlaku.rule.code}`,
+    };
+  }
+  /*
+   * Titik pada butir Pemeriksaan rutin: merah bila ada usulan tindakan
+   * darurat, kuning bila pemeriksaan terlambat atau wajib dijadwalkan.
+   * "Mendekati" tidak menyalakan apa pun; lihat `domain/rutin.ts`.
+   */
+  const rutin = isReference ? null : penandaRutin(bridge.id, controller.telemetry?.readings ?? null);
+  if (rutin) {
+    dots.rutin = {
+      color: rutin.tingkat === 'darurat' ? 'var(--state-bahaya)' : 'var(--state-waspada)',
+      title: rutin.judul,
     };
   }
   /*
@@ -219,7 +243,10 @@ export default function App() {
             onOpenCondition={() => setScreen('kondisi')}
             onOpenCamera={() => setScreen('kamera')}
             onOpenScenario={() => setScreen('scenario')}
-            onOpenAsset={() => setScreen('info')}
+            onOpenAsset={() => {
+              setAsetTab('data');
+              setScreen('info');
+            }}
             onOpenEvents={() => setScreen('data')}
           />
         );
@@ -234,6 +261,10 @@ export default function App() {
             onStop={controller.stopScenario}
             onTogglePause={controller.togglePause}
             onRepair={controller.recordRepair}
+            onRecordDamage={(padanan) => {
+              titipkanPadanan(padanan);
+              setScreen('pemeriksaan');
+            }}
           />
         );
       case 'data':
@@ -260,27 +291,47 @@ export default function App() {
         );
       case 'info':
         return (
-          <InfoPage
+          <AsetPage
             bridge={bridge}
             telemetry={controller.telemetry}
-            onOpen={(key) => setScreen(key)}
+            intervalMs={controller.intervalMs}
+            tab={asetTab}
+            onTab={setAsetTab}
+            onOpenRepair={() => setScreen('repair')}
           />
         );
-      case 'inspection':
-        return <InspectionPage bridge={bridge} />;
+      case 'pemeriksaan':
+        return <PemeriksaanPage bridge={bridge} />;
+      case 'rutin':
+        return <RutinPage bridge={bridge} telemetry={controller.telemetry} />;
+      case 'kesesuaian':
+        return <KesesuaianPage onOpen={setScreen} />;
+      case 'rute':
+        return (
+          <RutePage
+            bridge={bridge}
+            telemetry={controller.telemetry}
+            onRecordDamage={(padanan) => {
+              titipkanPadanan(padanan);
+              setScreen('pemeriksaan');
+            }}
+          />
+        );
+      case 'laporan':
+        return <LaporanPage bridge={bridge} telemetry={controller.telemetry} />;
       case 'kondisi':
         return (
           <ConditionPage
             telemetry={controller.telemetry}
-            onOpenInspection={() => setScreen('inspection')}
+            onOpenInspection={() => {
+              setAsetTab('inspeksi');
+              setScreen('info');
+            }}
+            onOpenPemeriksaan={() => setScreen('pemeriksaan')}
           />
         );
       case 'repair':
         return <RepairPage bridge={bridge} />;
-      case 'sensors':
-        return (
-          <SensorPage bridge={bridge} telemetry={controller.telemetry} intervalMs={controller.intervalMs} />
-        );
       case 'analysis':
         return (
           <AnalysisPage

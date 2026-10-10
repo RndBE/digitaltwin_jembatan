@@ -1,11 +1,10 @@
 import type { Bridge, Telemetry } from '../lib/types';
-import { PageHeader, SectionTitle, Stat } from '../components/Ui';
+import { LencanaContoh, PageHeader, SectionTitle, Stat } from '../components/Ui';
 import { Meter } from '../components/Charts';
 import { clockOf } from '../components/EventLog';
 import {
   CONDITION_LABELS,
   dossierFor,
-  inspeksiTerakhir,
   jarakWaktu,
   pekerjaanBerikutnya,
   pekerjaanBerjalan,
@@ -16,15 +15,12 @@ import {
 } from '../domain/demoData';
 
 /**
- * Berkas aset, dipecah menjadi empat halaman.
+ * Berkas aset: satu halaman, tiga tab (data teknis, inspeksi, sensor).
  *
- * Satu halaman panjang berisi lima tabel memaksa pembacanya menggulir untuk
- * mencari satu hal, padahal tiap bagiannya dipakai orang yang berbeda pada saat
- * yang berbeda: penanggung jawab membuka data teknisnya, pemeriksa membuka
- * riwayat inspeksi, pelaksana membuka pekerjaan perbaikan, teknisi membuka
- * inventaris sensor. Karena itu keempatnya berdiri sendiri sebagai halaman —
- * tetapi tetap satu berkas yang sama, jadi tinggal di satu modul dan membaca
- * satu sumber data.
+ * Ketiganya dipakai bergantian oleh orang yang sama saat menyiapkan
+ * pemeriksaan, jadi satu halaman dengan tab lebih cepat daripada tiga butir
+ * menu. Pekerjaan perbaikan tetap halaman sendiri, dibuka dari tombol di
+ * kepala halaman.
  */
 
 interface AssetPageProps {
@@ -58,38 +54,72 @@ const biayaTerealisasi = (dossier: BridgeDossier) =>
 
 /* ------------------------------------------------------------------ informasi */
 
-export interface InfoPageProps extends AssetPageProps {
-  onOpen: (key: 'inspection' | 'repair' | 'sensors') => void;
+export type AsetTab = 'data' | 'inspeksi' | 'sensor';
+
+const TAB_ASET: Array<{ key: AsetTab; label: string }> = [
+  { key: 'data', label: 'Data teknis' },
+  { key: 'inspeksi', label: 'Inspeksi' },
+  { key: 'sensor', label: 'Sensor' },
+];
+
+export interface AsetPageProps extends AssetPageProps {
+  /** Jarak antar cuplikan yang sedang dipakai, dalam milidetik. */
+  intervalMs?: number;
+  tab: AsetTab;
+  onTab: (tab: AsetTab) => void;
+  onOpenRepair: () => void;
 }
 
+/** Halaman Informasi: kepala dan tab; isi tiap tab ada di bawahnya. */
+export function AsetPage({ bridge, telemetry, intervalMs, tab, onTab, onOpenRepair }: AsetPageProps) {
+  const dossier = dossierFor(bridge.id);
+  if (!dossier) return <NoDossier bridge={bridge} what="berkas teknis" />;
+
+  return (
+    <div className="screen">
+      <PageHeader
+        kicker="Berkas aset"
+        title={bridge.name}
+        lede={`${bridge.type} di atas ${dossier.river}. ${dossier.roadClass}, milik ${dossier.owner}.`}
+        actions={
+          <button type="button" className="btn btn-sm d-print-none" onClick={onOpenRepair}>
+            Perbaikan · {dossier.maintenance.length} pekerjaan
+          </button>
+        }
+      />
+      <LencanaContoh />
+
+      <div className="seg" role="group" aria-label="Bagian halaman" style={{ marginBottom: 'var(--space-3)' }}>
+        {TAB_ASET.map((t) => (
+          <button key={t.key} type="button" className="seg-opt" aria-pressed={tab === t.key} onClick={() => onTab(t.key)}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'inspeksi' ? (
+        <RiwayatInspeksi dossier={dossier} />
+      ) : tab === 'sensor' ? (
+        <InventarisSensor bridge={bridge} dossier={dossier} telemetry={telemetry} intervalMs={intervalMs} />
+      ) : (
+        <DataTeknis bridge={bridge} dossier={dossier} />
+      )}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ data teknis */
+
 /**
- * Informasi: identitas aset.
+ * Data teknis: identitas aset.
  *
  * Isinya hal-hal yang jarang berubah — ukuran, kelas jalan, beban rencana,
  * siapa yang bertanggung jawab. Justru karena jarang berubah, inilah acuan yang
  * dipakai membaca semua angka yang berubah tiap menit di halaman lain.
  */
-export function InfoPage({ bridge, onOpen }: InfoPageProps) {
-  const dossier = dossierFor(bridge.id);
-  if (!dossier) return <NoDossier bridge={bridge} what="berkas teknis" />;
-
-  const inspection = inspeksiTerakhir(dossier);
-  const ongoing = pekerjaanBerjalan(dossier);
-  const planned = pekerjaanBerikutnya(dossier);
-
+function DataTeknis({ bridge, dossier }: { bridge: Bridge; dossier: BridgeDossier }) {
   return (
-    <div className="screen">
-      <PageHeader
-        kicker="Informasi aset"
-        title={bridge.name}
-        lede={
-          <>
-            {bridge.type} di atas {dossier.river}. {dossier.roadClass}, milik {dossier.owner}.
-            Berkas ini adalah data contoh untuk keperluan peraga.
-          </>
-        }
-      />
-
+    <>
       <section
         className="glass glass--chip stat-row"
         style={{
@@ -181,93 +211,19 @@ export function InfoPage({ bridge, onOpen }: InfoPageProps) {
         </div>
       </section>
 
-      {/*
-        * Tiga halaman sisanya disebut di sini, bukan disembunyikan di bilah
-        * samping saja: halaman identitas adalah tempat orang mendarat lebih
-        * dulu, dan dari situ ia menuju catatan yang dicarinya.
-        */}
-      <section>
-        <SectionTitle note="berkas terkait">Catatan lapangan</SectionTitle>
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))',
-            gap: 'var(--space-3)',
-          }}
-        >
-          <button
-            type="button"
-            className="glass card card-interactive"
-            style={{ padding: 'var(--space-4)', textAlign: 'left' }}
-            onClick={() => onOpen('inspection')}
-          >
-            <span className="card-kicker">Inspeksi</span>
-            <div className="card-title" style={{ fontSize: 15 }}>
-              {dossier.inspections.length} catatan
-            </div>
-            <div className="text-muted" style={{ fontSize: 12 }}>
-              {inspection ? `terakhir ${jarakWaktu(inspection.date)}` : 'belum ada catatan'}
-            </div>
-          </button>
-
-          <button
-            type="button"
-            className="glass card card-interactive"
-            style={{ padding: 'var(--space-4)', textAlign: 'left' }}
-            onClick={() => onOpen('repair')}
-          >
-            <span className="card-kicker">Perbaikan</span>
-            <div className="card-title" style={{ fontSize: 15 }}>
-              {dossier.maintenance.length} pekerjaan
-            </div>
-            <div className="text-muted" style={{ fontSize: 12 }}>
-              {ongoing
-                ? `${ongoing.work} · berjalan`
-                : planned
-                  ? `berikutnya ${jarakWaktu(planned.date)}`
-                  : 'tidak ada pekerjaan terbuka'}
-            </div>
-          </button>
-
-          <button
-            type="button"
-            className="glass card card-interactive"
-            style={{ padding: 'var(--space-4)', textAlign: 'left' }}
-            onClick={() => onOpen('sensors')}
-          >
-            <span className="card-kicker">Sensor</span>
-            <div className="card-title" style={{ fontSize: 15 }}>
-              {dossier.sensors.length} unit
-            </div>
-            <div className="text-muted" style={{ fontSize: 12 }}>
-              baterai terendah{' '}
-              {Math.min(...dossier.sensors.map((unit) => unit.battery))} %
-            </div>
-          </button>
-        </div>
-      </section>
-    </div>
+    </>
   );
 }
 
 /* ------------------------------------------------------------------- inspeksi */
 
 /** Inspeksi: apa yang pernah ditemukan orang di lapangan, bukan yang terbaca sensor. */
-export function InspectionPage({ bridge }: AssetPageProps) {
-  const dossier = dossierFor(bridge.id);
-  if (!dossier) return <NoDossier bridge={bridge} what="riwayat inspeksi" />;
-
+function RiwayatInspeksi({ dossier }: { dossier: BridgeDossier }) {
   const records = [...dossier.inspections].sort((a, b) => b.date.localeCompare(a.date));
   const latest = records[0];
 
   return (
-    <div className="screen">
-      <PageHeader
-        kicker="Riwayat inspeksi"
-        title={bridge.name}
-        lede="Pemeriksaan lapangan, temuannya, dan nilai kondisi yang diberikan pemeriksa. Nilai 0 berarti tanpa kerusakan, 5 berarti tidak berfungsi — skala yang sama dipakai di seluruh aplikasi."
-      />
-
+    <>
       <section
         className="glass glass--chip stat-row"
         style={{
@@ -295,7 +251,7 @@ export function InspectionPage({ bridge }: AssetPageProps) {
                 <th>Tanggal</th>
                 <th>Jenis</th>
                 <th>Pemeriksa</th>
-                <th className="num">Nilai</th>
+                <th className="num" title="0 = tanpa kerusakan, 5 = tidak berfungsi">Nilai (0–5)</th>
                 <th>Temuan</th>
               </tr>
             </thead>
@@ -319,7 +275,7 @@ export function InspectionPage({ bridge }: AssetPageProps) {
           </table>
         </div>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -342,6 +298,7 @@ export function RepairPage({ bridge }: AssetPageProps) {
         title={bridge.name}
         lede="Pekerjaan yang sudah selesai, yang sedang berjalan, dan yang sudah dijadwalkan. Biaya yang dijumlahkan hanya pekerjaan terealisasi — yang direncanakan belum tentu terserap."
       />
+      <LencanaContoh />
 
       <section
         className="glass glass--chip stat-row"
@@ -401,11 +358,6 @@ export function RepairPage({ bridge }: AssetPageProps) {
 
 /* --------------------------------------------------------------------- sensor */
 
-export interface SensorPageProps extends AssetPageProps {
-  /** Jarak antar cuplikan yang sedang dipakai, dalam milidetik. */
-  intervalMs?: number;
-}
-
 /** Jarak antar cuplikan, ditulis dalam satuan yang enak dibaca. */
 function jarakCuplikan(ms: number): string {
   if (ms >= 60_000) return `${Math.round(ms / 60_000)} menit`;
@@ -428,22 +380,23 @@ function lamaJalan(detik: number): string {
  * paket yang berhenti masuk sama tidak berartinya dengan paket yang lancar dari
  * alat yang bateranya tinggal seperempat.
  */
-export function SensorPage({ bridge, telemetry, intervalMs }: SensorPageProps) {
-  const dossier = dossierFor(bridge.id);
-  if (!dossier) return <NoDossier bridge={bridge} what="inventaris sensor" />;
-
+function InventarisSensor({
+  bridge,
+  dossier,
+  telemetry,
+  intervalMs,
+}: {
+  bridge: Bridge;
+  dossier: BridgeDossier;
+  telemetry?: Telemetry | null;
+  intervalMs?: number;
+}) {
   const units = dossier.sensors;
   const lowest = units.reduce((worst, unit) => (unit.battery < worst.battery ? unit : worst), units[0]);
   const weakest = units.reduce((worst, unit) => (unit.signal < worst.signal ? unit : worst), units[0]);
 
   return (
-    <div className="screen">
-      <PageHeader
-        kicker="Inventaris sensor"
-        title={bridge.name}
-        lede="Alat yang benar-benar terpasang di struktur, beserta letak, umur pemasangan, sisa baterai, dan kualitas sinyalnya. Kanal yang bergerak aneh belum tentu strukturnya — bisa juga alatnya yang mulai habis daya."
-      />
-
+    <>
       <section
         className="glass glass--chip stat-row"
         style={{
@@ -548,6 +501,6 @@ export function SensorPage({ bridge, telemetry, intervalMs }: SensorPageProps) {
           </div>
         ))}
       </div>
-    </div>
+    </>
   );
 }

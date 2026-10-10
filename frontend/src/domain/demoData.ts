@@ -78,6 +78,8 @@ export interface Contact {
 export interface OfflineNode {
   id: string;
   place: string;
+  /** Kanal sensor yang diukur simpul ini, bila diketahui. */
+  channel?: string;
   /** Sejak kapan simpulnya berhenti melapor. */
   since: string;
   reason: string;
@@ -134,7 +136,7 @@ const progo: BridgeDossier = {
     { id: 'SNS-08', channel: 'Angin', model: 'Anemometer ultrasonik', installed: '2024-06-02', battery: 88, signal: 92, location: 'Anemometer pilar' },
   ],
   offlineNodes: [
-    { id: 'SNS-23', place: 'Rangka atas panel 7, sisi utara', since: '2026-09-19T04:12:00+07:00', reason: 'Modul radio tidak menjawab sejak pemadaman listrik' },
+    { id: 'SNS-23', channel: 'vib', place: 'Rangka atas panel 7, sisi utara', since: '2026-09-19T04:12:00+07:00', reason: 'Modul radio tidak menjawab sejak pemadaman listrik' },
   ],
   cameras: [
     { id: 'CAM-01', place: 'Oprit barat, menghadap timur', view: 'oprit', resolution: '1920 × 1080', fps: 25, ptz: true, status: 'daring', recording: true },

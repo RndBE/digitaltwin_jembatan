@@ -87,6 +87,35 @@ export function PageHeader({
   );
 }
 
+/**
+ * Penanda bahwa isi halaman adalah data contoh.
+ *
+ * Aplikasi ini menampilkan data karangan di beberapa halaman (riwayat
+ * inspeksi, pekerjaan, inventaris sensor). Penonton demo dan pemeriksa yang
+ * baru membukanya tidak seharusnya menebak mana yang hasil lapangan, jadi
+ * halamannya mengatakannya di muka — bukan hanya di README.
+ */
+export function LencanaContoh({ children }: { children?: ReactNode }) {
+  return (
+    <div
+      role="note"
+      className="row"
+      style={{
+        gap: 8,
+        marginBottom: 'var(--space-3)',
+        padding: '6px 12px',
+        borderRadius: 12,
+        background: 'rgb(251 191 36 / 0.1)',
+        fontSize: 12,
+        lineHeight: 1.5,
+      }}
+    >
+      <span className="tag tag-waspada">DATA CONTOH</span>
+      <span>{children ?? 'Data karangan, bukan hasil lapangan.'}</span>
+    </div>
+  );
+}
+
 export function SectionTitle({ children, note }: { children: ReactNode; note?: ReactNode }) {
   return (
     <div

@@ -324,7 +324,7 @@ export function DataPage({ bridge, telemetry, series, alerts, source, intervalMs
             di atas; <strong>satu lajur = satu kanal ukur</strong>. Nilainya bukan bacaan sesaat
             melainkan <strong>rerata satu menit</strong>, sama seperti yang dikirim alat ukur di
             lapangan. Delapan kanal di sini adalah parameter yang diukur — jumlah alat yang
-            memasoknya ada di halaman Sensor. Tombol <strong>Unduh CSV</strong> dan{' '}
+            memasoknya ada di tab Sensor pada halaman Informasi. Tombol <strong>Unduh CSV</strong> dan{' '}
             <strong>Cetak</strong> mengambil seluruh baris yang sedang tersaring, bukan hanya yang
             terlihat di layar.
           </>

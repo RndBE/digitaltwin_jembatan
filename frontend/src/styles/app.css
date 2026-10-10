@@ -1644,3 +1644,59 @@
 .structure-inspector-check p { color: var(--mist-300); margin: 4px 0; }
 .structure-inspector .structure-model-note { border-top: 1px solid rgb(255 255 255 / .1); padding-top: 12px; margin-bottom: 0; color: var(--mist-300); font-size: 11px; }
 .structure-damage { color: var(--state-bahaya); }
+
+/* ------------------------------------------------------------------ *
+ |  Laporan pemeriksaan
+ * ------------------------------------------------------------------ */
+
+/*
+ * Lembar putih di atas antarmuka gelap, karena ia memang dokumen: yang
+ * dicetak atau disimpan sebagai PDF, dan dokumen cetak berlatar gelap tidak
+ * dapat dibaca atau difotokopi. Gaya cetaknya sama dengan gaya layar, jadi
+ * yang terlihat di sini adalah yang keluar dari printer.
+ */
+.laporan-lembar {
+  background: #fff;
+  color: #111;
+  border-radius: 8px;
+  padding: 28px 32px;
+  max-width: 1000px;
+  margin: 0 auto;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+/* Judul global berwarna putih untuk latar gelap; di atas kertas putih ia lenyap. */
+.laporan-lembar h2,
+.laporan-lembar h3 { color: #111; }
+.laporan-judul { text-align: center; font-size: 16px; margin: 0 0 6px; letter-spacing: 0.04em; }
+.laporan-catatan { text-align: center; font-weight: 700; color: #a15c00; margin: 0 0 10px; }
+.laporan-bagian { font-size: 13px; margin: 18px 0 4px; text-transform: uppercase; letter-spacing: 0.04em; }
+.laporan-kecil { font-size: 11.5px; color: #444; margin: 2px 0 6px; }
+.laporan-tabel { width: 100%; border-collapse: collapse; margin: 6px 0; }
+.laporan-tabel th,
+.laporan-tabel td { border: 1px solid #555; padding: 4px 7px; vertical-align: top; text-align: left; }
+.laporan-tabel th { background: #ece8dc; font-weight: 600; }
+.laporan-tabel em { color: #888; }
+.laporan-foto { display: flex; gap: 6px; margin-top: 4px; }
+.laporan-foto img { width: 110px; border: 1px solid #888; }
+.laporan-ttd { display: flex; justify-content: space-around; margin-top: 36px; text-align: center; }
+.laporan-garis { height: 54px; border-bottom: 1px solid #111; margin: 4px auto; width: 180px; }
+.laporan-kaki { font-size: 10.5px; color: #555; margin-top: 18px; border-top: 1px solid #bbb; padding-top: 6px; }
+
+@media print {
+  @page { size: A4; margin: 14mm; }
+  html, body { background: #fff !important; height: auto !important; overflow: visible !important; }
+  .sidebar, .app-header, .lompat-isi, .no-print { display: none !important; }
+  .app-shell, .app-container, .app-column {
+    display: block !important;
+    height: auto !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  .app-main { overflow: visible !important; height: auto !important; padding: 0 !important; margin: 0 !important; }
+  .screen { animation: none !important; }
+  .laporan-lembar { border-radius: 0; padding: 0; max-width: none; }
+  .laporan-tabel tr { page-break-inside: avoid; }
+  .laporan-bagian { page-break-after: avoid; }
+}

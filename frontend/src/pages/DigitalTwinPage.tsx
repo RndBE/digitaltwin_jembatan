@@ -17,6 +17,7 @@ import { GlbViewer, type GlbViewerHandle } from '../three/GlbViewer';
 import type { TwinScene } from '../three/proceduralBridge';
 import { INSPECTION_VIEWS } from '../three/structuralDetails';
 import { StructureInspector } from '../components/StructureInspector';
+import type { PadananBagian } from '../domain/lokasiModel';
 import { GLB_VIEW_ORDER, GLB_VIEW_PRESETS, type GlbViewMode, type PartsDocument } from '../three/mb3dModel';
 import {
   ConfidenceLegend,
@@ -42,6 +43,8 @@ export interface DigitalTwinPageProps {
   onTogglePause: () => void;
   /** Catat bahwa perbaikan sudah dikerjakan; membersihkan sisa kerusakan. */
   onRepair: () => void;
+  /** Buka form pemeriksaan detail, terisi dengan bagian model yang sedang dipilih. */
+  onRecordDamage: (padanan: PadananBagian) => void;
 }
 
 export function DigitalTwinPage(props: DigitalTwinPageProps) {
@@ -71,6 +74,7 @@ function LiveTwinView({
   onStop,
   onTogglePause,
   onRepair,
+  onRecordDamage,
 }: DigitalTwinPageProps) {
   const [scene, setScene] = useState<TwinScene | null>(null);
   const [hidden, setHidden] = useState<string[]>([]);
@@ -437,8 +441,9 @@ function LiveTwinView({
 
         <aside className="stack" style={{ gap: 'var(--space-3)' }}>
           <StructureInspector parts={scene?.parts ?? []} selectedId={selectedPart}
-            damaged={telemetry?.damagedParts ?? []} onSelect={inspectPart}
-            onFocus={() => inspectPart(selectedPart, true)} />
+            damaged={telemetry?.damagedParts ?? []} panels={bridge.model.panels ?? 10}
+            onSelect={inspectPart} onFocus={() => inspectPart(selectedPart, true)}
+            onRecord={onRecordDamage} />
           <div className="glass card" style={{ padding: 'var(--space-4)' }}>
             <span className="card-kicker">Kendali simulasi</span>
             <div className="stack" style={{ gap: 'var(--space-2)' }}>

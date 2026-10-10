@@ -9,10 +9,13 @@ export type ScreenKey =
   | 'data'
   | 'kamera'
   | 'info'
-  | 'inspection'
+  | 'pemeriksaan'
+  | 'rutin'
+  | 'kesesuaian'
+  | 'rute'
+  | 'laporan'
   | 'kondisi'
   | 'repair'
-  | 'sensors'
   | 'ambang'
   | 'analysis'
   | 'compare'
@@ -27,11 +30,12 @@ interface NavItem {
 /**
  * Navigasi dikelompokkan menurut sifat halamannya, bukan menurut asal datanya.
  *
- *   Pemantauan  — dua layar yang menampilkan keadaan sekarang apa adanya.
+ *   Pemantauan  — layar yang menampilkan keadaan sekarang apa adanya, termasuk
+ *                 tingkat siaga yang sedang berlaku dan ambangnya.
  *   Kajian      — layar yang mengolah keadaan itu: deret waktu, pembanding, dan
  *                 skenario yang mengubahnya dengan sengaja.
  *   Berkas aset — berkas yang tidak berubah tiap menit: identitas, catatan
- *                 pemeriksaan, pekerjaan, dan alat terpasang.
+ *                 pemeriksaan, alat terpasang, dan kondisi per elemen.
  *
  * Digital Twin sebelumnya berada di kelompok aset, dan itu salah tempat: model
  * 3D adalah layar pemantauan langsung, bukan lembar arsip.
@@ -53,10 +57,13 @@ export const SCREEN_TITLES: Record<ScreenKey, string> = {
   compare: 'Perbandingan',
   scenario: 'Skenario',
   info: 'Informasi',
-  inspection: 'Inspeksi',
+  pemeriksaan: 'Pemeriksaan detail',
+  rutin: 'Pemeriksaan rutin',
+  kesesuaian: 'Kesesuaian pedoman',
+  rute: 'Rute pemeriksaan',
+  laporan: 'Laporan pemeriksaan',
   kondisi: 'Kondisi elemen',
   repair: 'Pemeliharaan',
-  sensors: 'Sensor',
   ambang: 'Tingkat siaga',
 };
 
@@ -68,6 +75,7 @@ export const NAV_GROUPS: Array<{ title: string; items: NavItem[] }> = [
       { key: 'twin', label: 'Digital Twin', icon: 'cube' },
       { key: 'data', label: 'Data', icon: 'table' },
       { key: 'kamera', label: 'Kamera', icon: 'camera' },
+      { key: 'ambang', label: 'Tingkat siaga', icon: 'alert' },
     ],
   },
   {
@@ -82,14 +90,28 @@ export const NAV_GROUPS: Array<{ title: string; items: NavItem[] }> = [
     title: 'Berkas aset',
     items: [
       { key: 'info', label: 'Informasi', icon: 'doc' },
-      { key: 'inspection', label: 'Inspeksi', icon: 'clipboard' },
       { key: 'kondisi', label: 'Kondisi elemen', icon: 'layers' },
       // Butir Pemeliharaan disembunyikan dari navigasi untuk sementara.
-      // Halamannya tetap ada dan tetap dapat dibuka lewat kartu "Perbaikan"
+      // Halamannya tetap ada dan tetap dapat dibuka lewat tombol "Perbaikan"
       // di halaman Informasi; hapus komentar ini untuk memunculkannya lagi.
       // { key: 'repair', label: 'Pemeliharaan', icon: 'wrench' },
-      { key: 'sensors', label: 'Sensor', icon: 'radio' },
-      { key: 'ambang', label: 'Tingkat siaga', icon: 'alert' },
+    ],
+  },
+  /*
+   * Seluruh yang mengikuti Pedoman Pemeriksaan Jembatan Bina Marga berada di
+   * satu kelompok, bukan tersebar di Berkas aset: pemeriksa yang membuka
+   * aplikasi untuk satu pekerjaan — memeriksa — menemukan alatnya di satu
+   * tempat, dalam urutan kerjanya: berjalan di rute, mencatat kerusakan,
+   * mengisi formulir Rutin, mencetak laporan.
+   */
+  {
+    title: 'Pedoman Bina Marga',
+    items: [
+      { key: 'rute', label: 'Rute pemeriksaan', icon: 'layers' },
+      { key: 'pemeriksaan', label: 'Pemeriksaan detail', icon: 'doc' },
+      { key: 'rutin', label: 'Pemeriksaan rutin', icon: 'clipboard' },
+      { key: 'laporan', label: 'Laporan', icon: 'table' },
+      { key: 'kesesuaian', label: 'Kesesuaian pedoman', icon: 'bars' },
     ],
   },
 ];

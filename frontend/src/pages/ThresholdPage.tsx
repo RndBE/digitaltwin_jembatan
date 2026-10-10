@@ -150,7 +150,7 @@ export function ThresholdPage({ bridge, telemetry, source, alertSince }: Thresho
   return (
     <div className="screen">
       <PageHeader
-        kicker="Berkas aset"
+        kicker="Pemantauan"
         title="Tingkat siaga"
         lede={
           <>
