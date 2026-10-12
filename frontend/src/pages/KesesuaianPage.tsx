@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { ScreenKey } from '../components/Sidebar';
+import type { LayarTujuan } from '../components/Sidebar';
 import { PageHeader, Stat } from '../components/Ui';
 import {
   BUTIR,
@@ -25,7 +25,7 @@ const PILIHAN: Array<{ key: StatusKesesuaian | 'semua'; label: string }> = [
 ];
 
 export interface KesesuaianPageProps {
-  onOpen: (screen: ScreenKey) => void;
+  onOpen: (screen: LayarTujuan) => void;
 }
 
 export function KesesuaianPage({ onOpen }: KesesuaianPageProps) {
@@ -36,7 +36,7 @@ export function KesesuaianPage({ onOpen }: KesesuaianPageProps) {
   return (
     <div className="screen">
       <PageHeader
-        kicker="Pedoman Bina Marga"
+        kicker="Tentang"
         title="Kesesuaian pedoman"
         lede="Seberapa jauh aplikasi ini mengikuti Pedoman Pemeriksaan Jembatan Bina Marga No. 01/P/BM/2022."
       />
@@ -85,7 +85,7 @@ export function KesesuaianPage({ onOpen }: KesesuaianPageProps) {
                       </td>
                       <td>
                         {b.layar ? (
-                          <button type="button" className="btn btn-ghost btn-sm" onClick={() => onOpen(b.layar as ScreenKey)}>
+                          <button type="button" className="btn btn-ghost btn-sm" onClick={() => onOpen(b.layar as LayarTujuan)}>
                             Buka
                           </button>
                         ) : null}

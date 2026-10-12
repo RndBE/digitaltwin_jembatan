@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import type { Bridge, Telemetry } from '../lib/types';
 import type { Series } from '../hooks/useTelemetry';
 import {
@@ -17,7 +17,10 @@ import { GlbViewer, type GlbViewerHandle } from '../three/GlbViewer';
 import type { TwinScene } from '../three/proceduralBridge';
 import { INSPECTION_VIEWS } from '../three/structuralDetails';
 import { StructureInspector } from '../components/StructureInspector';
-import type { PadananBagian } from '../domain/lokasiModel';
+import { nilaiPerBagian, type PadananBagian } from '../domain/lokasiModel';
+import { nilaiTemuan } from '../domain/pedoman';
+import { daftarTemuan, langganTemuan, versiTemuan } from '../domain/temuan';
+import { NK_LEGENDA, type WarnaModel } from '../domain/warnaNk';
 import { GLB_VIEW_ORDER, GLB_VIEW_PRESETS, type GlbViewMode, type PartsDocument } from '../three/mb3dModel';
 import {
   ConfidenceLegend,
@@ -77,6 +80,20 @@ function LiveTwinView({
   onRecordDamage,
 }: DigitalTwinPageProps) {
   const [scene, setScene] = useState<TwinScene | null>(null);
+  /*
+   * Warna model: keadaan sensor sekarang, atau Nilai Kondisi hasil pemeriksa.
+   *
+   * Keduanya tidak pernah dicampur dalam satu warna (pedoman Bab 1 tidak
+   * menggabungkannya); pemeriksa yang ingin melihat sebaran kerusakan memilih
+   * mode kedua.
+   */
+  const [warna, setWarna] = useState<WarnaModel>('sensor');
+  const versiT = useSyncExternalStore(langganTemuan, versiTemuan);
+  const temuan = useMemo(() => nilaiTemuan(daftarTemuan(bridge.id)), [bridge.id, versiT]);
+  const nkBagian = useMemo(
+    () => nilaiPerBagian((scene?.parts ?? []).map((p) => p.id), bridge.model.panels ?? 10, temuan),
+    [scene, bridge.model.panels, temuan],
+  );
   const [hidden, setHidden] = useState<string[]>([]);
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
   const [picked, setPicked] = useState<string | null>(null);
@@ -241,6 +258,20 @@ function LiveTwinView({
               onClick={() => inspectPart(`joint-${Math.floor((bridge.model.panels ?? 10) / 2)}-1-0`, true)}>
               Detail sambungan
             </button>
+            <div className="seg" role="group" aria-label="Warna model" style={{ marginLeft: 'auto' }}>
+              <button type="button" className="seg-opt" aria-pressed={warna === 'sensor'} onClick={() => setWarna('sensor')}>
+                Sensor
+              </button>
+              <button
+                type="button"
+                className="seg-opt"
+                aria-pressed={warna === 'nk'}
+                title="Nilai Kondisi 0–5 hasil pemeriksa, Pedoman 01/P/BM/2022 Bab 5.7"
+                onClick={() => setWarna('nk')}
+              >
+                Nilai Kondisi
+              </button>
+            </div>
           </div>
           <Stage>
             <TrussViewer
@@ -255,6 +286,8 @@ function LiveTwinView({
               onPartPick={(id) => inspectPart(id)}
               onScale={setScaleMetres}
               onReady={handleReady}
+              warnaMode={warna}
+              nkBagian={nkBagian}
               onSpotMove={() => setSpotsMoved(true)}
             />
 
@@ -303,6 +336,26 @@ function LiveTwinView({
                 </span>
               ) : null}
             </div>
+
+            {warna === 'nk' ? (
+              <div
+                className="stage-chip"
+                style={{ bottom: 'calc(var(--space-3) + 30px)', left: 'var(--space-3)', top: 'auto', flexDirection: 'column', alignItems: 'flex-start', gap: 4 }}
+              >
+                <span>
+                  Nilai Kondisi pemeriksa · {Object.keys(nkBagian).length} bagian bertemuan
+                </span>
+                <span className="legenda-nk">
+                  {NK_LEGENDA.map((l) => (
+                    <span key={l.nk} className="legenda-nk-butir" title={l.label}>
+                      <span className="legenda-nk-kotak" style={{ background: l.warna }} />
+                      {l.nk}
+                    </span>
+                  ))}
+                  <span className="text-muted">· baja polos = belum ada temuan</span>
+                </span>
+              </div>
+            ) : null}
 
             {selectedPart ? (
               <div className="stage-chip twin-selection-chip">
@@ -441,7 +494,7 @@ function LiveTwinView({
 
         <aside className="stack" style={{ gap: 'var(--space-3)' }}>
           <StructureInspector parts={scene?.parts ?? []} selectedId={selectedPart}
-            damaged={telemetry?.damagedParts ?? []} panels={bridge.model.panels ?? 10}
+            damaged={telemetry?.damagedParts ?? []} panels={bridge.model.panels ?? 10} nkBagian={nkBagian}
             onSelect={inspectPart} onFocus={() => inspectPart(selectedPart, true)}
             onRecord={onRecordDamage} />
           <div className="glass card" style={{ padding: 'var(--space-4)' }}>

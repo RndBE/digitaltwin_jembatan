@@ -1,14 +1,16 @@
 import type { StructuralPart } from '../three/structuralDetails';
 import { PART_GROUPS } from '../three/proceduralBridge';
-import { lokasiLabel } from '../domain/pedoman';
+import { NK_KELAS, NK_URAIAN, lokasiLabel } from '../domain/pedoman';
 import { padankanBagian, ringkasPadanan, type PadananBagian } from '../domain/lokasiModel';
 
-export function StructureInspector({ parts, selectedId, damaged, panels, onSelect, onFocus, onRecord }: {
+export function StructureInspector({ parts, selectedId, damaged, panels, nkBagian, onSelect, onFocus, onRecord }: {
   parts: StructuralPart[];
   selectedId: string | null;
   damaged: string[];
   /** Banyak panel rangka; dipakai menerjemahkan bagian model ke kode dan lokasi pedoman. */
   panels: number;
+  /** Nilai Kondisi tertinggi tiap bagian dari temuan pemeriksa; bagian tanpa temuan tidak ada. */
+  nkBagian?: Record<string, number>;
   onSelect: (id: string | null) => void;
   onFocus: () => void;
   /** Dipanggil dengan padanan pedomannya untuk mencatat kerusakan pada bagian ini. */
@@ -17,6 +19,7 @@ export function StructureInspector({ parts, selectedId, damaged, panels, onSelec
   const part = parts.find((item) => item.id === selectedId);
   const damagedPart = part && damaged.includes(part.id);
   const padanan = part ? padankanBagian(part.id, panels) : null;
+  const nk = part ? nkBagian?.[part.id] : undefined;
   return (
     <section className="glass card structure-inspector" aria-label="Inspeksi komponen">
       <div className="structure-inspector-heading">
@@ -61,6 +64,14 @@ export function StructureInspector({ parts, selectedId, damaged, panels, onSelec
                   <br />
                   <span className="tabular">{lokasiLabel(padanan)}</span>
                 </p>
+                {nk !== undefined ? (
+                  <p>
+                    Nilai Kondisi pemeriksa:{' '}
+                    <span className={NK_KELAS[nk]}>NK {nk} · {NK_URAIAN[nk].label}</span>
+                  </p>
+                ) : (
+                  <p className="text-muted">Belum ada kerusakan tercatat pada bagian ini.</p>
+                )}
                 <button type="button" className="btn btn-secondary btn-sm" onClick={() => onRecord(padanan)}>
                   Catat kerusakan di sini
                 </button>

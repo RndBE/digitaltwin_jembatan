@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { SENSOR_SPOTS } from '../domain/sensors';
 import { SAG_DYNAMICS } from '../domain/deflectionScale';
+import { NK_WARNA_HEX, type WarnaModel } from '../domain/warnaNk';
 import { createConnection, createConnectionGeometry, type InspectionView, type StructuralPart } from './structuralDetails';
 
 /**
@@ -86,6 +87,17 @@ export interface SceneState {
    * menyampaikan sesuatu yang benar, bukan sekadar menarik perhatian.
    */
   sagStatus: MarkerStatus;
+  /**
+   * Cara batang diwarnai.
+   *
+   * `sensor`: regangan dan kerusakan skenario, yaitu keadaan sekarang.
+   * `nk`: Nilai Kondisi hasil pemeriksa menurut pedoman; telemetri tidak ikut
+   * mewarnai, supaya dua penilaian yang tidak boleh bercampur tidak tampil
+   * dalam satu warna.
+   */
+  warnaMode: WarnaModel;
+  /** Nilai Kondisi tertinggi tiap bagian (tag), dari temuan; bagian tanpa temuan tidak ada di sini. */
+  nkBagian: Record<string, number>;
   /** Tag elemen yang sedang rusak menurut skenario aktif. */
   damaged: string[];
   cars: number;
@@ -184,6 +196,8 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
     tiltRatio: 0,
     sagUnits: 0,
     sagStatus: 'AMAN',
+    warnaMode: 'sensor',
+    nkBagian: {},
     damaged: [],
     cars: 0,
     trucks: 0,
@@ -2321,6 +2335,27 @@ export function buildTwinScene({ host, panels, spanUnits, spots, callbacks }: Bu
   const paintMember = (mesh: THREE.Mesh, pulse: number) => {
     const material = mesh.material as THREE.MeshStandardMaterial;
     const tag = mesh.userData.tag as string;
+    if (state.warnaMode === 'nk') {
+      const dipilih = tag === selectedPart || (selectedGroup && mesh.userData.grp === selectedGroup);
+      if (dipilih) {
+        material.color.copy(selectColor);
+        material.emissive.copy(selectColor);
+        material.emissiveIntensity = 0.25;
+        return;
+      }
+      const nk = state.nkBagian[tag];
+      if (nk === undefined) {
+        // Tanpa temuan: baja polos, sedikit diredupkan supaya yang bernilai menonjol.
+        material.emissiveIntensity = 0;
+        material.color.copy((mesh.userData.tint as THREE.Color | undefined) ?? steelColor).multiplyScalar(0.78);
+        return;
+      }
+      const warna = new THREE.Color(NK_WARNA_HEX[Math.min(5, Math.max(0, nk))]);
+      material.color.copy(warna);
+      material.emissive.copy(warna);
+      material.emissiveIntensity = nk >= 3 ? 0.18 + (nk >= 4 ? pulse * 0.25 : 0) : 0.1;
+      return;
+    }
     if (state.damaged.includes(tag)) {
       material.color.copy(hotColor);
       material.emissive.copy(hotColor);

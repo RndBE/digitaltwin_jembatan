@@ -1,4 +1,4 @@
-import { ELEMEN_BY_KODE, type Temuan } from './pedoman';
+import { ELEMEN_BY_KODE, type Temuan, type TemuanBernilai } from './pedoman';
 
 /**
  * Padanan bagian model 3D dengan kode elemen dan lokasi menurut pedoman.
@@ -111,6 +111,44 @@ export function ringkasPadanan(p: PadananBagian): string {
 /** Bentuk yang dipakai `lokasiLabel`; sumber tunggal supaya tidak berselisih. */
 export function lokasiDari(p: PadananBagian): Pick<Temuan, 'bentang' | 'posisi' | 'x' | 'y' | 'z'> {
   return { bentang: p.bentang, posisi: p.posisi, x: p.x, y: p.y, z: p.z };
+}
+
+/* ------------------------------------------------------------------ nilai per bagian */
+
+/** Apakah sebuah temuan menunjuk bagian model ini: elemennya sama dan setiap sumbu yang diisi cocok. */
+function menunjuk(t: Temuan, p: PadananBagian): boolean {
+  if (t.elemen !== p.elemen) return false;
+  // Tanpa lokasi Level 5, penilaian berlaku untuk seluruh elemen (Lampiran F.4).
+  const tanpaLokasi = t.x === undefined && t.y === undefined && t.z === undefined && !t.posisi;
+  if (tanpaLokasi) return true;
+  if (t.posisi && t.posisi !== p.posisi) return false;
+  if (t.x !== undefined && t.x !== p.x) return false;
+  if (t.y !== undefined && t.y !== p.y) return false;
+  if (t.z !== undefined && t.z !== p.z) return false;
+  return true;
+}
+
+/**
+ * Nilai Kondisi tertinggi tiap bagian model, dari temuan pemeriksa.
+ *
+ * Kebalikan `padankanBagian`: bagian yang tidak ditunjuk temuan mana pun tidak
+ * ada di hasilnya, jadi pemanggil dapat membedakan "belum ada kerusakan
+ * tercatat" dari "dinilai 0".
+ */
+export function nilaiPerBagian(
+  idBagian: string[],
+  panels: number,
+  temuan: TemuanBernilai[],
+): Record<string, number> {
+  const hasil: Record<string, number> = {};
+  for (const id of idBagian) {
+    const padanan = padankanBagian(id, panels);
+    if (!padanan) continue;
+    for (const t of temuan) {
+      if (menunjuk(t, padanan)) hasil[id] = Math.max(hasil[id] ?? 0, t.skor.nk);
+    }
+  }
+  return hasil;
 }
 
 /* ------------------------------------------------------------------ titipan */

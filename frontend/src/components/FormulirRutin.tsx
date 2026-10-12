@@ -24,6 +24,7 @@ import {
   versiAdministrasi,
 } from '../domain/administrasi';
 import { petugas } from '../domain/alarms';
+import { BilahBagian, type BagianFormulir } from './BilahBagian';
 
 /**
  * Formulir Pemeriksaan Rutin, Bagian ke-1 dan ke-2 (Tabel A.16–A.19).
@@ -38,6 +39,12 @@ import { petugas } from '../domain/alarms';
  * tidak dapat ditandai selesai sebelum seluruh butir dijawab dan setiap
  * jawaban "Ya" punya lokasi.
  */
+
+/** Lembar isian Rutin dibagi dua (Bab 8.4, Lampiran A). */
+const BAGIAN: BagianFormulir[] = [
+  { id: 'rutin-bagian-1', judul: 'Administrasi, tindakan darurat, catatan', rujukan: 'Bab 8.4.1 · hlm. 81' },
+  { id: 'rutin-bagian-2', judul: 'Kondisi jembatan', rujukan: 'Bab 8.4.2 · hlm. 82' },
+];
 
 export interface FormulirRutinProps {
   bridge: Bridge;
@@ -196,9 +203,9 @@ export function FormulirRutin({ bridge, telemetry }: FormulirRutinProps) {
 
   return (
     <div className="stack" style={{ gap: 'var(--space-3)' }}>
-      <div className="glass card" style={{ padding: 'var(--space-4)' }}>
+      <div id="rutin-bagian-1" className="glass card" style={{ padding: 'var(--space-4)', scrollMarginTop: 'var(--space-3)' }}>
         <div className="row" style={{ justifyContent: 'space-between' }}>
-          <span className="card-kicker">Data administrasi</span>
+          <span className="card-kicker">Bagian ke-1 · Data administrasi</span>
           <div className="seg" role="group" aria-label="Tahun lembar">
             {daftarTahun.map((t) => (
               <button key={t} type="button" className="seg-opt" aria-pressed={tahun === t} onClick={() => gantiTahun(t)}>
@@ -309,14 +316,34 @@ export function FormulirRutin({ bridge, telemetry }: FormulirRutinProps) {
         ) : null}
       </div>
 
+      <div className="glass card" style={{ padding: 'var(--space-4)' }}>
+        <span className="card-kicker">Catatan</span>
+        {(
+          [
+            ['sesuaiInventarisasi', 'Apakah kondisi jembatan sesuai dengan Pemeriksaan Inventarisasi terakhir?'],
+            ['sesuaiDetail', 'Apakah kondisi jembatan sesuai dengan Pemeriksaan Detail terakhir?'],
+          ] as const
+        ).map(([kunci, tanya]) => (
+          <div key={kunci} className="row" style={{ justifyContent: 'space-between', marginTop: 8 }}>
+            <span style={{ fontSize: 13 }}>{tanya}</span>
+            <YaTidak nama={tanya} nilai={lembar[kunci]} mati={terkunci} onPilih={(v) => ubah((l) => ({ ...l, [kunci]: v }))} />
+          </div>
+        ))}
+      </div>
+
       {BAGIAN_FORM.map((bagian) => {
         const isi = BUTIR_FORM.filter((b) => b.bagian === bagian);
         const elemen = [...new Set(isi.map((b) => b.elemen))];
         const dijawab = isi.filter((b) => lembar.jawaban[b.id]?.ya != null).length;
         return (
-          <div key={bagian} className="glass card" style={{ padding: 0, overflow: 'hidden' }}>
+          <div
+            key={bagian}
+            id={bagian === BAGIAN_FORM[0] ? 'rutin-bagian-2' : undefined}
+            className="glass card"
+            style={{ padding: 0, overflow: 'hidden', scrollMarginTop: 'var(--space-3)' }}
+          >
             <div className="card-head">
-              <span className="card-kicker">{bagian}</span>
+              <span className="card-kicker">{bagian === BAGIAN_FORM[0] ? 'Bagian ke-2 · ' : ''}{bagian}</span>
               <span className="text-muted" style={{ fontSize: 11 }}>{dijawab} / {isi.length}</span>
             </div>
             <div style={{ overflowX: 'auto' }}>
@@ -340,21 +367,6 @@ export function FormulirRutin({ bridge, telemetry }: FormulirRutinProps) {
           </div>
         );
       })}
-
-      <div className="glass card" style={{ padding: 'var(--space-4)' }}>
-        <span className="card-kicker">Catatan</span>
-        {(
-          [
-            ['sesuaiInventarisasi', 'Apakah kondisi jembatan sesuai dengan Pemeriksaan Inventarisasi terakhir?'],
-            ['sesuaiDetail', 'Apakah kondisi jembatan sesuai dengan Pemeriksaan Detail terakhir?'],
-          ] as const
-        ).map(([kunci, tanya]) => (
-          <div key={kunci} className="row" style={{ justifyContent: 'space-between', marginTop: 8 }}>
-            <span style={{ fontSize: 13 }}>{tanya}</span>
-            <YaTidak nama={tanya} nilai={lembar[kunci]} mati={terkunci} onPilih={(v) => ubah((l) => ({ ...l, [kunci]: v }))} />
-          </div>
-        ))}
-      </div>
 
       <div className="glass card" style={{ padding: 'var(--space-4)' }}>
         <span className="card-kicker">Selesai</span>
@@ -391,6 +403,7 @@ export function FormulirRutin({ bridge, telemetry }: FormulirRutinProps) {
           <p role="alert" style={{ fontSize: 12, margin: '8px 0 0', color: 'var(--state-waspada)' }}>{peringatan}</p>
         ) : null}
       </div>
+      <BilahBagian bagian={BAGIAN} />
     </div>
   );
 }

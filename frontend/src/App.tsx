@@ -3,12 +3,12 @@ import type { Bridge } from './lib/types';
 import { api, ping } from './lib/api';
 import { BRIDGES as LOCAL_BRIDGES, DEFAULT_BRIDGE_ID } from './domain/bridges';
 import { useTelemetry } from './hooks/useTelemetry';
-import { Sidebar, SCREEN_TITLES, type ScreenKey, type SidebarProps } from './components/Sidebar';
+import { Sidebar, SCREEN_TITLES, type LayarTujuan, type ScreenKey, type SidebarProps } from './components/Sidebar';
 import { AppHeader } from './components/AppHeader';
-import { Backdrop } from './components/Ui';
+import { Backdrop, TabBar } from './components/Ui';
 import { activeRule } from './domain/alertRules';
 import { STATUS_COLOR } from './domain/sensors';
-import { DEFAULT_SCREEN, pathForScreen, screenFromPath } from './lib/routes';
+import { DEFAULT_SCREEN, pathForScreen, screenFromPath, tujuanFromPath } from './lib/routes';
 import { keluar, langganSesi, pulihkanSesi, sesiKini } from './lib/session';
 import { LoginPage } from './pages/LoginPage';
 import { langganAlarm, ringkasAlarm, versiAlarm } from './domain/alarms';
@@ -24,6 +24,9 @@ import { PemeriksaanPage } from './pages/PemeriksaanPage';
 import { RutinPage } from './pages/RutinPage';
 import { KesesuaianPage } from './pages/KesesuaianPage';
 import { RutePage } from './pages/RutePage';
+import { PeriksaPage } from './pages/PeriksaPage';
+import { InventarisasiPage } from './pages/InventarisasiPage';
+import { KhususPage } from './pages/KhususPage';
 import { LaporanPage } from './pages/LaporanPage';
 import { AsetPage, RepairPage, type AsetTab } from './pages/AssetPages';
 import { ThresholdPage } from './pages/ThresholdPage';
@@ -40,6 +43,38 @@ import { ScenarioPage } from './pages/ScenarioPage';
  * persis di kedua keadaan, yang berbeda hanya keterangan sumber data.
  */
 const API_ENABLED = import.meta.env.VITE_API_ENABLED === 'true';
+
+type AnalisaTab = 'deret' | 'banding' | 'skenario';
+type DetailTab = 'catat' | 'rute';
+
+const TAB_ANALISA: Array<{ key: AnalisaTab; label: string }> = [
+  { key: 'deret', label: 'Deret waktu' },
+  { key: 'banding', label: 'Perbandingan' },
+  { key: 'skenario', label: 'Skenario' },
+];
+
+const TAB_DETAIL: Array<{ key: DetailTab; label: string }> = [
+  { key: 'catat', label: 'Catat kerusakan' },
+  { key: 'rute', label: 'Rute pemeriksaan' },
+];
+
+/** Layar dan tab yang ditunjuk sebuah tujuan; tujuan lama menjadi tab. */
+function terjemah(tujuan: LayarTujuan): { screen: ScreenKey; analisa?: AnalisaTab; detail?: DetailTab } {
+  switch (tujuan) {
+    case 'analysis':
+      return { screen: 'analisa', analisa: 'deret' };
+    case 'compare':
+      return { screen: 'analisa', analisa: 'banding' };
+    case 'scenario':
+      return { screen: 'analisa', analisa: 'skenario' };
+    case 'rute':
+      return { screen: 'pemeriksaan', detail: 'rute' };
+    case 'pemeriksaan':
+      return { screen: 'pemeriksaan', detail: 'catat' };
+    default:
+      return { screen: tujuan };
+  }
+}
 
 export default function App() {
   const [apiAvailable, setApiAvailable] = useState(false);
@@ -65,9 +100,20 @@ export default function App() {
    * halaman tidak membuang tempat berdirinya. Alamat yang tidak dikenali
    * jatuh ke dashboard, dan efek di bawah membetulkan bilah alamatnya.
    */
-  const [screen, setScreen] = useState<ScreenKey>(
-    () => screenFromPath(window.location.pathname) ?? DEFAULT_SCREEN,
-  );
+  const [awal] = useState(() => terjemah(tujuanFromPath(window.location.pathname) ?? DEFAULT_SCREEN));
+  const [screen, setScreen] = useState<ScreenKey>(awal.screen);
+  // Tab pada halaman yang memuat beberapa tampilan; di sini supaya tombol dari
+  // halaman lain dapat memilihnya.
+  const [analisaTab, setAnalisaTab] = useState<AnalisaTab>(awal.analisa ?? 'deret');
+  const [detailTab, setDetailTab] = useState<DetailTab>(awal.detail ?? 'catat');
+
+  /** Buka sebuah tujuan, termasuk yang kini berupa tab di halaman lain. */
+  const bukaLayar = (tujuan: LayarTujuan) => {
+    const t = terjemah(tujuan);
+    if (t.analisa) setAnalisaTab(t.analisa);
+    if (t.detail) setDetailTab(t.detail);
+    setScreen(t.screen);
+  };
   // Tab halaman Informasi; di sini supaya tautan dari halaman lain dapat memilihnya.
   const [asetTab, setAsetTab] = useState<AsetTab>('data');
 
@@ -160,7 +206,7 @@ export default function App() {
    */
   const rutin = isReference ? null : penandaRutin(bridge.id, controller.telemetry?.readings ?? null);
   if (rutin) {
-    dots.rutin = {
+    dots.periksa = {
       color: rutin.tingkat === 'darurat' ? 'var(--state-bahaya)' : 'var(--state-waspada)',
       title: rutin.judul,
     };
@@ -222,7 +268,7 @@ export default function App() {
   // Tombol maju dan mundur peramban: alamatnya sudah berpindah, layarnya yang
   // menyusul. Perpindahan lewat rel navigasi tidak lewat sini.
   useEffect(() => {
-    const onPop = () => setScreen(screenFromPath(window.location.pathname) ?? DEFAULT_SCREEN);
+    const onPop = () => bukaLayar(tujuanFromPath(window.location.pathname) ?? DEFAULT_SCREEN);
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
   }, []);
@@ -242,7 +288,8 @@ export default function App() {
             onOpenTwin={() => setScreen('twin')}
             onOpenCondition={() => setScreen('kondisi')}
             onOpenCamera={() => setScreen('kamera')}
-            onOpenScenario={() => setScreen('scenario')}
+            onOpenScenario={() => bukaLayar('scenario')}
+            onOpenPeriksa={() => setScreen('periksa')}
             onOpenAsset={() => {
               setAsetTab('data');
               setScreen('info');
@@ -263,7 +310,7 @@ export default function App() {
             onRepair={controller.recordRepair}
             onRecordDamage={(padanan) => {
               titipkanPadanan(padanan);
-              setScreen('pemeriksaan');
+              bukaLayar('pemeriksaan');
             }}
           />
         );
@@ -300,23 +347,34 @@ export default function App() {
             onOpenRepair={() => setScreen('repair')}
           />
         );
+      case 'periksa':
+        return <PeriksaPage bridge={bridge} telemetry={controller.telemetry} onOpen={bukaLayar} />;
+      case 'inventarisasi':
+        return <InventarisasiPage bridge={bridge} onOpen={setScreen} />;
       case 'pemeriksaan':
-        return <PemeriksaanPage bridge={bridge} />;
-      case 'rutin':
-        return <RutinPage bridge={bridge} telemetry={controller.telemetry} />;
-      case 'kesesuaian':
-        return <KesesuaianPage onOpen={setScreen} />;
-      case 'rute':
         return (
-          <RutePage
-            bridge={bridge}
-            telemetry={controller.telemetry}
-            onRecordDamage={(padanan) => {
-              titipkanPadanan(padanan);
-              setScreen('pemeriksaan');
-            }}
-          />
+          <>
+            <TabBar tabs={TAB_DETAIL} value={detailTab} onChange={setDetailTab} label="Tampilan pemeriksaan detail" />
+            {detailTab === 'rute' ? (
+              <RutePage
+                bridge={bridge}
+                telemetry={controller.telemetry}
+                onRecordDamage={(padanan) => {
+                  titipkanPadanan(padanan);
+                  setDetailTab('catat');
+                }}
+              />
+            ) : (
+              <PemeriksaanPage bridge={bridge} />
+            )}
+          </>
         );
+      case 'rutin':
+        return <RutinPage bridge={bridge} telemetry={controller.telemetry} onOpen={setScreen} />;
+      case 'khusus':
+        return <KhususPage bridge={bridge} telemetry={controller.telemetry} />;
+      case 'kesesuaian':
+        return <KesesuaianPage onOpen={bukaLayar} />;
       case 'laporan':
         return <LaporanPage bridge={bridge} telemetry={controller.telemetry} />;
       case 'kondisi':
@@ -332,40 +390,42 @@ export default function App() {
         );
       case 'repair':
         return <RepairPage bridge={bridge} />;
-      case 'analysis':
+      case 'analisa':
         return (
-          <AnalysisPage
-            bridge={bridge}
-            telemetry={controller.telemetry}
-            series={controller.series}
-            source={controller.source}
-          />
+          <>
+            <TabBar tabs={TAB_ANALISA} value={analisaTab} onChange={setAnalisaTab} label="Tampilan analisa" />
+            {analisaTab === 'deret' ? (
+              <AnalysisPage
+                bridge={bridge}
+                telemetry={controller.telemetry}
+                series={controller.series}
+                source={controller.source}
+              />
+            ) : analisaTab === 'banding' ? (
+              <ComparePage
+                telemetry={controller.telemetry}
+                series={controller.series}
+                reference={controller.reference}
+                referenceFrozen={controller.referenceFrozen}
+                onOpenScenario={() => setAnalisaTab('skenario')}
+              />
+            ) : (
+              <ScenarioPage
+                telemetry={controller.telemetry}
+                residual={controller.residual}
+                onRun={controller.setScenario}
+                onStop={controller.stopScenario}
+                onTogglePause={controller.togglePause}
+                onRepair={controller.recordRepair}
+                onOpenTwin={() => setScreen('twin')}
+                onOpenCompare={() => setAnalisaTab('banding')}
+                controlError={controller.controlError}
+              />
+            )}
+          </>
         );
-      case 'compare':
-        return (
-          <ComparePage
-            telemetry={controller.telemetry}
-            series={controller.series}
-            reference={controller.reference}
-            referenceFrozen={controller.referenceFrozen}
-            onOpenScenario={() => setScreen('scenario')}
-          />
-        );
-      case 'scenario':
       default:
-        return (
-          <ScenarioPage
-            telemetry={controller.telemetry}
-            residual={controller.residual}
-            onRun={controller.setScenario}
-            onStop={controller.stopScenario}
-            onTogglePause={controller.togglePause}
-            onRepair={controller.recordRepair}
-            onOpenTwin={() => setScreen('twin')}
-            onOpenCompare={() => setScreen('compare')}
-            controlError={controller.controlError}
-          />
-        );
+        return null;
     }
   };
 
@@ -403,7 +463,7 @@ export default function App() {
       <div className="app-container">
         <Sidebar
           screen={screen}
-          onScreen={setScreen}
+          onScreen={bukaLayar}
           bridges={bridges}
           bridge={bridge}
           onBridge={setBridgeId}

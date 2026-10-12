@@ -57,11 +57,19 @@ export function PageHeader({
   lede,
   actions,
   leading,
+  rujukan,
 }: {
   kicker?: string;
   title: string;
   lede?: ReactNode;
   actions?: ReactNode;
+  /**
+   * Bab dan halaman pedoman yang menjadi dasar halaman ini, mis.
+   * `Bab 8 · hlm. 75`. Ditulis sebagai lencana kecil di baris tombol, supaya
+   * pemeriksa dapat mencocokkan layar dengan kertasnya tanpa membuka peta
+   * kesesuaian.
+   */
+  rujukan?: string;
   /**
    * Kendali milik halaman yang duduk di ujung kiri baris yang sama dengan
    * lencana status. Tanpa ini baris itu hanya berisi satu benda kecil di ujung
@@ -75,9 +83,18 @@ export function PageHeader({
     <header className="page-header">
       <h1 className="sr-only">{kicker ? `${kicker} · ${title}` : title}</h1>
 
-      {actions || leading ? (
+      {actions || leading || rujukan ? (
         <div className="page-header-aksi">
           {leading ? <div className="row page-header-utama">{leading}</div> : null}
+          {rujukan ? (
+            <span
+              className="tag tag-outline rujukan-pedoman"
+              title="Pedoman Pemeriksaan Jembatan No. 01/P/BM/2022 (Bina Marga)"
+              style={leading ? undefined : { marginRight: 'auto' }}
+            >
+              Pedoman 01/P/BM/2022 · {rujukan}
+            </span>
+          ) : null}
           {actions}
         </div>
       ) : null}
@@ -184,4 +201,41 @@ export function Stage({ children }: { children: ReactNode }) {
 /** Latar senja tetap di belakang seluruh antarmuka. */
 export function Backdrop() {
   return <div className="backdrop" aria-hidden="true" />;
+}
+
+
+/**
+ * Deret tab untuk halaman yang memuat beberapa tampilan.
+ *
+ * Satu kendali tersegmentasi, bukan sub-menu: tab yang berpindah isi di tempat
+ * yang sama menjaga rel navigasi tetap pendek.
+ */
+export function TabBar<K extends string>({
+  tabs,
+  value,
+  onChange,
+  label,
+}: {
+  tabs: Array<{ key: K; label: string }>;
+  value: K;
+  onChange: (key: K) => void;
+  label: string;
+}) {
+  return (
+    <div className="tabbar" role="group" aria-label={label}>
+      <div className="seg">
+        {tabs.map((tab) => (
+          <button
+            key={tab.key}
+            type="button"
+            className="seg-opt"
+            aria-pressed={value === tab.key}
+            onClick={() => onChange(tab.key)}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
 }

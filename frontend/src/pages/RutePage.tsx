@@ -174,9 +174,10 @@ export function RutePage({ bridge, telemetry, onRecordDamage }: RutePageProps) {
   return (
     <div className="screen">
       <PageHeader
-        kicker="Pedoman Bina Marga"
+        kicker="Pemeriksaan detail"
         title="Rute pemeriksaan"
         lede="Stasiun dari A1 ke A2, dengan temuan terdahulu dan sensor di tiap stasiun."
+        rujukan="Bab 5.5 · hlm. 41"
       />
 
       <div className="row" style={{ justifyContent: 'space-between', marginBottom: 'var(--space-3)' }}>

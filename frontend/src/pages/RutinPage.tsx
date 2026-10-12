@@ -5,9 +5,11 @@ import { nilaiTemuan } from '../domain/pedoman';
 import { daftarTemuan, langganTemuan, versiTemuan } from '../domain/temuan';
 import { STATUS_JADWAL_KELAS, STATUS_JADWAL_LABEL, susunJadwal } from '../domain/jadwal';
 import { periksaSmks } from '../domain/smks';
-import { susunUsulan, type Usulan } from '../domain/usulan';
+import { susunUsulan } from '../domain/usulan';
 import { PageHeader } from '../components/Ui';
 import { FormulirRutin } from '../components/FormulirRutin';
+import { TabelUsulan } from '../components/TabelUsulan';
+import type { ScreenKey } from '../components/Sidebar';
 
 /**
  * Pemeriksaan rutin dan tindak lanjutnya.
@@ -30,6 +32,7 @@ import { FormulirRutin } from '../components/FormulirRutin';
 export interface RutinPageProps {
   bridge: Bridge;
   telemetry: Telemetry | null;
+  onOpen?: (screen: ScreenKey) => void;
 }
 
 const Ya = ({ nilai }: { nilai: boolean | null }) =>
@@ -41,43 +44,7 @@ const Ya = ({ nilai }: { nilai: boolean | null }) =>
     <span className="tag tag-normal">Tidak</span>
   );
 
-function TabelUsulan({ baris, kosong, tampilkanUji }: { baris: Usulan[]; kosong: string; tampilkanUji?: boolean }) {
-  return (
-    <div style={{ overflowX: 'auto' }}>
-      <table className="table">
-        <thead>
-          <tr>
-            <th>Kode</th>
-            <th>Elemen</th>
-            <th>Lokasi</th>
-            <th>Alasan</th>
-            {tampilkanUji ? <th>Pengujian yang disarankan</th> : null}
-          </tr>
-        </thead>
-        <tbody>
-          {baris.length === 0 ? (
-            <tr>
-              <td colSpan={tampilkanUji ? 5 : 4} className="text-muted">{kosong}</td>
-            </tr>
-          ) : null}
-          {baris.map((u) => (
-            <tr key={`${u.jenis}-${u.kode}-${u.sumber}`}>
-              <td className="tabular" style={{ whiteSpace: 'nowrap' }}>{u.kode}</td>
-              <td style={{ minWidth: 150 }}>{u.elemen}</td>
-              <td style={{ minWidth: 140 }}>{u.lokasi}</td>
-              <td style={{ minWidth: 260, lineHeight: 1.5 }}>
-                {u.alasan}
-              </td>
-              {tampilkanUji ? <td style={{ minWidth: 240, lineHeight: 1.5 }}>{u.pengujian}</td> : null}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-export function RutinPage({ bridge, telemetry }: RutinPageProps) {
+export function RutinPage({ bridge, telemetry, onOpen }: RutinPageProps) {
   const dossier = dossierFor(bridge.id);
   const versi = useSyncExternalStore(langganTemuan, versiTemuan);
   const temuan = useMemo(() => nilaiTemuan(daftarTemuan(bridge.id)), [bridge.id, versi]);
@@ -91,7 +58,7 @@ export function RutinPage({ bridge, telemetry }: RutinPageProps) {
     return (
       <div className="screen">
         <PageHeader
-          kicker="Pedoman Bina Marga"
+          kicker="Pemeriksaan"
           title="Pemeriksaan rutin"
           lede="Aset ini adalah model acuan dan tidak memiliki riwayat inspeksi atau inventaris sensor."
         />
@@ -105,9 +72,10 @@ export function RutinPage({ bridge, telemetry }: RutinPageProps) {
   return (
     <div className="screen">
       <PageHeader
-        kicker="Pedoman Bina Marga"
+        kicker="Pemeriksaan"
         title="Pemeriksaan rutin"
-        lede="Jadwal, usulan tindakan darurat dan pemeriksaan khusus, serta SMKS."
+        lede="Jadwal, usulan tindakan darurat, dan SMKS; usulan pemeriksaan khusus ada di halaman Khusus."
+        rujukan="Bab 8 · hlm. 75–87"
       />
 
       <div className="seg" role="group" aria-label="Bagian halaman" style={{ marginBottom: 'var(--space-3)' }}>
@@ -173,16 +141,30 @@ export function RutinPage({ bridge, telemetry }: RutinPageProps) {
         <TabelUsulan baris={usulan.darurat} kosong="Tidak ada." />
       </div>
 
-      <div className="glass card" style={{ padding: 0, overflow: 'hidden', marginBottom: 'var(--space-3)' }}>
-        <div className="card-head">
-          <span className="card-kicker">Usulan pemeriksaan khusus</span>
+      {usulan.khusus.length > 0 ? (
+        <div
+          role="status"
+          className="row"
+          style={{
+            gap: 'var(--space-3)',
+            justifyContent: 'space-between',
+            marginBottom: 'var(--space-3)',
+            padding: '8px 14px',
+            borderRadius: 12,
+            background: 'rgb(251 191 36 / 0.1)',
+            fontSize: 12.5,
+          }}
+        >
+          <span>
+            <strong>{usulan.khusus.length}</strong> elemen diusulkan untuk Pemeriksaan Khusus.
+          </span>
+          {onOpen ? (
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => onOpen('khusus')}>
+              Lihat usulan
+            </button>
+          ) : null}
         </div>
-        <TabelUsulan
-          baris={usulan.khusus}
-          kosong="Tidak ada."
-          tampilkanUji
-        />
-      </div>
+      ) : null}
 
       <div className="glass card" style={{ padding: 0, overflow: 'hidden', marginBottom: 'var(--space-3)' }}>
         <div className="card-head">

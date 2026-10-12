@@ -1,4 +1,4 @@
-import { SCREEN_TITLES, type ScreenKey } from '../components/Sidebar';
+import { SCREEN_TITLES, type LayarTujuan, type ScreenKey } from '../components/Sidebar';
 
 /**
  * Alamat tiap layar.
@@ -59,4 +59,23 @@ export function pathForScreen(screen: ScreenKey): string {
 export function screenFromPath(pathname: string): ScreenKey | null {
   const trimmed = pathname.slice(BASE.length).replace(/^\/+|\/+$/g, '');
   return SCREEN_BY_PATH[trimmed] ?? null;
+}
+
+/**
+ * Alamat lama yang masih dikenali.
+ *
+ * Layar-layar ini sudah melebur menjadi tab (lihat `LayarTujuan`), tetapi
+ * tautan yang pernah dikirim ke rekan tidak boleh mendarat di dashboard.
+ */
+const ALAMAT_LAMA: Record<string, LayarTujuan> = {
+  'deret-waktu': 'analysis',
+  perbandingan: 'compare',
+  skenario: 'scenario',
+  'rute-pemeriksaan': 'rute',
+};
+
+/** Seperti `screenFromPath`, tetapi juga mengenali alamat lama. */
+export function tujuanFromPath(pathname: string): LayarTujuan | null {
+  const trimmed = pathname.slice(BASE.length).replace(/^\/+|\/+$/g, '');
+  return SCREEN_BY_PATH[trimmed] ?? ALAMAT_LAMA[trimmed] ?? null;
 }

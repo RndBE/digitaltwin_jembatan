@@ -303,15 +303,48 @@ tersembunyi yang dibacakan pembaca layar.
 | Pemantauan | **Digital Twin** | Model 3D yang bereaksi terhadap telemetri: batang memerah seiring regangan, lantai miring saat tumpuan rusak, kendaraan melintas sesuai skenario |
 | Pemantauan | **Data** | Tabel angka mentah dan log kejadian, dengan penyaring periode dan kanal, ringkasan min/rerata/maks, unduhan CSV, dan cetak |
 | Pemantauan | **Kamera** | Enam titik pandang beserta keadaan, resolusi, PTZ, dan perekamannya; siarannya peraga, lapisan HUD-nya sudah bentuk akhir |
-| Kajian | **Deret waktu** | Deret waktu tiap kanal terhadap ambang waspada dan kritis, dengan garis dasar sebagai pembanding |
-| Kajian | **Perbandingan** | Rekaman kondisi normal dan kondisi sekarang ditumpuk pada satu sumbu, dengan daerah selisihnya diarsir |
-| Kajian | **Skenario** | Delapan skenario dalam tiga keluarga, masing-masing menyebut dampak, laju, dan apakah kondisinya pulih sendiri |
+| Pemantauan | **Analisa** | Tiga tab: *Deret waktu* (tiap kanal terhadap ambang, garis dasar pembanding), *Perbandingan* (kondisi normal dan sekarang ditumpuk, selisih diarsir), *Skenario* (delapan skenario dalam tiga keluarga) |
 | Berkas aset | **Informasi** | Identitas aset: ukuran, data teknis, beban rencana, nilai kondisi, penanggung jawab |
 | Berkas aset | **Inspeksi** | Riwayat pemeriksaan lapangan beserta temuan dan nilai kondisi tiap kali |
 | Berkas aset | **Pemeliharaan** | Pekerjaan pemeliharaan: selesai, berjalan, terjadwal, beserta biayanya |
 | Berkas aset | **Kondisi elemen** | Skor 0–1 tiap elemen struktur dari sensor + inspeksi + uji diagnostik, beserta dekomposisinya dan elemen yang menarik turun indeks |
 | Berkas aset | **Sensor** | Inventaris alat terpasang: model, letak, umur pemasangan, baterai, sinyal — beserta bilah *Data masuk*: paket diterima, cuplikan terakhir, jarak cuplikan, kanal yang mengirim, lama berjalan |
 | Berkas aset | **Tingkat siaga** | Ambang batas tiap parameter beserta pita aman/waspada/kritisnya, aturan yang sedang menaikkan status dan sejak kapan, dapat diubah dan dikembalikan ke bawaan |
+
+### Pemeriksaan menurut pedoman
+
+Kelompok **Pemeriksaan** di rel mengikuti Pedoman Pemeriksaan Jembatan Bina
+Marga No. 01/P/BM/2022: satu butir per **jenis pemeriksaan** (Bab 4.3), bukan
+satu butir per alat. Tiap halaman menulis bab dan halaman pedomannya di
+lencana kecil pada baris tombol.
+
+| Butir | Isi | Pedoman |
+|---|---|---|
+| **Ringkasan** | Tiga langkah kerja (perencanaan, pelaksanaan, laporan) dan empat kartu jenis pemeriksaan dengan jadwal, terakhir dikerjakan, dan yang tertunda. Memuat dua penilaian kondisi berdampingan | Bab 4.3–4.4 |
+| **Inventarisasi** | Halaman cakupan, berlabel *Segera*: empat bagian lembar isian dan apa yang sudah terbaca dari data aset. Formulirnya belum ada | Bab 6 |
+| **Detail** | Dua tab: *Catat kerusakan* (S + R + K + F + P menjadi Nilai Kondisi, pohon Level 1–4, nilai langsung di sisi) dan *Rute pemeriksaan* (stasiun A1 ke A2) | Bab 5.5, 7 |
+| **Rutin** | Jadwal, usulan tindakan darurat, SMKS, dan Formulir Rutin dua bagian | Bab 8 |
+| **Khusus** | Elemen yang diusulkan diuji beserta alat dari Tabel 9 dan 10. Hasil pengujian belum dapat dicatat | Bab 9 |
+
+Laporan ada di *Berkas aset*; peta **Kesesuaian pedoman** tinggal sebagai
+tautan kecil di kaki rel, karena ia alat pengembang, bukan alat kerja pemeriksa.
+
+**Dua penilaian kondisi, tidak pernah dicampur.** *Nilai Kondisi 0–5* adalah
+hasil pemeriksa menurut pedoman. *Indeks kondisi elemen* adalah gabungan
+sensor, inspeksi, dan uji diagnostik, dan berada di luar pedoman (Bab 1
+mengecualikan evaluasi gabungan). Dashboard, Ringkasan, dan Kondisi elemen
+menyebut asal masing-masing.
+
+**Warna model 3D.** Sakelar *Sensor | Nilai Kondisi* di Digital Twin mewarnai
+batang menurut regangan sekarang, atau menurut Nilai Kondisi tertinggi dari
+temuan pemeriksa (hijau 0 sampai merah tua 5; baja polos berarti belum ada
+temuan). Panel Inspeksi komponen menyebut NK bagian yang dipilih.
+
+**Formulir bertahap.** Formulir Detail dan Rutin memakai satu pola: lembar
+isian dibagi dua bagian seperti Lampiran A, dan bilah *Bagian 1 dari 2* di dasar
+layar menunjukkan posisi dan melompat antarbagian. Alamat lama
+(`/deret-waktu`, `/perbandingan`, `/skenario`, `/rute-pemeriksaan`) masih
+dikenali dan mendarat di tab yang sesuai.
 
 ### Berkas aset sebagai acuan
 

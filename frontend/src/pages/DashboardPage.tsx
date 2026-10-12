@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from 'react';
+import { useMemo, useSyncExternalStore } from 'react';
 import type { AlertEvent, Bridge, Telemetry } from '../lib/types';
 import { RiskMeter } from '../components/Gauges';
 import { MaintenancePanel } from '../components/MaintenancePanel';
@@ -21,6 +21,8 @@ import { dossierFor, inventarisNode, lalulintasPerJam } from '../domain/demoData
 import { environmentAt, keteranganAir } from '../domain/environment';
 import { NOTICE_CLASS, pengumuman } from '../domain/notices';
 import { langganAlarm, ringkasAlarm, versiAlarm } from '../domain/alarms';
+import { NK_KELAS, NK_URAIAN, nilaiTemuan, ringkasKondisi } from '../domain/pedoman';
+import { daftarTemuan, langganTemuan, versiTemuan } from '../domain/temuan';
 
 export interface DashboardPageProps {
   bridge: Bridge;
@@ -36,6 +38,8 @@ export interface DashboardPageProps {
   onOpenScenario: () => void;
   onOpenAsset: () => void;
   onOpenEvents: () => void;
+  /** Buka ringkasan pemeriksaan (Pedoman Bina Marga). */
+  onOpenPeriksa: () => void;
 }
 
 /**
@@ -66,11 +70,18 @@ export function DashboardPage({
   onOpenScenario,
   onOpenAsset,
   onOpenEvents,
+  onOpenPeriksa,
 }: DashboardPageProps) {
   // Keadaan alarm hidup di luar React dan diubah dari halaman Data; tanpa
   // langganan ini, lencana "belum diakui" baru menyusul pada cuplikan
   // berikutnya — satu menit kemudian, saat struktur sedang tenang.
   useSyncExternalStore(langganAlarm, versiAlarm);
+  // Temuan pemeriksa dicatat di halaman lain; nilainya harus ikut berubah di sini.
+  const versiT = useSyncExternalStore(langganTemuan, versiTemuan);
+  const nilaiPemeriksa = useMemo(
+    () => ringkasKondisi(nilaiTemuan(daftarTemuan(bridge.id))),
+    [bridge.id, versiT],
+  );
 
   if (!telemetry) {
     return <p className="text-muted">Menyiapkan aliran telemetri…</p>;
@@ -390,7 +401,7 @@ export function DashboardPage({
               */}
             <div className="row" style={{ justifyContent: 'space-between', alignItems: 'baseline' }}>
               <span className="text-muted" style={{ fontSize: 11.5 }}>
-                Indeks kondisi elemen
+                Indeks kondisi elemen · sensor, di luar pedoman
               </span>
               <span
                 className="tabular"
@@ -446,6 +457,31 @@ export function DashboardPage({
                 </>
               ) : null}
             </p>
+
+            {/*
+              * Penilaian kedua, dari pemeriksa. Pedoman Bab 1 tidak menggabungkan
+              * hasil pemeriksaan visual dengan sensor, jadi angkanya berdiri
+              * sendiri di bawah yang pertama dan menyebut asalnya.
+              */}
+            <div className="hairline" />
+            <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center', gap: 'var(--space-2)' }}>
+              <div className="stack" style={{ gap: 2 }}>
+                <span className="text-muted" style={{ fontSize: 11.5 }}>
+                  Nilai Kondisi · hasil pemeriksa, pedoman
+                </span>
+                <span className="row" style={{ gap: 8, alignItems: 'baseline' }}>
+                  <span className="tabular" style={{ fontSize: 20, fontWeight: 650 }}>
+                    {nilaiPemeriksa.nk}
+                    <span className="text-muted" style={{ fontSize: 12 }}> /5</span>
+                  </span>
+                  <span className={NK_KELAS[nilaiPemeriksa.nk]}>{NK_URAIAN[nilaiPemeriksa.nk].label}</span>
+                  <span className="text-muted tabular" style={{ fontSize: 11 }}>{nilaiPemeriksa.temuan} temuan</span>
+                </span>
+              </div>
+              <button type="button" className="btn btn-sm" onClick={onOpenPeriksa}>
+                Pemeriksaan
+              </button>
+            </div>
           </div>
 
           <div className="glass card">

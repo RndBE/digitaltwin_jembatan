@@ -604,6 +604,26 @@
   margin-left: auto; flex: none;
   box-shadow: 0 0 0 3px rgb(2 8 20 / 0.45);
 }
+.nav-badge + .nav-dot { margin-left: 6px; }
+
+/* Keterangan kecil pada butir yang halamannya belum lengkap. */
+.nav-badge {
+  margin-left: auto; flex: none;
+  padding: 1px 7px; border-radius: 999px;
+  font-size: 10px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
+  color: var(--mist-300);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.18);
+}
+.nav-item--active .nav-badge { color: #fff; box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.4); }
+
+/* Tautan sekunder di kaki rel: ada, tetapi bukan alat kerja. */
+.sidebar-tautan {
+  align-self: flex-start;
+  padding: 2px 4px; border: 0; background: transparent;
+  font-size: 11.5px; font-weight: 600; color: var(--mist-400);
+  text-decoration: underline; text-underline-offset: 3px; text-decoration-color: rgb(255 255 255 / 0.2);
+}
+.sidebar-tautan:hover, .sidebar-tautan--aktif { color: var(--mist-50); }
 
 /* ------------------------------------------------------------------ *
  |  Bilah tingkat siaga
@@ -964,6 +984,8 @@
 .page-header-utama { margin-right: auto; gap: 6px; }
 /* Jarak bawah deret tab hanya berlaku saat ia berdiri sendiri, bukan di baris ini. */
 .page-header-utama .tabs { margin-bottom: 0; }
+.rujukan-pedoman { font-size: 11px; }
+.tabbar { margin-bottom: var(--space-3); }
 
 .stat { display: flex; flex-direction: column; gap: 3px; }
 .stat-label {
@@ -1700,3 +1722,95 @@
   .laporan-tabel tr { page-break-inside: avoid; }
   .laporan-bagian { page-break-after: avoid; }
 }
+
+
+/* ------------------------------------------------------------------ *
+ |  Pemeriksaan: ringkasan, formulir bertahap, bilah bagian
+ * ------------------------------------------------------------------ */
+
+.periksa-langkah {
+  display: grid; gap: var(--space-3);
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  margin-bottom: var(--space-3);
+}
+.periksa-langkah-butir {
+  display: flex; align-items: flex-start; gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+}
+.periksa-no {
+  flex: none; width: 24px; height: 24px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700; color: #fff;
+  background: linear-gradient(120deg, rgb(31 139 245 / 0.9), rgb(18 104 201 / 0.72));
+}
+.periksa-dua {
+  display: grid; gap: var(--space-3);
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  margin-bottom: var(--space-3);
+}
+.periksa-nilai { display: flex; flex-direction: column; gap: 6px; padding: var(--space-3) var(--space-4); }
+.periksa-kartu-grid {
+  display: grid; gap: var(--space-3);
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+.periksa-kartu { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); }
+.periksa-baris { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 8px; }
+
+/*
+ * Formulir pemeriksaan: isian di kiri, nilai langsung dan pohon hierarki di
+ * kanan. Tiga kolom (pohon, isian, nilai) hanya pada layar yang cukup lebar;
+ * pohonnya memuat nama dan kode bertingkat dan tidak terbaca pada kolom sempit.
+ */
+.form-tiga {
+  display: grid; gap: var(--space-3); align-items: start;
+  grid-template-columns: minmax(0, 1.7fr) minmax(300px, 1fr);
+  grid-template-areas: 'isian nilai' 'isian pohon';
+}
+.form-area-isian { grid-area: isian; min-width: 0; }
+.form-area-nilai { grid-area: nilai; position: sticky; top: var(--space-3); }
+.form-area-pohon { grid-area: pohon; min-width: 0; }
+@media (min-width: 1760px) {
+  .form-tiga {
+    grid-template-columns: minmax(300px, 0.8fr) minmax(0, 1.8fr) minmax(280px, 0.9fr);
+    grid-template-areas: 'pohon isian nilai';
+  }
+}
+@media (max-width: 860px) {
+  .form-tiga { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'isian' 'nilai' 'pohon'; }
+  .form-area-nilai { position: static; }
+}
+
+.bilah-bagian {
+  position: sticky; bottom: var(--space-3); z-index: 5;
+  display: flex; align-items: center; gap: var(--space-4); flex-wrap: wrap;
+  margin-top: var(--space-3); padding: 8px var(--space-4);
+  border-radius: var(--radius-chip);
+  background: rgb(7 16 32 / 0.88); backdrop-filter: blur(14px);
+}
+.bilah-bagian-posisi { font-size: 12px; font-weight: 700; color: var(--mist-100); white-space: nowrap; }
+.bilah-bagian-daftar { display: flex; gap: var(--space-2); flex-wrap: wrap; margin: 0; padding: 0; list-style: none; }
+.bilah-bagian-butir {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 5px 12px 5px 6px; border: 0; border-radius: 999px;
+  background: transparent; color: var(--mist-300); font-size: 12px; font-weight: 600;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.12);
+}
+.bilah-bagian-butir:hover { color: var(--mist-50); background: rgb(255 255 255 / 0.06); }
+.bilah-bagian-butir[aria-current='step'] {
+  color: #fff;
+  background: linear-gradient(120deg, rgb(31 139 245 / 0.9), rgb(18 104 201 / 0.72));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.32);
+}
+.bilah-bagian-no {
+  width: 18px; height: 18px; border-radius: 50%; flex: none;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 10.5px; font-weight: 700; background: rgb(255 255 255 / 0.14);
+}
+.bilah-bagian-rujukan { font-size: 11px; font-weight: 500; }
+.bilah-bagian-butir[aria-current='step'] .bilah-bagian-rujukan { color: rgb(255 255 255 / 0.75); }
+@media (max-width: 680px) { .bilah-bagian-rujukan { display: none; } }
+
+/* Lencana warna Nilai Kondisi pada model 3D. */
+.legenda-nk { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.legenda-nk-butir { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; }
+.legenda-nk-kotak { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }

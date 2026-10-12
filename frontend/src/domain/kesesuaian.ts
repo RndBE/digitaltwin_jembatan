@@ -1,4 +1,4 @@
-import type { ScreenKey } from '../components/Sidebar';
+import type { LayarTujuan } from '../components/Sidebar';
 import { BUTIR_FORM } from './formRutin';
 import { ELEMEN_BY_KODE, KERUSAKAN } from './pedoman';
 
@@ -43,7 +43,7 @@ export interface ButirKesesuaian {
   ada: string;
   /** Yang belum, bila status bukan sesuai. */
   kurang?: string;
-  layar?: ScreenKey;
+  layar?: LayarTujuan;
 }
 
 const jumlahElemen = Object.keys(ELEMEN_BY_KODE).length;
@@ -115,8 +115,9 @@ export const BUTIR: ButirKesesuaian[] = [
     rujukan: 'Bab 6 hlm. 44–65',
     judul: 'Pemeriksaan Inventarisasi',
     status: 'belum',
-    ada: 'Hanya sebagian data di halaman Informasi.',
-    layar: 'info',
+    ada: 'Halaman cakupan: empat bagian Bab 6.4 dan apa yang sudah terbaca dari data aset.',
+    kurang: 'Formulir isian dan foto inventarisasi belum ada.',
+    layar: 'inventarisasi',
   },
   {
     id: 'detail',
@@ -144,9 +145,9 @@ export const BUTIR: ButirKesesuaian[] = [
     rujukan: 'Bab 4.3.4, 9 hlm. 9, 88–92',
     judul: 'Pemeriksaan Khusus',
     status: 'sebagian',
-    ada: 'Usulan elemen, alasan, dan pengujian dari Tabel 9–10.',
+    ada: 'Halaman Khusus: usulan elemen, alasan, pengujian dari Tabel 9–10, dan alat Bab 9.3.',
     kurang: 'Pencatatan hasil pengujian.',
-    layar: 'rutin',
+    layar: 'khusus',
   },
   {
     id: 'jadwal',

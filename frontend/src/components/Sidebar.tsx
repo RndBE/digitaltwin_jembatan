@@ -8,37 +8,43 @@ export type ScreenKey =
   | 'twin'
   | 'data'
   | 'kamera'
-  | 'info'
+  | 'ambang'
+  | 'analisa'
+  | 'periksa'
+  | 'inventarisasi'
   | 'pemeriksaan'
   | 'rutin'
-  | 'kesesuaian'
-  | 'rute'
-  | 'laporan'
+  | 'khusus'
+  | 'info'
   | 'kondisi'
+  | 'laporan'
   | 'repair'
-  | 'ambang'
-  | 'analysis'
-  | 'compare'
-  | 'scenario';
+  | 'kesesuaian';
+
+/**
+ * Tujuan yang dapat dibuka dari mana saja, termasuk yang sudah bukan layar
+ * sendiri. Deret waktu, Perbandingan, dan Skenario sekarang tab di Analisa,
+ * dan Rute pemeriksaan tab di Pemeriksaan detail; sebutan lamanya tetap
+ * dikenali supaya tautan dan tombol yang menunjuknya tidak patah.
+ */
+export type LayarTujuan = ScreenKey | 'analysis' | 'compare' | 'scenario' | 'rute';
 
 interface NavItem {
   key: ScreenKey;
   label: string;
   icon: IconName;
+  /** Keterangan kecil di ujung kanan, mis. halaman yang belum lengkap. */
+  badge?: string;
 }
 
 /**
- * Navigasi dikelompokkan menurut sifat halamannya, bukan menurut asal datanya.
+ * Navigasi dikelompokkan menurut sifat pekerjaannya.
  *
- *   Pemantauan  — layar yang menampilkan keadaan sekarang apa adanya, termasuk
- *                 tingkat siaga yang sedang berlaku dan ambangnya.
- *   Kajian      — layar yang mengolah keadaan itu: deret waktu, pembanding, dan
- *                 skenario yang mengubahnya dengan sengaja.
- *   Berkas aset — berkas yang tidak berubah tiap menit: identitas, catatan
- *                 pemeriksaan, alat terpasang, dan kondisi per elemen.
- *
- * Digital Twin sebelumnya berada di kelompok aset, dan itu salah tempat: model
- * 3D adalah layar pemantauan langsung, bukan lembar arsip.
+ *   Pemantauan  — keadaan sekarang apa adanya, ditambah Analisa (deret waktu,
+ *                 pembanding, skenario) yang mengolah keadaan itu.
+ *   Pemeriksaan — pekerjaan pemeriksa menurut Pedoman Bina Marga; lihat di bawah.
+ *   Berkas aset — berkas yang tidak berubah tiap menit: identitas, kondisi per
+ *                 elemen, dan laporan.
  */
 /**
  * Nama tiap layar untuk judul tab peramban.
@@ -53,20 +59,29 @@ export const SCREEN_TITLES: Record<ScreenKey, string> = {
   twin: 'Digital Twin',
   data: 'Data',
   kamera: 'Kamera',
-  analysis: 'Deret waktu',
-  compare: 'Perbandingan',
-  scenario: 'Skenario',
-  info: 'Informasi',
+  ambang: 'Tingkat siaga',
+  analisa: 'Analisa',
+  periksa: 'Ringkasan pemeriksaan',
+  inventarisasi: 'Pemeriksaan inventarisasi',
   pemeriksaan: 'Pemeriksaan detail',
   rutin: 'Pemeriksaan rutin',
-  kesesuaian: 'Kesesuaian pedoman',
-  rute: 'Rute pemeriksaan',
-  laporan: 'Laporan pemeriksaan',
+  khusus: 'Pemeriksaan khusus',
+  info: 'Informasi',
   kondisi: 'Kondisi elemen',
+  laporan: 'Laporan pemeriksaan',
   repair: 'Pemeliharaan',
-  ambang: 'Tingkat siaga',
+  kesesuaian: 'Kesesuaian pedoman',
 };
 
+/*
+ * Tiga kelompok, dan yang kedua mengikuti susunan pedoman, bukan susunan alat.
+ *
+ * Pedoman membagi pekerjaan menurut **jenis pemeriksaan** — Inventarisasi,
+ * Detail, Rutin, Khusus (Bab 4.3) — jadi menunya begitu pula. Rute pemeriksaan
+ * menjadi tab di dalam Detail, karena ia urutan kerja pemeriksa Detail
+ * (Bab 5.5), bukan jenis pemeriksaan sendiri. Peta kesesuaian adalah alat
+ * pengembang dan tinggal di kaki rel, bukan di antara alat kerja.
+ */
 export const NAV_GROUPS: Array<{ title: string; items: NavItem[] }> = [
   {
     title: 'Pemantauan',
@@ -76,14 +91,17 @@ export const NAV_GROUPS: Array<{ title: string; items: NavItem[] }> = [
       { key: 'data', label: 'Data', icon: 'table' },
       { key: 'kamera', label: 'Kamera', icon: 'camera' },
       { key: 'ambang', label: 'Tingkat siaga', icon: 'alert' },
+      { key: 'analisa', label: 'Analisa', icon: 'pulse' },
     ],
   },
   {
-    title: 'Kajian',
+    title: 'Pemeriksaan',
     items: [
-      { key: 'analysis', label: 'Deret waktu', icon: 'pulse' },
-      { key: 'compare', label: 'Perbandingan', icon: 'bars' },
-      { key: 'scenario', label: 'Skenario', icon: 'play' },
+      { key: 'periksa', label: 'Ringkasan', icon: 'clipboard' },
+      { key: 'inventarisasi', label: 'Inventarisasi', icon: 'layers', badge: 'Segera' },
+      { key: 'pemeriksaan', label: 'Detail', icon: 'doc' },
+      { key: 'rutin', label: 'Rutin', icon: 'bars' },
+      { key: 'khusus', label: 'Khusus', icon: 'wrench' },
     ],
   },
   {
@@ -91,27 +109,11 @@ export const NAV_GROUPS: Array<{ title: string; items: NavItem[] }> = [
     items: [
       { key: 'info', label: 'Informasi', icon: 'doc' },
       { key: 'kondisi', label: 'Kondisi elemen', icon: 'layers' },
+      { key: 'laporan', label: 'Laporan', icon: 'table' },
       // Butir Pemeliharaan disembunyikan dari navigasi untuk sementara.
       // Halamannya tetap ada dan tetap dapat dibuka lewat tombol "Perbaikan"
       // di halaman Informasi; hapus komentar ini untuk memunculkannya lagi.
       // { key: 'repair', label: 'Pemeliharaan', icon: 'wrench' },
-    ],
-  },
-  /*
-   * Seluruh yang mengikuti Pedoman Pemeriksaan Jembatan Bina Marga berada di
-   * satu kelompok, bukan tersebar di Berkas aset: pemeriksa yang membuka
-   * aplikasi untuk satu pekerjaan — memeriksa — menemukan alatnya di satu
-   * tempat, dalam urutan kerjanya: berjalan di rute, mencatat kerusakan,
-   * mengisi formulir Rutin, mencetak laporan.
-   */
-  {
-    title: 'Pedoman Bina Marga',
-    items: [
-      { key: 'rute', label: 'Rute pemeriksaan', icon: 'layers' },
-      { key: 'pemeriksaan', label: 'Pemeriksaan detail', icon: 'doc' },
-      { key: 'rutin', label: 'Pemeriksaan rutin', icon: 'clipboard' },
-      { key: 'laporan', label: 'Laporan', icon: 'table' },
-      { key: 'kesesuaian', label: 'Kesesuaian pedoman', icon: 'bars' },
     ],
   },
 ];
@@ -120,7 +122,7 @@ export const SCREENS: NavItem[] = NAV_GROUPS.flatMap((group) => group.items);
 
 export interface SidebarProps {
   screen: ScreenKey;
-  onScreen: (key: ScreenKey) => void;
+  onScreen: (key: LayarTujuan) => void;
   bridges: Bridge[];
   bridge: Bridge;
   onBridge: (id: string) => void;
@@ -212,6 +214,7 @@ export function Sidebar({
                   >
                     <Icon name={item.icon} />
                     {item.label}
+                    {item.badge ? <span className="nav-badge">{item.badge}</span> : null}
                     {/* Titiknya bukan satu-satunya pembawa pesan: alasannya
                         ikut ditulis sebagai teks tersembunyi, supaya pembaca
                         layar dan pembaca yang tidak membedakan warna tetap
@@ -235,6 +238,14 @@ export function Sidebar({
       </div>
 
       <div className="sidebar-foot">
+        <button
+          type="button"
+          className={screen === 'kesesuaian' ? 'sidebar-tautan sidebar-tautan--aktif' : 'sidebar-tautan'}
+          aria-current={screen === 'kesesuaian' ? 'page' : undefined}
+          onClick={() => onScreen('kesesuaian')}
+        >
+          Kesesuaian pedoman
+        </button>
         <div className="row" style={{ gap: 8 }}>
           <StatusTag status={status} />
           {repairNeeded ? (

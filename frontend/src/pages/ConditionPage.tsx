@@ -73,6 +73,30 @@ export function ConditionPage({ telemetry, onOpenInspection, onOpenPemeriksaan }
         }
       />
 
+      <div
+        role="note"
+        className="row"
+        style={{
+          gap: 8,
+          justifyContent: 'space-between',
+          marginBottom: 'var(--space-3)',
+          padding: '6px 12px',
+          borderRadius: 12,
+          background: 'rgb(71 166 255 / 0.1)',
+          fontSize: 12,
+          lineHeight: 1.5,
+        }}
+      >
+        <span>
+          <span className="tag tag-outline" style={{ marginRight: 8 }}>DI LUAR PEDOMAN</span>
+          Skor ini menggabungkan sensor, inspeksi, dan uji diagnostik. Pedoman (Bab 1) tidak
+          menggabungkannya; Nilai Kondisi hasil pemeriksa ada di Pemeriksaan detail.
+        </span>
+        <button type="button" className="btn btn-ghost btn-sm" onClick={onOpenPemeriksaan}>
+          Nilai Kondisi pemeriksa
+        </button>
+      </div>
+
       <section
         className="glass glass--chip stat-row"
         style={{

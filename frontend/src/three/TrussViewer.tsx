@@ -8,6 +8,7 @@ import { SCENARIOS } from '../domain/scenarios';
 import { buildTwinScene, type TwinScene } from './proceduralBridge';
 import { loadSpots, saveSpot } from '../lib/sensorSpots';
 import { sagBand } from '../domain/deflectionScale';
+import type { WarnaModel } from '../domain/warnaNk';
 
 /**
  * Pembungkus React untuk adegan three.js prosedural.
@@ -32,6 +33,9 @@ export interface TrussViewerProps {
   /** Membuka panel perbandingan kamera untuk kanal ini. */
   onCompare?: (sensorId: string) => void;
   onReady: (scene: TwinScene | null) => void;
+  /** Cara model diwarnai, dan Nilai Kondisi tiap bagian bila diwarnai menurut pemeriksa. */
+  warnaMode?: WarnaModel;
+  nkBagian?: Record<string, number>;
   /** Sebuah penanda selesai dipindahkan dan letak barunya sudah disimpan. */
   onSpotMove?: () => void;
 }
@@ -48,6 +52,8 @@ export function TrussViewer({
   onScale,
   onCompare,
   onReady,
+  warnaMode = 'sensor',
+  nkBagian,
   onSpotMove,
 }: TrussViewerProps) {
   const hostRef = useRef<HTMLDivElement>(null);
@@ -198,6 +204,10 @@ export function TrussViewer({
   useEffect(() => {
     sceneRef.current?.setState({ editSpots });
   }, [editSpots]);
+
+  useEffect(() => {
+    sceneRef.current?.setState({ warnaMode, nkBagian: nkBagian ?? {} });
+  }, [warnaMode, nkBagian]);
 
   return (
     <div

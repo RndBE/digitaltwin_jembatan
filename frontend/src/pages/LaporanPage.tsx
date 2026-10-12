@@ -79,9 +79,10 @@ export function LaporanPage({ bridge, telemetry }: LaporanPageProps) {
     <div className="screen">
       <div className="no-print">
         <PageHeader
-          kicker="Pedoman Bina Marga"
+          kicker="Berkas aset"
           title="Laporan pemeriksaan"
           lede="Lembar laporan menurut susunan Lampiran A."
+          rujukan="Bab 4.4.4 · Lampiran A"
         />
         <div className="row" style={{ justifyContent: 'space-between', margin: 'var(--space-3) 0' }}>
           <div className="row" style={{ gap: 'var(--space-3)' }}>

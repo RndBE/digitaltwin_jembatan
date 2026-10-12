@@ -31,7 +31,9 @@ import { intipTitipan, kosongkanTitipan } from '../domain/lokasiModel';
 import { CameraFrame } from '../components/CameraTile';
 import { Modal } from '../components/Modal';
 import { Select, type SelectGroup } from '../components/Select';
-import { PageHeader, Stat } from '../components/Ui';
+import { PageHeader } from '../components/Ui';
+import { BilahBagian, type BagianFormulir } from '../components/BilahBagian';
+import { administrasiAset, langganAdministrasi, versiAdministrasi } from '../domain/administrasi';
 
 /**
  * Pemeriksaan detail menurut Pedoman Pemeriksaan Jembatan No. 01/P/BM/2022.
@@ -88,12 +90,20 @@ function kameraUntukElemen(kode: string, kamera: Camera[]): Camera | undefined {
   return bisa.find((c) => c.view === view && c.status === 'daring') ?? bisa.find((c) => c.view === view) ?? bisa[0];
 }
 
+/** Lembar isian Detail dibagi dua (Bab 7.4, Lampiran A). */
+const BAGIAN: BagianFormulir[] = [
+  { id: 'bagian-1', judul: 'Data administrasi', rujukan: 'Bab 7.4.1 · hlm. 73' },
+  { id: 'bagian-2', judul: 'Penilaian kondisi elemen', rujukan: 'Bab 7.4.2 · hlm. 75' },
+];
+
 export interface PemeriksaanPageProps {
   bridge: Bridge;
 }
 
 export function PemeriksaanPage({ bridge }: PemeriksaanPageProps) {
   const versi = useSyncExternalStore(langganTemuan, versiTemuan);
+  useSyncExternalStore(langganAdministrasi, versiAdministrasi);
+  const admin = administrasiAset(bridge.id);
   const temuan = useMemo(() => nilaiTemuan(daftarTemuan(bridge.id)), [bridge.id, versi]);
   const ringkas = useMemo(() => ringkasKondisi(temuan), [temuan]);
 
@@ -244,32 +254,37 @@ export function PemeriksaanPage({ bridge }: PemeriksaanPageProps) {
   return (
     <div className="screen">
       <PageHeader
-        kicker="Pedoman Bina Marga"
+        kicker="Pemeriksaan"
         title="Pemeriksaan detail"
         lede="Pencatatan kerusakan elemen menurut Pedoman Pemeriksaan Jembatan No. 01/P/BM/2022. Nilai Kondisi = S + R + K + F + P, dibaca dari kriteria Lampiran D."
+        rujukan="Bab 7 · hlm. 66–75"
       />
 
-      <section className="glass glass--chip stat-row" style={{ gridTemplateColumns: 'minmax(200px, 320px)', marginBottom: 'var(--space-3)' }}>
-        <Stat
-          label="Nilai Kondisi jembatan"
-          value={ringkas.nk}
-          unit="/5"
-          note={uraian.label}
-          tone={ringkas.nk >= 3 ? 'critical' : ringkas.nk === 2 ? 'warn' : 'accent'}
-        />
-      </section>
+      <div className="form-tiga">
+        <div className="stack form-area-isian" style={{ gap: 'var(--space-3)' }}>
+          <div id="bagian-1" className="glass card" style={{ padding: 'var(--space-4)', scrollMarginTop: 'var(--space-3)' }}>
+            <span className="card-kicker">Bagian ke-1 · Data administrasi</span>
+            <div className="row" style={{ gap: 'var(--space-3)', marginTop: 6, alignItems: 'flex-end' }}>
+              <div className="field" style={{ flex: '0 0 150px' }}>
+                <label htmlFor="pm-tanggal">Tanggal</label>
+                <input id="pm-tanggal" className="input" type="date" value={tanggal} onChange={(e) => setTanggal(e.target.value)} />
+              </div>
+              <div className="field" style={{ flex: 1, minWidth: 180 }}>
+                <label htmlFor="pm-pemeriksa">Pemeriksa</label>
+                <input id="pm-pemeriksa" className="input" value={pemeriksa} onChange={(e) => setPemeriksa(e.target.value)} />
+              </div>
+              <div className="field" style={{ flex: '0 0 auto' }}>
+                <span className="text-muted" style={{ fontSize: 11 }}>Nomor jembatan</span>
+                <span className="tabular" style={{ fontSize: 13 }}>{admin.nomorJembatan || 'belum diisi'}</span>
+              </div>
+            </div>
+            <p className="text-muted" style={{ fontSize: 11.5, margin: '8px 0 0', lineHeight: 1.5 }}>
+              Usulan pemeriksaan khusus dan tindakan darurat disusun otomatis dari temuan di halaman Khusus dan Rutin.
+            </p>
+          </div>
 
-      <div
-        className="split"
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'minmax(0, 1.2fr) minmax(280px, 1fr)',
-          gap: 'var(--space-3)',
-          alignItems: 'start',
-        }}
-      >
-        <div className="glass card" style={{ padding: 'var(--space-4)' }}>
-          <span className="card-kicker">Catat kerusakan</span>
+        <div id="bagian-2" className="glass card" style={{ padding: 'var(--space-4)', scrollMarginTop: 'var(--space-3)' }}>
+          <span className="card-kicker">Bagian ke-2 · Penilaian kondisi elemen</span>
 
           <div className="stack" style={{ gap: 'var(--space-3)', marginTop: 6 }}>
             {dariModel ? (
@@ -496,57 +511,60 @@ export function PemeriksaanPage({ bridge }: PemeriksaanPageProps) {
               ) : null}
             </div>
 
-            <div className="row" style={{ gap: 'var(--space-2)' }}>
-              <div className="field" style={{ flex: '0 0 150px' }}>
-                <label htmlFor="pm-tanggal">Tanggal</label>
-                <input id="pm-tanggal" className="input" type="date" value={tanggal} onChange={(e) => setTanggal(e.target.value)} />
-              </div>
-              <div className="field" style={{ flex: 1, minWidth: 180 }}>
-                <label htmlFor="pm-pemeriksa">Pemeriksa</label>
-                <input id="pm-pemeriksa" className="input" value={pemeriksa} onChange={(e) => setPemeriksa(e.target.value)} />
-              </div>
-            </div>
-
             <div className="field">
               <label htmlFor="pm-catatan">Catatan</label>
               <input id="pm-catatan" className="input" value={catatan} onChange={(e) => setCatatan(e.target.value)} />
             </div>
 
-            <div className="hairline" />
+          </div>
+        </div>
+        </div>
 
-            <div className="row" style={{ justifyContent: 'space-between', gap: 'var(--space-3)' }}>
-              <div className="row" style={{ gap: 6 }} aria-label="Rincian penilaian">
-                {(
-                  [
-                    ['S', skor.s],
-                    ['R', skor.r],
-                    ['K', skor.k],
-                    ['F', skor.f],
-                    ['P', skor.p],
-                  ] as const
-                ).map(([huruf, nilai]) => (
-                  <span key={huruf} className={nilai ? 'tag tag-waspada' : 'tag tag-neutral'} style={{ minWidth: 34, justifyContent: 'center' }}>
-                    {huruf} {nilai}
-                  </span>
-                ))}
-                <span className="text-muted">=</span>
-                <span className={NK_KELAS[skor.nk]} style={{ fontSize: 13 }}>
-                  NK {skor.nk} · {NK_URAIAN[skor.nk].label}
+        <aside className="glass card form-area-nilai" style={{ padding: 'var(--space-4)' }} aria-label="Nilai Kondisi langsung">
+          <span className="card-kicker">Nilai Kondisi · temuan ini</span>
+          <div className="stack" style={{ gap: 'var(--space-3)', marginTop: 6 }}>
+            <div className="row" style={{ gap: 6 }} aria-label="Rincian penilaian">
+              {(
+                [
+                  ['S', skor.s],
+                  ['R', skor.r],
+                  ['K', skor.k],
+                  ['F', skor.f],
+                  ['P', skor.p],
+                ] as const
+              ).map(([huruf, nilai]) => (
+                <span key={huruf} className={nilai ? 'tag tag-waspada' : 'tag tag-neutral'} style={{ minWidth: 34, justifyContent: 'center' }}>
+                  {huruf} {nilai}
                 </span>
-              </div>
-              <button type="button" className="btn btn-primary" disabled={!volumeSah || !pemeriksa.trim()} onClick={simpan}>
-                Simpan temuan
-              </button>
+              ))}
             </div>
+            <span className={NK_KELAS[skor.nk]} style={{ fontSize: 13, alignSelf: 'flex-start' }}>
+              NK {skor.nk} · {NK_URAIAN[skor.nk].label}
+            </span>
+            <button type="button" className="btn btn-primary" disabled={!volumeSah || !pemeriksa.trim()} onClick={simpan}>
+              Simpan temuan
+            </button>
             {peringatan ? (
               <p role="alert" style={{ fontSize: 12, margin: 0, color: 'var(--state-waspada)', lineHeight: 1.5 }}>
                 {peringatan}
               </p>
             ) : null}
+            <div className="hairline" />
+            <div className="stack" style={{ gap: 2 }}>
+              <span className="text-muted" style={{ fontSize: 11.5 }}>Nilai Kondisi jembatan · hasil pemeriksa</span>
+              <span className="row" style={{ gap: 8, alignItems: 'baseline' }}>
+                <span className="tabular" style={{ fontSize: 24, fontWeight: 650 }}>
+                  {ringkas.nk}
+                  <span className="text-muted" style={{ fontSize: 13 }}> /5</span>
+                </span>
+                <span className={NK_KELAS[ringkas.nk]}>{uraian.label}</span>
+              </span>
+              <span className="text-muted" style={{ fontSize: 11 }}>{temuan.length} temuan tercatat</span>
+            </div>
           </div>
-        </div>
+        </aside>
 
-        <div className="stack" style={{ gap: 'var(--space-3)' }}>
+        <div className="form-area-pohon">
           <div className="glass card" style={{ padding: 0, overflow: 'hidden' }}>
             <div className="card-head">
               <span className="card-kicker">Nilai Kondisi per level</span>
@@ -639,6 +657,7 @@ export function PemeriksaanPage({ bridge }: PemeriksaanPageProps) {
           </table>
         </div>
       </div>
+      <BilahBagian bagian={BAGIAN} />
       <Modal
         open={lihat !== null}
         title="Foto kerusakan"
